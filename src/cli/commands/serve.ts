@@ -3,8 +3,6 @@ import { startHttpServer } from "../../mcp/http-server.js";
 import { writeError } from "../../output/formatter.js";
 import { getApiKey } from "../../client/auth.js";
 
-const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
-
 function parsePort(v: string): number {
   const n = Number(v);
   if (!Number.isInteger(n) || n < 1 || n > 65535) {
@@ -23,20 +21,30 @@ export function registerServeCommand(program: Command): void {
     .option("--host <host>", "host to bind to", "127.0.0.1")
     .action(async (opts: { port: number; host: string }) => {
       const { port, host } = opts;
+      const authToken = process.env["KRX_MCP_TOKEN"];
+      const allowedHosts = process.env["KRX_MCP_ALLOWED_HOSTS"]
+        ?.split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
 
       if (!getApiKey()) {
         process.stderr.write(
-          "Warning: AUTH_KEY not set. Tool calls will fail until configured.\n",
+          "Warning: KRX_API_KEY is not set. KRX tool calls will fail until configured.\n",
         );
       }
 
-      if (!LOOPBACK_HOSTS.has(host)) {
-        process.stderr.write(
-          `Warning: Binding to ${host} exposes the MCP server on all network interfaces without DNS rebinding protection.\n`,
+      if (!authToken) {
+        throw new Error(
+          "KRX_MCP_TOKEN is required for Streamable HTTP MCP authentication",
         );
       }
 
-      const handle = await startHttpServer({ port, host });
+      const handle = await startHttpServer({
+        port,
+        host,
+        authToken,
+        ...(allowedHosts ? { allowedHosts } : {}),
+      });
 
       process.stderr.write(
         `MCP server listening on http://${host}:${handle.port}/mcp\n`,

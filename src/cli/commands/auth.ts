@@ -4,6 +4,7 @@ import {
   getApiKey,
   checkAllCategories,
   checkCategoryApproval,
+  removeApiKey,
 } from "../../client/auth.js";
 import type { CategoryId } from "../../client/endpoints.js";
 import { CATEGORIES } from "../../client/endpoints.js";
@@ -14,6 +15,7 @@ import {
   detectOutputFormat,
 } from "../../output/formatter.js";
 import { EXIT_CODES } from "../index.js";
+import { readSecret } from "../secret-input.js";
 
 export function registerAuthCommand(program: Command): void {
   const auth = program
@@ -21,11 +23,46 @@ export function registerAuthCommand(program: Command): void {
     .description("Manage API key and service approvals");
 
   auth
-    .command("set <api-key>")
-    .description("Save KRX API key")
-    .action((apiKey: string) => {
-      saveApiKey(apiKey);
-      writeOutput(JSON.stringify({ success: true, message: "API key saved" }));
+    .command("set [api-key]")
+    .description("Save KRX API key (prompts securely when omitted)")
+    .option("--stdin", "read the API key from standard input")
+    .action(
+      async (apiKey: string | undefined, options: { stdin?: boolean }) => {
+        if (apiKey && options.stdin) {
+          throw new Error(
+            "Provide the API key either as an argument or via stdin",
+          );
+        }
+        if (apiKey) {
+          process.stderr.write(
+            "Warning: passing API keys as arguments is deprecated because shell history and process listings may expose them.\n",
+          );
+        }
+        const secret = apiKey ?? (await readSecret());
+        saveApiKey(secret);
+        writeOutput(
+          JSON.stringify({ success: true, message: "API key saved" }),
+        );
+      },
+    );
+
+  auth
+    .command("remove")
+    .description("Remove the persisted KRX API key")
+    .action(() => {
+      const removed = removeApiKey();
+      const environmentStillActive = Boolean(process.env["KRX_API_KEY"]);
+      writeOutput(
+        JSON.stringify({
+          success: true,
+          message: removed
+            ? "Persisted API key removed"
+            : "No persisted API key found",
+          ...(environmentStillActive
+            ? { note: "KRX_API_KEY remains active for this process" }
+            : {}),
+        }),
+      );
     });
 
   auth
@@ -35,7 +72,7 @@ export function registerAuthCommand(program: Command): void {
       const apiKey = getApiKey();
       if (!apiKey) {
         writeError(
-          "No API key configured. Use 'krx auth set <key>' or set KRX_API_KEY env var.",
+          "No API key configured. Use 'krx auth set' or set KRX_API_KEY env var.",
         );
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }
@@ -65,10 +102,7 @@ export function registerAuthCommand(program: Command): void {
           };
         });
         writeOutput(
-          formatOutput(
-            rows as unknown as Record<string, unknown>[],
-            "table",
-          ),
+          formatOutput(rows as unknown as Record<string, unknown>[], "table"),
         );
       }
     });
@@ -80,7 +114,7 @@ export function registerAuthCommand(program: Command): void {
       const apiKey = getApiKey();
       if (!apiKey) {
         writeError(
-          "No API key configured. Use 'krx auth set <key>' or set KRX_API_KEY env var.",
+          "No API key configured. Use 'krx auth set' or set KRX_API_KEY env var.",
         );
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }

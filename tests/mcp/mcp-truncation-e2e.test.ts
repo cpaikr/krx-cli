@@ -9,6 +9,7 @@ import { startHttpServer } from "../../src/mcp/http-server.js";
  */
 
 const HOST = "127.0.0.1";
+const TOKEN = "test-mcp-token-with-at-least-32-characters";
 
 type ServerHandle = Awaited<ReturnType<typeof startHttpServer>>;
 
@@ -73,6 +74,7 @@ async function createMcpClient(port: number): Promise<Client> {
 
   const transport = new StreamableHTTPClientTransport(
     new URL(`http://${HOST}:${port}/mcp`),
+    { requestInit: { headers: { Authorization: `Bearer ${TOKEN}` } } },
   );
 
   await client.connect(transport);
@@ -107,7 +109,7 @@ describe("MCP 통합 테스트: truncation 시나리오", () => {
   });
 
   it("tools/list 에서 krx_stock tool 확인", async () => {
-    handle = await startHttpServer({ port: 0, host: HOST });
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
     client = await createMcpClient(handle.port);
 
     const { tools } = await client.listTools();
@@ -118,7 +120,7 @@ describe("MCP 통합 테스트: truncation 시나리오", () => {
   });
 
   it("전체 요청 → truncation 메타데이터 반환", async () => {
-    handle = await startHttpServer({ port: 0, host: HOST });
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
     client = await createMcpClient(handle.port);
 
     const result = await client.callTool({
@@ -139,7 +141,7 @@ describe("MCP 통합 테스트: truncation 시나리오", () => {
   });
 
   it("Strategy A: fields로 필수 필드만 → 전체 행 수신", async () => {
-    handle = await startHttpServer({ port: 0, host: HOST });
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
     client = await createMcpClient(handle.port);
 
     const result = await client.callTool({
@@ -165,7 +167,7 @@ describe("MCP 통합 테스트: truncation 시나리오", () => {
   });
 
   it("Strategy B: offset+limit 페이지네이션으로 전체 수신", async () => {
-    handle = await startHttpServer({ port: 0, host: HOST });
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
     client = await createMcpClient(handle.port);
 
     const allRows: Record<string, string>[] = [];
@@ -197,7 +199,7 @@ describe("MCP 통합 테스트: truncation 시나리오", () => {
   });
 
   it("truncation 메시지의 offset으로 후속 요청 → 나머지 전체 수신", async () => {
-    handle = await startHttpServer({ port: 0, host: HOST });
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
     client = await createMcpClient(handle.port);
 
     // 1차: truncation 발생
@@ -251,7 +253,7 @@ describe("MCP 통합 테스트: truncation 시나리오", () => {
   });
 
   it("단축코드(ISU_SRT_CD)로 특정 종목 조회 → 1건만 반환", async () => {
-    handle = await startHttpServer({ port: 0, host: HOST });
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
     client = await createMcpClient(handle.port);
 
     const targetShortCode = FULL_DATA[42]!.ISU_SRT_CD;
@@ -275,7 +277,7 @@ describe("MCP 통합 테스트: truncation 시나리오", () => {
   });
 
   it("ISIN코드로 특정 종목 조회 → ISU_CD 매칭으로 1건 반환", async () => {
-    handle = await startHttpServer({ port: 0, host: HOST });
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
     client = await createMcpClient(handle.port);
 
     // ISU_CD가 단축코드인 데이터에 ISIN 코드로 검색해도 ISU_CD 매칭으로 찾아야 함

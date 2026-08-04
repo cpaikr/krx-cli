@@ -29,7 +29,7 @@ export function registerWatchlistCommand(program: Command): void {
       const apiKey = getApiKey();
       if (!apiKey) {
         writeError(
-          "No API key configured. Use 'krx auth set <key>' or set KRX_API_KEY env var.",
+          "No API key configured. Use 'krx auth set' or set KRX_API_KEY env var.",
         );
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }
@@ -156,7 +156,7 @@ export function registerWatchlistCommand(program: Command): void {
       const apiKey = getApiKey();
       if (!apiKey) {
         writeError(
-          "No API key configured. Use 'krx auth set <key>' or set KRX_API_KEY env var.",
+          "No API key configured. Use 'krx auth set' or set KRX_API_KEY env var.",
         );
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }

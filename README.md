@@ -40,11 +40,22 @@ yarn global add krx-cli
 ### 2. API 키 등록
 
 ```bash
-krx auth set <your-api-key>
+krx auth set
 
-# 또는 환경변수 사용
+# 자동화에서 영구 저장이 필요할 때 (표준 입력은 터미널에 표시되지 않음)
+printf '%s' "$KRX_API_KEY" | krx auth set --stdin
+
+# 또는 저장하지 않고 환경변수 사용 (저장된 키보다 우선)
 export KRX_API_KEY=<your-api-key>
+
+# 저장된 키 삭제
+krx auth remove
 ```
+
+대화형 `auth set`은 키를 argv나 터미널 에코에 노출하지 않습니다. POSIX에서는
+설정 디렉터리를 `0700`, 파일을 `0600`으로 만들고 기존의 안전하지 않은 권한도
+수정합니다. Windows에서는 사용자 프로필의 ACL을 따르며 POSIX `chmod`를
+가정하지 않습니다.
 
 ### 3. 서비스 승인 확인
 
@@ -249,7 +260,7 @@ npx skills add kyo504/krx-cli
 ### Step 3: API 키 설정
 
 ```bash
-krx auth set <your-api-key>
+krx auth set
 # 또는
 export KRX_API_KEY=<your-api-key>
 ```
@@ -310,12 +321,13 @@ mkdir -p ~/.cursor/skills && cp SKILL.md ~/.cursor/skills/krx-cli.md
 
 CLI 외에 MCP(Model Context Protocol) 서버도 제공합니다. 두 가지 전송 방식을 지원합니다:
 
-| 전송 방식       | 바이너리    | 지원 클라이언트 |
-| --------------- | ----------- | --------------- |
-| stdio           | `krx-mcp`   | Claude Desktop  |
-| Streamable HTTP | `krx serve` | ChatGPT 웹      |
+| 전송 방식       | 바이너리    | 지원 클라이언트                            |
+| --------------- | ----------- | ------------------------------------------ |
+| stdio           | `krx-mcp`   | Claude Desktop                             |
+| Streamable HTTP | `krx serve` | Bearer 헤더를 지원하는 원격 MCP 클라이언트 |
 
-API 키는 `krx auth set <key>`로 등록한 것이 자동으로 사용됩니다.
+KRX API 키는 `krx auth set`으로 등록한 것이 자동으로 사용되며,
+`KRX_API_KEY`가 있으면 환경변수가 우선합니다.
 `krx-mcp`는 `npm install -g krx-cli`로 설치하면 함께 설치됩니다.
 
 ### Claude Desktop (stdio)
@@ -337,23 +349,30 @@ API 키는 `krx auth set <key>`로 등록한 것이 자동으로 사용됩니다
 
 설정 후 앱을 재시작하면 MCP 도구가 활성화됩니다.
 
-### ChatGPT 웹 (Streamable HTTP)
+### Streamable HTTP
 
-ChatGPT 웹은 원격 MCP 서버만 지원하므로, HTTP 서버를 실행한 뒤 ngrok으로 외부에 노출해야 합니다.
+HTTP 전송은 로컬 바인딩도 포함해 모든 `/mcp` 요청에 Bearer 인증을 요구합니다.
+32자 이상의 고엔트로피 단일 사용자 토큰을 환경변수로 설정하고, 클라이언트가
+`Authorization: Bearer <token>` 헤더를 전송하도록 구성하세요.
 
 ```bash
-# 터미널 1: MCP 서버 실행
-krx serve --port 3000 --host 0.0.0.0
+# 기본 루프백 서버
+export KRX_MCP_TOKEN="$(openssl rand -hex 32)"
+krx serve --port 3000
 
-# 터미널 2: ngrok으로 외부 노출
-ngrok http 3000
+# 비루프백 바인딩에는 DNS rebinding 방지용 Host 허용 목록도 필수
+export KRX_MCP_ALLOWED_HOSTS="mcp.example.com"
+krx serve --host 0.0.0.0 --port 3000
 ```
 
-1. ngrok 출력에서 `https://xxxx.ngrok.io` URL 복사
-2. ChatGPT 웹 → Settings → Developer → MCP Server 추가
-3. URL: `https://xxxx.ngrok.io/mcp`
+공개 배포는 TLS와 인증 헤더 전달을 지원하는 역방향 프록시 뒤에서만 사용하세요.
+정적 토큰은 단일 사용자 전체 권한 자격 증명으로, 보유자는 관심종목 추가/삭제도
+수행할 수 있습니다. 토큰을 공유하는 다중 사용자 운영은 지원하지 않으며 OAuth
+또는 identity-aware proxy가 필요합니다. 기본 제한은 클라이언트당 분당 120개
+요청과 활성 세션 10개, 전체 세션 100개, 세션 유휴 시간 30분입니다.
 
-Health check: `http://localhost:3000/health`
+인증이 필요 없는 health check는 상태와 버전만 노출합니다:
+`http://localhost:3000/health`.
 
 ### 제공 Tool
 

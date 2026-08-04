@@ -15,6 +15,7 @@ import { startHttpServer } from "../../src/mcp/http-server.js";
  */
 
 const HOST = "127.0.0.1";
+const TOKEN = "test-mcp-token-with-at-least-32-characters";
 
 type ServerHandle = Awaited<ReturnType<typeof startHttpServer>>;
 
@@ -102,6 +103,7 @@ async function createMcpClient(port: number): Promise<Client> {
   const client = new Client({ name: "test-client", version: "1.0.0" });
   const transport = new StreamableHTTPClientTransport(
     new URL(`http://${HOST}:${port}/mcp`),
+    { requestInit: { headers: { Authorization: `Bearer ${TOKEN}` } } },
   );
   await client.connect(transport);
   return client;
@@ -147,7 +149,7 @@ describe("시나리오: 종목 검색 → 시세 조회", () => {
 
   it("검색 → ISIN코드로 시세 조회 → 1건 반환", async () => {
     setupMock();
-    handle = await startHttpServer({ port: 0, host: HOST });
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
     client = await createMcpClient(handle.port);
 
     // Step 1: 검색
@@ -193,7 +195,7 @@ describe("시나리오: 종목 검색 → 시세 조회", () => {
 
   it("단축코드로 시세 조회 → 1건 반환", async () => {
     setupMock();
-    handle = await startHttpServer({ port: 0, host: HOST });
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
     client = await createMcpClient(handle.port);
 
     const result = await client.callTool({
@@ -214,7 +216,7 @@ describe("시나리오: 종목 검색 → 시세 조회", () => {
 
   it("존재하지 않는 코드로 조회 → 빈 배열", async () => {
     setupMock();
-    handle = await startHttpServer({ port: 0, host: HOST });
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
     client = await createMcpClient(handle.port);
 
     const result = await client.callTool({

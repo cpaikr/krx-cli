@@ -32,17 +32,21 @@ _None._
 
 ### Completed included results
 
-_None._
+- Secure remote MCP and KRX credentials — GitHub issues #1–#2.
 
 ### Current in-scope result
 
-Secure remote MCP and KRX credentials — GitHub issues #1–#2.
+Audited dependencies and reproducible cross-platform gates — GitHub issues #3 and #7.
 
 ### Next in-scope action
 
-Read tracker #11 and issues #1–#2, reconcile their completion criteria with repository evidence, and implement the first coherent credential-security slice.
+Upgrade the bundled MCP SDK dependency, establish a zero-high/critical production-audit gate, and add reproducible cross-platform packed-binary validation.
 
 ### Evidence and blockers
 
 - Initialization boundary: necessary to satisfy the goal's Resume invariant and no-PR Delivery lifecycle.
 - Planning scope is the ordinary unscoped namespace. No existing `ROADMAP.md`, work-item queue, or goal file was present at initialization.
+- Issues #1–#2 decision: every Streamable HTTP `/mcp` request requires a static bearer token, including loopback, because a local tunnel can otherwise bypass a peer-address exception. The token is a single-user full-control credential; multi-user hosting remains out of scope.
+- Non-loopback HTTP additionally requires an explicit DNS Host allowlist. Defaults bound each authenticated client to 120 requests/minute and 10 active sessions, with 100 sessions globally and 30-minute idle expiry.
+- Credential persistence uses hidden interactive or stdin input, environment precedence, owner-only POSIX permissions, strict reads, sibling temporary writes with fsync/rename, and explicit removal. Windows follows profile ACLs without POSIX chmod assumptions.
+- Security slice validation: `pnpm check` passed 239 tests; `pnpm build` passed; focused post-review validation passed 19 authentication, credential, and terminal-lifecycle tests.

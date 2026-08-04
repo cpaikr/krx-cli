@@ -40,7 +40,8 @@ Use this skill when the user asks about:
 npm install -g krx-cli
 
 # Set API key (get from https://openapi.krx.co.kr/)
-krx auth set <your-api-key>
+krx auth set                       # Hidden interactive input
+# or: printf '%s' "$KRX_API_KEY" | krx auth set --stdin
 
 # Check which services are approved
 krx auth status
@@ -51,7 +52,9 @@ krx auth status
 ### Authentication
 
 ```bash
-krx auth set <api-key>       # Save API key
+krx auth set                 # Save API key via hidden prompt
+krx auth set --stdin         # Save API key from stdin for automation
+krx auth remove              # Remove the persisted key
 krx auth status               # Check all service approvals (JSON)
 krx auth check <category>     # Check specific category: index, stock, etp, bond, derivative, commodity, esg
 ```
@@ -162,10 +165,21 @@ krx update     # Update to the latest version (npm install -g krx-cli)
 ### MCP HTTP Server
 
 ```bash
-krx serve                        # Start on http://127.0.0.1:3000/mcp
+export KRX_MCP_TOKEN="$(openssl rand -hex 32)"
+krx serve                        # Authenticated http://127.0.0.1:3000/mcp
 krx serve --port 8080            # Custom port
-krx serve --host 0.0.0.0        # Bind to all interfaces (for ngrok)
+
+# Non-loopback additionally requires an explicit DNS Host allowlist.
+export KRX_MCP_ALLOWED_HOSTS="mcp.example.com"
+krx serve --host 0.0.0.0
 ```
+
+Every `/mcp` request must send `Authorization: Bearer <KRX_MCP_TOKEN>`.
+The static token is a single-user full-control credential, including watchlist
+add/remove. Do not share it for multi-user hosting; use OAuth or an
+identity-aware TLS proxy. Defaults: 120 requests/minute and 10 active sessions
+per client, 100 sessions total, 30-minute idle expiry. `/health` is public and
+contains no credential or session data.
 
 ### Schema (introspection)
 

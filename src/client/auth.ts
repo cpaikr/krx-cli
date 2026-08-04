@@ -4,6 +4,7 @@ import * as os from "node:os";
 import { CATEGORIES, type CategoryId } from "./endpoints.js";
 import { krxFetch } from "./client.js";
 import { getRecentTradingDate } from "../utils/date.js";
+import { writeFileAtomicSync } from "../utils/atomic-file.js";
 
 const CONFIG_DIR = path.join(os.homedir(), ".krx-cli");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
@@ -16,18 +17,68 @@ interface Config {
   >;
 }
 
-function readConfig(): Config {
+function enforcePrivatePermissions(): void {
+  if (process.platform === "win32") return;
+
+  for (const [target, expected, label] of [
+    [CONFIG_DIR, 0o700, "configuration directory"],
+    [CONFIG_FILE, 0o600, "configuration file"],
+  ] as const) {
+    try {
+      const actual = fs.statSync(target).mode & 0o777;
+      if (actual !== expected) {
+        fs.chmodSync(target, expected);
+        process.stderr.write(
+          `[krx-cli] corrected unsafe permissions on ${label}\n`,
+        );
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+}
+
+function readConfig(options: { readonly strict?: boolean } = {}): Config {
   try {
+    enforcePrivatePermissions();
     const raw = fs.readFileSync(CONFIG_FILE, "utf-8");
-    return JSON.parse(raw) as Config;
-  } catch {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("configuration root must be an object");
+    }
+    const config = parsed as Record<string, unknown>;
+    if (
+      config["apiKey"] !== undefined &&
+      typeof config["apiKey"] !== "string"
+    ) {
+      throw new Error("configuration apiKey must be a string");
+    }
+    if (
+      config["serviceStatus"] !== undefined &&
+      (!config["serviceStatus"] ||
+        typeof config["serviceStatus"] !== "object" ||
+        Array.isArray(config["serviceStatus"]))
+    ) {
+      throw new Error("configuration serviceStatus must be an object");
+    }
+    return config as Config;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
+    if (options.strict) {
+      throw new Error(
+        `Cannot update invalid configuration at ${CONFIG_FILE}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      );
+    }
+    process.stderr.write(
+      `[krx-cli] configuration read failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     return {};
   }
 }
 
 function writeConfig(config: Config): void {
-  fs.mkdirSync(CONFIG_DIR, { recursive: true });
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), "utf-8");
+  writeFileAtomicSync(CONFIG_FILE, `${JSON.stringify(config, null, 2)}\n`);
 }
 
 export function getApiKey(): string | undefined {
@@ -35,8 +86,22 @@ export function getApiKey(): string | undefined {
 }
 
 export function saveApiKey(apiKey: string): void {
-  const config = readConfig();
-  writeConfig({ ...config, apiKey });
+  const normalized = apiKey.trim();
+  if (!normalized) throw new Error("API key must not be empty");
+  const config = readConfig({ strict: true });
+  writeConfig({ ...config, apiKey: normalized, serviceStatus: {} });
+}
+
+export function removeApiKey(): boolean {
+  const config = readConfig({ strict: true });
+  if (!config.apiKey) return false;
+  const retained = Object.fromEntries(
+    Object.entries(config).filter(
+      ([key]) => key !== "apiKey" && key !== "serviceStatus",
+    ),
+  ) as Config;
+  writeConfig(retained);
+  return true;
 }
 
 export interface ServiceStatus {
@@ -69,7 +134,7 @@ export async function checkCategoryApproval(
       ...(result.error ? { error: result.error } : {}),
     };
 
-    const config = readConfig();
+    const config = readConfig({ strict: true });
     const serviceStatus = { ...config.serviceStatus, [categoryId]: status };
     writeConfig({ ...config, serviceStatus });
 
