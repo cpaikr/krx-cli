@@ -1,10 +1,10 @@
-import {
-  krxFetch,
-  selectKrxFailure,
-  type KrxErrorType,
-  type KrxResponse,
-} from "./client.js";
+import { krxFetch, selectKrxFailure, type KrxResponse } from "./client.js";
 import { parseKrxNumber } from "../utils/data-pipeline.js";
+import {
+  componentFailure,
+  createCompleteness,
+  type CompositeResult,
+} from "./completeness.js";
 
 const KOSPI_INDEX_ENDPOINT = "/svc/apis/idx/kospi_dd_trd";
 const KOSDAQ_INDEX_ENDPOINT = "/svc/apis/idx/kosdaq_dd_trd";
@@ -12,6 +12,13 @@ const KOSPI_STOCK_ENDPOINT = "/svc/apis/sto/stk_bydd_trd";
 const KOSDAQ_STOCK_ENDPOINT = "/svc/apis/sto/ksq_bydd_trd";
 
 const TOP_N = 5;
+const MARKET_COMPONENTS = [
+  "kospiIndex",
+  "kosdaqIndex",
+  "kospiStocks",
+  "kosdaqStocks",
+] as const;
+type MarketComponent = (typeof MARKET_COMPONENTS)[number];
 
 interface MarketSummaryOptions {
   readonly apiKey: string;
@@ -28,21 +35,19 @@ interface StockStats {
   readonly totalValue: number;
 }
 
-interface MarketSummaryData {
+export interface MarketSummaryData {
   readonly date: string;
-  readonly kospiIndex: readonly Record<string, string>[];
-  readonly kosdaqIndex: readonly Record<string, string>[];
-  readonly stockStats: StockStats;
-  readonly topGainers: readonly Record<string, string>[];
-  readonly topLosers: readonly Record<string, string>[];
+  readonly kospiIndex: readonly Record<string, string>[] | null;
+  readonly kosdaqIndex: readonly Record<string, string>[] | null;
+  readonly stockStats: StockStats | null;
+  readonly topGainers: readonly Record<string, string>[] | null;
+  readonly topLosers: readonly Record<string, string>[] | null;
 }
 
-interface MarketSummaryResult {
-  readonly success: boolean;
-  readonly data?: MarketSummaryData;
-  readonly error?: string;
-  readonly errorType?: KrxErrorType;
-}
+export type MarketSummaryResult = CompositeResult<
+  MarketSummaryData,
+  MarketComponent
+>;
 
 function computeStockStats(
   stocks: readonly Record<string, string>[],
@@ -133,59 +138,69 @@ export async function fetchMarketSummary(
     }),
   ]);
 
-  const responses = [kospiIdx, kosdaqIdx, kospiStk, kosdaqStk];
+  const responses = [kospiIdx, kosdaqIdx, kospiStk, kosdaqStk] as const;
+  const outcomes = MARKET_COMPONENTS.map((id, index) => ({
+    id,
+    response: responses[index] as KrxResponse,
+  }));
   const cancellation = responses.find(
     (response) => !response.success && response.errorType === "cancelled",
   );
-  if (cancellation) {
+  const succeeded = outcomes
+    .filter(({ response }) => response.success)
+    .map(({ id }) => id);
+  const failures = outcomes
+    .filter(({ response }) => !response.success)
+    .map(({ id, response }) => componentFailure(id, response));
+  const hasData = responses.some(
+    (response) => response.success && response.data.length > 0,
+  );
+  const completeness = createCompleteness({
+    requested: MARKET_COMPONENTS,
+    succeeded,
+    failed: failures,
+    hasData,
+    forceFailed: Boolean(cancellation),
+  });
+
+  const kospiIndexData = kospiIdx.success
+    ? (kospiIdx.data as Record<string, string>[])
+    : null;
+  const kosdaqIndexData = kosdaqIdx.success
+    ? (kosdaqIdx.data as Record<string, string>[])
+    : null;
+  const stockInputsComplete = kospiStk.success && kosdaqStk.success;
+  const allStocks = stockInputsComplete
+    ? [
+        ...(kospiStk.data as Record<string, string>[]),
+        ...(kosdaqStk.data as Record<string, string>[]),
+      ]
+    : null;
+  const stockStats = allStocks ? computeStockStats(allStocks) : null;
+  const movers = allStocks ? computeTopMovers(allStocks) : null;
+  const data: MarketSummaryData = {
+    date,
+    kospiIndex: kospiIndexData,
+    kosdaqIndex: kosdaqIndexData,
+    stockStats,
+    topGainers: movers?.topGainers ?? null,
+    topLosers: movers?.topLosers ?? null,
+  };
+
+  if (completeness.state === "failed") {
+    const primaryFailure = cancellation ?? selectKrxFailure(responses);
     return {
       success: false,
-      error: cancellation.error ?? "Market summary fetch was cancelled",
-      errorType: "cancelled",
-    };
-  }
-
-  const allFailed =
-    !kospiIdx.success &&
-    !kosdaqIdx.success &&
-    !kospiStk.success &&
-    !kosdaqStk.success;
-
-  if (allFailed) {
-    const primaryFailure = selectKrxFailure(responses);
-    return {
-      success: false,
+      data,
+      completeness,
       error: primaryFailure?.error ?? "Market summary fetch failed",
       errorType: primaryFailure?.errorType,
     };
   }
 
-  const kospiIndexData = kospiIdx.success
-    ? (kospiIdx.data as Record<string, string>[])
-    : [];
-  const kosdaqIndexData = kosdaqIdx.success
-    ? (kosdaqIdx.data as Record<string, string>[])
-    : [];
-  const kospiStockData = kospiStk.success
-    ? (kospiStk.data as Record<string, string>[])
-    : [];
-  const kosdaqStockData = kosdaqStk.success
-    ? (kosdaqStk.data as Record<string, string>[])
-    : [];
-
-  const allStocks = [...kospiStockData, ...kosdaqStockData];
-  const stockStats = computeStockStats(allStocks);
-  const { topGainers, topLosers } = computeTopMovers(allStocks);
-
   return {
     success: true,
-    data: {
-      date,
-      kospiIndex: kospiIndexData,
-      kosdaqIndex: kosdaqIndexData,
-      stockStats,
-      topGainers,
-      topLosers,
-    },
+    data,
+    completeness,
   };
 }

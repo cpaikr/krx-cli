@@ -12,7 +12,7 @@ export function formatOutput(
   format: OutputFormat,
   fields?: readonly string[],
 ): string {
-  const filtered = fields ? filterFields(data, fields) : data;
+  const filtered = fields ? filterOutputFields(data, fields) : data;
 
   switch (format) {
     case "json":
@@ -26,7 +26,7 @@ export function formatOutput(
   }
 }
 
-function filterFields(
+export function filterOutputFields(
   data: readonly Record<string, unknown>[],
   fields: readonly string[],
 ): readonly Record<string, unknown>[] {
@@ -90,4 +90,8 @@ export function writeOutput(output: string): void {
 
 export function writeError(message: string): void {
   process.stderr.write(`Error: ${message}\n`);
+}
+
+export function writeWarning(message: string): void {
+  process.stderr.write(`Warning: ${message}\n`);
 }

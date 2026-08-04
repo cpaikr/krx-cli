@@ -165,6 +165,20 @@ KRX 서버의 한도가 최종 기준입니다. 자세한 계약은
 오류, 타임아웃, 빈 응답 및 판별할 수 없는 HTTP 401은 승인 거절이 아니라
 `inconclusive`로 보고됩니다.
 
+### 복합 결과 완전성
+
+기간 조회, 종목 검색, 시장 요약, 워치리스트 시세는 여러 KRX 요청을 결합하므로
+항상 JSON envelope로 `data`와 `completeness`를 함께 반환합니다.
+`completeness.state`는 `complete`, `partial`, `empty`, `failed` 중 하나이며,
+`requested`, `succeeded`, `failed`, `skipped` 파티션으로 누락 원인을 기계적으로
+확인할 수 있습니다. 시장 요약에서 실패한 입력은 빈 배열이나 파생된 0이 아니라
+`null`로 표시됩니다.
+
+부분 성공은 데이터를 출력하면서 stderr에 경고하고 exit code `7`을 사용합니다.
+정상적인 빈 결과는 `empty`와 exit code `3`으로 구분됩니다. MCP에서 결과가
+잘리더라도 `_truncated`와 `completeness`가 같은 envelope에 유지됩니다. 자세한
+계약과 호환성 범위는 [복합 결과 문서](docs/COMPOSITE-RESULTS.md)를 참고하세요.
+
 ### 버전 관리
 
 ```bash
@@ -251,6 +265,7 @@ krx schema stock.stk_bydd_trd
 | 4    | 인증 실패                     |
 | 5    | Rate limit 초과 (일 10,000건) |
 | 6    | 서비스 미승인                 |
+| 7    | 부분 성공 (완전성 확인 필요)  |
 
 ## AI 에이전트 연동
 

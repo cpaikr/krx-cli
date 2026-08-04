@@ -16,6 +16,7 @@ invariants:
   - Local usage is an advisory, per-credential KST counter; KRX is authoritative
   - Uncached requests have a 15s attempt timeout and 45s overall deadline
   - Each API category requires separate approval from KRX
+  - Composite results must be checked via completeness.state before analysis
   - All response field values are strings (including numbers)
 ---
 
@@ -139,6 +140,12 @@ krx market summary --date 20260310    # Specific date
 
 Returns: KOSPI/KOSDAQ indices, top 5 gainers/losers, advancing/declining/unchanged counts, total volume/value.
 
+Date ranges, stock search, market summary, and watchlist prices return a JSON
+envelope with `data` and `completeness`. Check `completeness.state` before using
+the data: `partial` means one or more requested components failed, `empty`
+means all required requests completed but the final query has no rows, and
+`failed` is unusable. Never treat a `null` market-summary component as zero.
+
 ### Watchlist (관심종목)
 
 ```bash
@@ -220,6 +227,7 @@ krx schema index.kospi_dd_trd # Specific endpoint schema
 4 = Auth failure (no/invalid API key)
 5 = Rate limit exceeded (10,000/day)
 6 = Service not approved (category not activated)
+7 = Partial success (inspect completeness before using data)
 ```
 
 ## Handling Large Results

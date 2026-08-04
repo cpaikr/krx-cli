@@ -35,14 +35,15 @@ _None._
 - Secure remote MCP and KRX credentials — GitHub issues #1–#2.
 - Audited dependencies and reproducible cross-platform gates — GitHub issues #3 and #7.
 - Bounded HTTP, accurate quota accounting, and trustworthy approval checks — GitHub issues #4 and #6.
+- Explicit composite-result completeness — GitHub issue #5.
 
 ### Current in-scope result
 
-Explicit composite-result completeness — GitHub issue #5.
+Live KRX contract-drift detection — GitHub issue #8.
 
 ### Next in-scope action
 
-Define shared complete, partial, empty, and failed composite states with explicit requested, succeeded, failed, and skipped partitions, then preserve them through CLI and MCP output contracts.
+Add an opt-in credentialed contract suite with a deterministic dry run, a bounded probe budget, explicit endpoint coverage or exclusions, actionable schema drift reports, and documented registry-update workflow while retaining mocked fork-safe tests.
 
 ### Evidence and blockers
 
@@ -59,3 +60,8 @@ Define shared complete, partial, empty, and failed composite states with explici
 - Approval probes always bypass market-data cache and use the checked-in official category endpoint. Persisted observations are credential-bound, fresh for 15 minutes, and expose approved, rejected, or inconclusive states without credential identity; ambiguous KRX 401 responses remain inconclusive while explicit 403 approval denials are rejected.
 - Typed timeout, cancellation, quota, authentication, approval, network, upstream, invalid-response, and local-state failures now survive direct and composite CLI/MCP paths. CLI SIGINT and MCP request cancellation reach all request families, cancellation dominates partial aggregate data, and body-stream network failures remain retryable.
 - Reliability validation: `pnpm verify` passed 265 tests, all-source coverage of 61.05% statements / 53.57% branches / 68.42% functions / 60.85% lines, a clean production audit, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. Independent review passed 94 targeted tests and reported no actionable P0–P2 findings.
+- Composite operations now share a complete, partial, empty, or failed envelope with explicit requested, succeeded, failed, and skipped partitions. The envelope is limited to date ranges, stock search, market summary, and watchlist prices; direct single-endpoint CLI and MCP arrays remain compatible.
+- Date-range partitions retain per-date typed failures and distinguish successful empty dates. Search and watchlist results prove KOSPI/KOSDAQ coverage, and watchlist add never mutates local state after a partial or empty prerequisite search.
+- Market-summary failures produce `null` unavailable components and suppress all stock-derived statistics unless both stock markets succeeded, so missing input is never represented by a derived zero. CLI composite output remains JSON, warns on partial success with exit code 7, and uses exit code 3 for genuine empty results.
+- MCP size truncation composes with the same completeness envelope for top-level rows and nested watchlist stocks; `_truncated.path` identifies only the transport-truncated collection without changing semantic completeness.
+- Composite validation: `pnpm verify` passed 281 tests, all-source coverage of 63.25% statements / 57.42% branches / 71.87% functions / 63.08% lines, a clean production audit, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. Structured review found and fixed nested watchlist truncation and unsupported generic pagination guidance, then reported no remaining actionable P0–P2 findings.

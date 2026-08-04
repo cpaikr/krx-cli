@@ -1,12 +1,12 @@
-import {
-  KrxRequestError,
-  krxFetch,
-  selectKrxFailure,
-  type KrxResponse,
-} from "./client.js";
+import { krxFetch, selectKrxFailure, type KrxResponse } from "./client.js";
 import { getRecentTradingDate } from "../utils/date.js";
+import {
+  componentFailure,
+  createCompleteness,
+  type CompositeResult,
+} from "./completeness.js";
 
-interface StockSearchResult {
+export interface StockSearchMatch {
   readonly ISU_CD: string;
   readonly ISU_SRT_CD: string;
   readonly ISU_NM: string;
@@ -17,12 +17,19 @@ const BASE_INFO_ENDPOINTS = [
   { endpoint: "/svc/apis/sto/stk_isu_base_info", market: "KOSPI" },
   { endpoint: "/svc/apis/sto/ksq_isu_base_info", market: "KOSDAQ" },
 ] as const;
+type SearchMarket = (typeof BASE_INFO_ENDPOINTS)[number]["market"];
+const SEARCH_MARKETS = BASE_INFO_ENDPOINTS.map(({ market }) => market);
+
+export type StockSearchResult = CompositeResult<
+  readonly StockSearchMatch[],
+  SearchMarket
+>;
 
 export async function searchStock(
   apiKey: string,
   query: string,
   signal?: AbortSignal,
-): Promise<readonly StockSearchResult[]> {
+): Promise<StockSearchResult> {
   const basDd = getRecentTradingDate();
   const lowerQuery = query.toLowerCase();
 
@@ -48,17 +55,11 @@ export async function searchStock(
     }),
   );
 
-  const failures = responses.map(({ response }) => response);
-  const cancellation = failures.find(
+  const rawResponses = responses.map(({ response }) => response);
+  const cancellation = rawResponses.find(
     (response) => !response.success && response.errorType === "cancelled",
   );
-  if (cancellation) throw new KrxRequestError(cancellation);
-  if (failures.every((response) => !response.success)) {
-    const primaryFailure = selectKrxFailure(failures);
-    if (primaryFailure) throw new KrxRequestError(primaryFailure);
-  }
-
-  return responses.flatMap(({ market, response }) =>
+  const data = responses.flatMap(({ market, response }) =>
     response.success
       ? response.data
           .filter((row) => {
@@ -77,4 +78,30 @@ export async function searchStock(
           }))
       : [],
   );
+  const succeeded = responses
+    .filter(({ response }) => response.success)
+    .map(({ market }) => market);
+  const failures = responses
+    .filter(({ response }) => !response.success)
+    .map(({ market, response }) => componentFailure(market, response));
+  const completeness = createCompleteness({
+    requested: SEARCH_MARKETS,
+    succeeded,
+    failed: failures,
+    hasData: data.length > 0,
+    forceFailed: Boolean(cancellation),
+  });
+
+  if (completeness.state === "failed") {
+    const primaryFailure = cancellation ?? selectKrxFailure(rawResponses);
+    return {
+      success: false,
+      data: [],
+      completeness,
+      error: primaryFailure?.error ?? "Stock search failed",
+      errorType: primaryFailure?.errorType,
+    };
+  }
+
+  return { success: true, data, completeness };
 }

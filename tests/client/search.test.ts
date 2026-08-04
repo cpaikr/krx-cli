@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { KrxRequestError } from "../../src/client/client.js";
 import { searchStock } from "../../src/client/search.js";
 
 vi.mock("../../src/client/client.js", async (importOriginal) => ({
@@ -70,10 +69,11 @@ describe("searchStock", () => {
 
   it("finds exact match by name", async () => {
     setupMock();
-    const results = await searchStock("test-key", "삼성전자");
+    const result = await searchStock("test-key", "삼성전자");
 
-    expect(results).toHaveLength(1);
-    expect(results[0]).toEqual({
+    expect(result.completeness.state).toBe("complete");
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]).toEqual({
       ISU_CD: "KR7005930003",
       ISU_SRT_CD: "005930",
       ISU_NM: "삼성전자",
@@ -83,25 +83,34 @@ describe("searchStock", () => {
 
   it("finds partial match", async () => {
     setupMock();
-    const results = await searchStock("test-key", "삼성");
+    const result = await searchStock("test-key", "삼성");
 
-    expect(results).toHaveLength(1);
-    expect(results[0]?.ISU_NM).toBe("삼성전자");
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.ISU_NM).toBe("삼성전자");
   });
 
   it("finds stock in KOSDAQ", async () => {
     setupMock();
-    const results = await searchStock("test-key", "카카오");
+    const result = await searchStock("test-key", "카카오");
 
-    expect(results).toHaveLength(1);
-    expect(results[0]?.MKT_NM).toBe("KOSDAQ");
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.MKT_NM).toBe("KOSDAQ");
   });
 
   it("returns empty array when no match", async () => {
     setupMock();
-    const results = await searchStock("test-key", "존재하지않는종목");
+    const result = await searchStock("test-key", "존재하지않는종목");
 
-    expect(results).toEqual([]);
+    expect(result).toMatchObject({
+      success: true,
+      data: [],
+      completeness: {
+        state: "empty",
+        requested: ["KOSPI", "KOSDAQ"],
+        succeeded: ["KOSPI", "KOSDAQ"],
+        failed: [],
+      },
+    });
   });
 
   it("searches across both markets", async () => {
@@ -115,13 +124,13 @@ describe("searchStock", () => {
 
   it("is case-insensitive for abbreviation matching", async () => {
     setupMock();
-    const results = await searchStock("test-key", "현대차");
+    const result = await searchStock("test-key", "현대차");
 
-    expect(results).toHaveLength(1);
-    expect(results[0]?.ISU_NM).toBe("현대자동차");
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.ISU_NM).toBe("현대자동차");
   });
 
-  it("throws a typed request error when every market fails", async () => {
+  it("returns a typed failed envelope when every market fails", async () => {
     mockKrxFetch.mockResolvedValue({
       success: false,
       data: [],
@@ -129,10 +138,14 @@ describe("searchStock", () => {
       errorType: "timeout",
     });
 
-    const pending = searchStock("test-key", "삼성");
-    await expect(pending).rejects.toBeInstanceOf(KrxRequestError);
-    await expect(pending).rejects.toMatchObject({
-      response: { errorType: "timeout" },
+    await expect(searchStock("test-key", "삼성")).resolves.toMatchObject({
+      success: false,
+      errorType: "timeout",
+      completeness: {
+        state: "failed",
+        requested: ["KOSPI", "KOSDAQ"],
+        succeeded: [],
+      },
     });
   });
 
@@ -146,9 +159,14 @@ describe("searchStock", () => {
       })
       .mockResolvedValueOnce({ success: true, data: MOCK_KOSDAQ_DATA });
 
-    const results = await searchStock("test-key", "카카오");
-    expect(results).toHaveLength(1);
-    expect(results[0]?.MKT_NM).toBe("KOSDAQ");
+    const result = await searchStock("test-key", "카카오");
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.MKT_NM).toBe("KOSDAQ");
+    expect(result.completeness).toMatchObject({
+      state: "partial",
+      succeeded: ["KOSDAQ"],
+      failed: [{ id: "KOSPI", errorType: "upstream" }],
+    });
   });
 
   it("does not hide cancellation behind results from another market", async () => {
@@ -161,8 +179,11 @@ describe("searchStock", () => {
         errorType: "cancelled",
       });
 
-    await expect(searchStock("test-key", "삼성")).rejects.toMatchObject({
-      response: { errorType: "cancelled" },
+    await expect(searchStock("test-key", "삼성")).resolves.toMatchObject({
+      success: false,
+      data: [],
+      errorType: "cancelled",
+      completeness: { state: "failed", succeeded: ["KOSPI"] },
     });
   });
 
@@ -190,7 +211,7 @@ describe("searchStock", () => {
       return { success: true, data: [] };
     });
 
-    const results = await searchStock("test-key", "삼성");
-    expect(results).toHaveLength(2);
+    const result = await searchStock("test-key", "삼성");
+    expect(result.data).toHaveLength(2);
   });
 });

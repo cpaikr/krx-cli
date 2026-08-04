@@ -44,6 +44,13 @@ describe("fetchDateRange", () => {
 
     expect(result.success).toBe(true);
     expect(result.data).toHaveLength(2);
+    expect(result.completeness).toMatchObject({
+      state: "complete",
+      requested: ["20260309", "20260310"],
+      succeeded: ["20260309", "20260310"],
+      failed: [],
+      skipped: [],
+    });
     expect(result.data[0]).toEqual({
       BAS_DD: "20260309",
       IDX_NM: "코스피",
@@ -81,6 +88,11 @@ describe("fetchDateRange", () => {
 
     expect(result.success).toBe(true);
     expect(result.data).toHaveLength(2);
+    expect(result.completeness).toMatchObject({
+      state: "complete",
+      succeeded: ["20260309", "20260311"],
+      skipped: ["20260310"],
+    });
   });
 
   it("returns error when all days fail", async () => {
@@ -100,6 +112,10 @@ describe("fetchDateRange", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
+    expect(result.completeness).toMatchObject({
+      state: "failed",
+      failed: [{ id: "20260309" }],
+    });
   });
 
   it("preserves the highest-priority typed error when all days fail", async () => {
@@ -154,6 +170,11 @@ describe("fetchDateRange", () => {
 
     expect(result.success).toBe(true);
     expect(result.data).toHaveLength(1);
+    expect(result.completeness).toMatchObject({
+      state: "partial",
+      succeeded: ["20260309"],
+      failed: [{ id: "20260310" }],
+    });
   });
 
   it("does not hide cancellation behind an earlier successful day", async () => {
@@ -227,6 +248,30 @@ describe("fetchDateRange", () => {
 
     expect(result.success).toBe(true);
     expect(result.data).toEqual([]);
+    expect(result.completeness.state).toBe("empty");
+  });
+
+  it("distinguishes all successful empty dates from failures", async () => {
+    mockedGetTradingDays.mockReturnValue(["20260309", "20260310"]);
+    mockedKrxFetch.mockResolvedValue({ success: true, data: [] });
+
+    const result = await fetchDateRange({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      from: "20260309",
+      to: "20260310",
+      apiKey: "test-key",
+    });
+
+    expect(result).toMatchObject({
+      success: true,
+      data: [],
+      completeness: {
+        state: "empty",
+        succeeded: [],
+        failed: [],
+        skipped: ["20260309", "20260310"],
+      },
+    });
   });
 
   it("passes cache option through to krxFetch", async () => {

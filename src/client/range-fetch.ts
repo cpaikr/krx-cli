@@ -1,11 +1,11 @@
-import {
-  krxFetch,
-  selectKrxFailure,
-  type KrxErrorType,
-  type KrxResponse,
-} from "./client.js";
+import { krxFetch, selectKrxFailure, type KrxResponse } from "./client.js";
 import { getTradingDays } from "../utils/date.js";
 import { verbose } from "../utils/logger.js";
+import {
+  componentFailure,
+  createCompleteness,
+  type CompositeResult,
+} from "./completeness.js";
 
 interface DateRangeOptions {
   readonly endpoint: string;
@@ -18,11 +18,9 @@ interface DateRangeOptions {
   readonly signal?: AbortSignal;
 }
 
-interface DateRangeResult<T = Record<string, string>> {
-  readonly success: boolean;
-  readonly data: readonly T[];
-  readonly error?: string;
-  readonly errorType?: KrxErrorType;
+export interface DateRangeResult<
+  T = Record<string, string>,
+> extends CompositeResult<readonly T[], string> {
   readonly fetchedDays: number;
   readonly failedDays: number;
 }
@@ -68,6 +66,11 @@ export async function fetchDateRange<T = Record<string, string>>(
       success: false,
       data: [],
       error: `'from' date (${from}) must not be after 'to' date (${to})`,
+      completeness: createCompleteness({
+        requested: [],
+        hasData: false,
+        forceFailed: true,
+      }),
       fetchedDays: 0,
       failedDays: 0,
     };
@@ -78,7 +81,16 @@ export async function fetchDateRange<T = Record<string, string>>(
   verbose(`date range: ${from}~${to} → ${tradingDays.length} trading days`);
 
   if (tradingDays.length === 0) {
-    return { success: true, data: [], fetchedDays: 0, failedDays: 0 };
+    return {
+      success: true,
+      data: [],
+      completeness: createCompleteness({
+        requested: [],
+        hasData: false,
+      }),
+      fetchedDays: 0,
+      failedDays: 0,
+    };
   }
 
   const tasks = tradingDays.map((day) => async (): Promise<KrxResponse<T>> => {
@@ -97,32 +109,55 @@ export async function fetchDateRange<T = Record<string, string>>(
   });
 
   const results = await fetchWithConcurrency(tasks, concurrency);
+  const outcomes = results.map((response, index) => ({
+    date: tradingDays[index] as string,
+    response,
+  }));
+  const succeeded = outcomes
+    .filter(({ response }) => response.success && response.data.length > 0)
+    .map(({ date }) => date);
+  const skipped = outcomes
+    .filter(({ response }) => response.success && response.data.length === 0)
+    .map(({ date }) => date);
+  const failures = outcomes
+    .filter(({ response }) => !response.success)
+    .map(({ date, response }) => componentFailure(date, response));
+  const failedDays = failures.length;
+  const cancellation = outcomes.find(
+    ({ response }) => !response.success && response.errorType === "cancelled",
+  )?.response;
+  const mergedData = results
+    .filter((result) => result.success)
+    .flatMap((result) => [...result.data]);
+  const completeness = createCompleteness({
+    requested: tradingDays,
+    succeeded,
+    failed: failures,
+    skipped,
+    hasData: mergedData.length > 0,
+    forceFailed: Boolean(cancellation),
+  });
 
-  const failedDays = results.filter((r) => !r.success).length;
-  const cancellation = results.find(
-    (result) => !result.success && result.errorType === "cancelled",
-  );
   if (cancellation) {
     return {
       success: false,
       data: [],
       error: cancellation.error ?? "Date range fetch was cancelled",
       errorType: "cancelled",
-      fetchedDays: results.filter((result) => result.success).length,
+      completeness,
+      fetchedDays: succeeded.length + skipped.length,
       failedDays,
     };
   }
-  const mergedData = results
-    .filter((r) => r.success)
-    .flatMap((r) => [...r.data]);
 
-  if (mergedData.length === 0 && failedDays > 0) {
+  if (completeness.state === "failed") {
     const primaryFailure = selectKrxFailure(results);
     return {
       success: false,
       data: [],
       error: primaryFailure?.error ?? "Date range fetch failed",
       errorType: primaryFailure?.errorType,
+      completeness,
       fetchedDays: 0,
       failedDays,
     };
@@ -131,7 +166,8 @@ export async function fetchDateRange<T = Record<string, string>>(
   return {
     success: true,
     data: mergedData,
-    fetchedDays: tradingDays.length - failedDays,
+    completeness,
+    fetchedDays: succeeded.length + skipped.length,
     failedDays,
   };
 }

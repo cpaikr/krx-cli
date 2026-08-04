@@ -11,8 +11,13 @@ import { getApiKey } from "../../client/auth.js";
 import { validateDate } from "../../validator/index.js";
 import { getRecentTradingDate } from "../../utils/date.js";
 import { applyPipeline } from "../../utils/data-pipeline.js";
-import { successResult, errorResult } from "./result.js";
+import {
+  compositeResult as compositeToolResult,
+  successResult,
+  errorResult,
+} from "./result.js";
 import { matchesIsuCode } from "../../utils/isin.js";
+import { completenessForOutput } from "../../client/completeness.js";
 
 type ZodRawShape = Record<string, z.ZodType>;
 
@@ -59,6 +64,7 @@ Notes:
 - Data is T-1 (previous trading day)
 - All response values are strings
 - Rate limit: 10,000 calls/day
+- Date ranges return a composite envelope. Inspect completeness.state and its requested, succeeded, failed, and skipped partitions before using data.
 - IMPORTANT: When querying a specific stock, ALWAYS pass 'isuCd' to filter. Without it, all stocks in the market are returned.
 - Full market listings can exceed the result size limit. Use 'fields' to select only needed columns, or 'limit'+'offset' for pagination. If the response contains '_truncated', follow its instructions to retrieve remaining data.`;
 }
@@ -191,10 +197,7 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
         });
 
         if (!rangeResult.success) {
-          return errorResult(
-            rangeResult.error ?? "Date range fetch failed",
-            rangeResult.errorType,
-          );
+          return compositeToolResult(rangeResult);
         }
 
         let data: readonly Record<string, string>[] =
@@ -225,7 +228,14 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
           data = filterFields(data, fields);
         }
 
-        return successResult(data as Record<string, unknown>[]);
+        return compositeToolResult({
+          ...rangeResult,
+          data: data as Record<string, unknown>[],
+          completeness: completenessForOutput(
+            rangeResult.completeness,
+            data.length > 0,
+          ),
+        });
       }
 
       const dateStr =

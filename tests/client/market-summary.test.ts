@@ -266,7 +266,14 @@ describe("fetchMarketSummary", () => {
 
     expect(result.success).toBe(true);
     expect(result.data!.kospiIndex).toHaveLength(1);
-    expect(result.data!.kosdaqIndex).toEqual([]);
+    expect(result.data!.kosdaqIndex).toBeNull();
+    expect(result.data!.stockStats).toBeNull();
+    expect(result.data!.topGainers).toBeNull();
+    expect(result.completeness).toMatchObject({
+      state: "partial",
+      succeeded: ["kospiIndex", "kospiStocks"],
+      failed: [{ id: "kosdaqIndex" }, { id: "kosdaqStocks" }],
+    });
   });
 
   it("does not hide cancellation behind completed components", async () => {
@@ -289,7 +296,8 @@ describe("fetchMarketSummary", () => {
     });
 
     expect(result).toMatchObject({ success: false, errorType: "cancelled" });
-    expect(result.data).toBeUndefined();
+    expect(result.completeness.state).toBe("failed");
+    expect(result.data.kosdaqIndex).toBeNull();
   });
 
   it("handles network errors gracefully", async () => {
@@ -302,6 +310,29 @@ describe("fetchMarketSummary", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
+  });
+
+  it("distinguishes an observed empty market from unavailable inputs", async () => {
+    mockedKrxFetch.mockResolvedValue({ success: true, data: [] });
+
+    const result = await fetchMarketSummary({
+      apiKey: "test-key",
+      date: "20260310",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.completeness).toMatchObject({
+      state: "empty",
+      succeeded: ["kospiIndex", "kosdaqIndex", "kospiStocks", "kosdaqStocks"],
+      failed: [],
+    });
+    expect(result.data.stockStats).toEqual({
+      advancing: 0,
+      declining: 0,
+      unchanged: 0,
+      totalVolume: 0,
+      totalValue: 0,
+    });
   });
 
   it("returns top 5 gainers/losers even when fewer stocks exist", async () => {

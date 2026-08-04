@@ -4,7 +4,7 @@ import { getApiKey } from "../../client/auth.js";
 import { validateDate } from "../../validator/index.js";
 import { getRecentTradingDate } from "../../utils/date.js";
 import type { ToolDefinition } from "./index.js";
-import { errorResult } from "./result.js";
+import { compositeResult } from "./result.js";
 
 export function createMarketSummaryTool(): ToolDefinition {
   return {
@@ -12,6 +12,8 @@ export function createMarketSummaryTool(): ToolDefinition {
     description: `Get a comprehensive market summary including KOSPI/KOSDAQ indices, stock statistics (advancing/declining/unchanged), top 5 gainers/losers, and total trading volume/value.
 
 This tool combines data from 4 API endpoints in a single call — ideal for getting a quick market overview.
+
+Returns a composite envelope with explicit completeness partitions. Unavailable index components and stock-derived values are null, never synthetic zeroes.
 
 Returns:
 - kospiIndex: KOSPI series index data
@@ -69,21 +71,7 @@ Returns:
         signal,
       });
 
-      if (!result.success) {
-        return errorResult(
-          result.error ?? "Failed to fetch market summary",
-          result.errorType,
-        );
-      }
-
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(result.data, null, 2),
-          },
-        ],
-      };
+      return compositeResult(result);
     },
   };
 }

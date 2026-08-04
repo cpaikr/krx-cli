@@ -6,4 +6,5 @@ export const EXIT_CODES = {
   AUTH_FAILURE: 4,
   RATE_LIMIT: 5,
   SERVICE_NOT_APPROVED: 6,
+  PARTIAL_SUCCESS: 7,
 } as const;

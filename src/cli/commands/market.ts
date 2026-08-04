@@ -7,6 +7,7 @@ import { writeOutput, writeError } from "../../output/formatter.js";
 import { EXIT_CODES } from "../exit-codes.js";
 import { handleKrxError } from "../error-handler.js";
 import { withCliCancellation } from "../cancellation.js";
+import { applyCompositeExitPolicy } from "../composite.js";
 
 export function registerMarketCommand(program: Command): void {
   const market = program
@@ -57,6 +58,7 @@ export function registerMarketCommand(program: Command): void {
         });
       }
 
-      writeOutput(JSON.stringify(result.data, null, 2));
+      writeOutput(JSON.stringify(result, null, 2));
+      applyCompositeExitPolicy(result.completeness, "Market summary");
     });
 }

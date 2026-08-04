@@ -3,12 +3,13 @@ import * as path from "node:path";
 import type { Command } from "commander";
 import { getApiKey } from "../client/auth.js";
 import { krxFetch } from "../client/client.js";
-import { fetchDateRange } from "../client/range-fetch.js";
+import { fetchDateRange, type DateRangeResult } from "../client/range-fetch.js";
 import {
   writeOutput,
   writeError,
   formatOutput,
   detectOutputFormat,
+  filterOutputFields,
 } from "../output/formatter.js";
 import { EXIT_CODES } from "./exit-codes.js";
 import { handleKrxError } from "./error-handler.js";
@@ -18,6 +19,8 @@ import { validateDate } from "../validator/index.js";
 import { setVerbose, verbose } from "../utils/logger.js";
 import { getRecentTradingDate } from "../utils/date.js";
 import { withCliCancellation } from "./cancellation.js";
+import { applyCompositeExitPolicy } from "./composite.js";
+import { completenessForOutput } from "../client/completeness.js";
 
 export function resolveDate(
   dateOpt: string | undefined,
@@ -120,6 +123,7 @@ export async function executeCommand(
   }
 
   const isDateRange = fromDate && toDate;
+  let rangeEnvelope: DateRangeResult<Record<string, string>> | undefined;
 
   let data = await withCliCancellation(async (signal) => {
     if (isDateRange) {
@@ -146,9 +150,10 @@ export async function executeCommand(
       }
 
       if (rangeResult.failedDays > 0) {
-        writeError(`Warning: ${rangeResult.failedDays} day(s) failed to fetch`);
+        verbose(`${rangeResult.failedDays} date-range component(s) failed`);
       }
 
+      rangeEnvelope = rangeResult;
       return rangeResult.data as unknown as Record<string, unknown>[];
     } else {
       const result = await krxFetch({
@@ -178,7 +183,7 @@ export async function executeCommand(
     );
   }
 
-  if (data.length === 0) {
+  if (!rangeEnvelope && data.length === 0) {
     writeError(noDataMessage ?? "No data");
     process.exit(EXIT_CODES.NO_DATA);
   }
@@ -195,7 +200,7 @@ export async function executeCommand(
 
   verbose(`pipeline: ${beforePipeline} → ${data.length} rows`);
 
-  if (data.length === 0) {
+  if (!rangeEnvelope && data.length === 0) {
     writeError(
       parentOpts.filter
         ? `No results matched filter: ${parentOpts.filter as string}`
@@ -206,7 +211,20 @@ export async function executeCommand(
 
   const format = detectOutputFormat(parentOpts.output);
   const fields = parentOpts.fields?.split(",");
-  const output = formatOutput(data, format, fields);
+  const outputCompleteness = rangeEnvelope
+    ? completenessForOutput(rangeEnvelope.completeness, data.length > 0)
+    : undefined;
+  const output = rangeEnvelope
+    ? JSON.stringify(
+        {
+          ...rangeEnvelope,
+          data: fields ? filterOutputFields(data, fields) : data,
+          completeness: outputCompleteness,
+        },
+        null,
+        2,
+      )
+    : formatOutput(data, format, fields);
 
   const savePath = parentOpts.save as string | undefined;
   if (savePath) {
@@ -223,6 +241,13 @@ export async function executeCommand(
     }
   } else {
     writeOutput(output);
+  }
+
+  if (rangeEnvelope) {
+    applyCompositeExitPolicy(
+      outputCompleteness ?? rangeEnvelope.completeness,
+      "Date-range result",
+    );
   }
 }
 

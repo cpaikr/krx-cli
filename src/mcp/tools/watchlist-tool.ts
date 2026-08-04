@@ -5,22 +5,12 @@ import {
   removeFromWatchlist,
 } from "../../watchlist/store.js";
 import { searchStock } from "../../client/search.js";
-import {
-  formatKrxFailure,
-  KrxRequestError,
-  krxFetch,
-  selectKrxFailure,
-  type KrxResponse,
-} from "../../client/client.js";
+import { fetchWatchlistPrices } from "../../client/watchlist-prices.js";
 import { getApiKey } from "../../client/auth.js";
 import { validateDate } from "../../validator/index.js";
 import { getRecentTradingDate } from "../../utils/date.js";
 import type { ToolDefinition } from "./index.js";
-
-const STOCK_ENDPOINTS = {
-  KOSPI: "/svc/apis/sto/stk_bydd_trd",
-  KOSDAQ: "/svc/apis/sto/ksq_bydd_trd",
-} as const;
+import { compositeResult } from "./result.js";
 
 function textResult(data: unknown, isError = false) {
   return {
@@ -35,26 +25,11 @@ async function handleAdd(name: string, signal?: AbortSignal) {
     return textResult({ error: "API key not configured" }, true);
   }
 
-  let results: Awaited<ReturnType<typeof searchStock>>;
-  try {
-    results = await searchStock(apiKey, name, signal);
-  } catch (err) {
-    if (err instanceof KrxRequestError) {
-      return textResult(
-        {
-          error: err.response.error ?? "Stock search failed",
-          errorType: err.response.errorType,
-        },
-        true,
-      );
-    }
-    return textResult(
-      {
-        error: `Search failed: ${err instanceof Error ? err.message : String(err)}`,
-      },
-      true,
-    );
+  const searchResult = await searchStock(apiKey, name, signal);
+  if (!searchResult.success || searchResult.completeness.state !== "complete") {
+    return compositeResult(searchResult);
   }
+  const results = searchResult.data;
 
   if (results.length === 0) {
     return textResult({ error: `No stock found matching '${name}'` }, true);
@@ -111,79 +86,13 @@ async function handleShow(dateArg?: string, signal?: AbortSignal) {
   }
 
   const isuCds = new Set(entries.flatMap((e) => [e.isuCd, e.isuSrtCd]));
-  const [kospiResult, kosdaqResult] = await Promise.all([
-    krxFetch<Record<string, string>>({
-      endpoint: STOCK_ENDPOINTS.KOSPI,
-      params: { basDd: date },
-      apiKey,
-      signal,
-    }).catch(
-      (err: unknown): KrxResponse<Record<string, string>> => ({
-        success: false,
-        data: [],
-        error: err instanceof Error ? err.message : String(err),
-        errorType: "upstream",
-      }),
-    ),
-    krxFetch<Record<string, string>>({
-      endpoint: STOCK_ENDPOINTS.KOSDAQ,
-      params: { basDd: date },
-      apiKey,
-      signal,
-    }).catch(
-      (err: unknown): KrxResponse<Record<string, string>> => ({
-        success: false,
-        data: [],
-        error: err instanceof Error ? err.message : String(err),
-        errorType: "upstream",
-      }),
-    ),
-  ]);
-
-  const cancellation = [kospiResult, kosdaqResult].find(
-    (result) => !result.success && result.errorType === "cancelled",
-  );
-  if (cancellation) {
-    return textResult(
-      {
-        error:
-          cancellation.error ?? "Watchlist market data fetch was cancelled",
-        errorType: "cancelled",
-      },
-      true,
-    );
-  }
-
-  if (!kospiResult.success && !kosdaqResult.success) {
-    const primaryFailure = selectKrxFailure([kospiResult, kosdaqResult]);
-    return textResult(
-      {
-        error: primaryFailure?.error ?? "Watchlist market data fetch failed",
-        errorType: primaryFailure?.errorType ?? "upstream",
-      },
-      true,
-    );
-  }
-
-  const allStocks = [
-    ...(kospiResult.success ? kospiResult.data : []),
-    ...(kosdaqResult.success ? kosdaqResult.data : []),
-  ];
-
-  const watchlistData = allStocks.filter((s) => isuCds.has(s["ISU_CD"] ?? ""));
-
-  const output: Record<string, unknown> = { date, stocks: watchlistData };
-  const warnings = [
-    ...(kospiResult.success ? [] : [`KOSPI: ${formatKrxFailure(kospiResult)}`]),
-    ...(kosdaqResult.success
-      ? []
-      : [`KOSDAQ: ${formatKrxFailure(kosdaqResult)}`]),
-  ];
-  if (warnings.length > 0) {
-    output["warnings"] = warnings;
-  }
-
-  return textResult(output);
+  const result = await fetchWatchlistPrices({
+    apiKey,
+    date,
+    securityCodes: isuCds,
+    signal,
+  });
+  return compositeResult(result);
 }
 
 export function createWatchlistTool(): ToolDefinition {
@@ -195,7 +104,9 @@ Actions:
 - add: Search by name and add to watchlist
 - remove: Remove by name or stock code (exact match)
 - list: Show all watchlist entries
-- show: Fetch current prices for all watchlist stocks
+- show: Fetch current prices for all watchlist stocks in a composite envelope; inspect completeness before treating both markets as covered
+
+The add action does not mutate the watchlist unless its KOSPI/KOSDAQ prerequisite search is complete.
 
 The watchlist is stored locally at ~/.krx-cli/watchlist.json.`,
     inputSchema: {

@@ -162,13 +162,14 @@ describe("시나리오: 종목 검색 → 시세 조회", () => {
       searchResult.content as { type: string; text: string }[]
     )[0]!.text;
     const searchParsed = JSON.parse(searchText) as {
-      ISU_CD: string;
-      ISU_NM: string;
-    }[];
+      data: { ISU_CD: string; ISU_NM: string }[];
+      completeness: { state: string };
+    };
 
     // 삼성전자, 삼성전자우 모두 검색됨
-    expect(searchParsed.length).toBe(2);
-    const samsung = searchParsed.find((r) => r.ISU_NM === "삼성전자")!;
+    expect(searchParsed.completeness.state).toBe("complete");
+    expect(searchParsed.data.length).toBe(2);
+    const samsung = searchParsed.data.find((row) => row.ISU_NM === "삼성전자")!;
     expect(samsung.ISU_CD).toBe("KR7005930003"); // ISIN 코드
 
     // Step 2: ISIN 코드로 시세 조회

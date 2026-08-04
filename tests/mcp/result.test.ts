@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  compositeResult,
   successResult,
   errorResult,
   textResult,
@@ -70,5 +71,76 @@ describe("textResult", () => {
   it("sets isError when specified", () => {
     const result = textResult({ error: "oops" }, true);
     expect(result.isError).toBe(true);
+  });
+});
+
+describe("compositeResult", () => {
+  it("retains completeness metadata when row data is truncated", () => {
+    const rows = Array.from({ length: 1_000 }, (_, index) => ({
+      id: String(index),
+      payload: "x".repeat(1_000),
+    }));
+    const result = compositeResult({
+      success: true,
+      data: rows,
+      completeness: {
+        state: "partial",
+        requested: ["KOSPI", "KOSDAQ"],
+        succeeded: ["KOSPI"],
+        failed: [{ id: "KOSDAQ", error: "unavailable" }],
+        skipped: [],
+      },
+    });
+    const parsed = JSON.parse(result.content[0]!.text) as {
+      data: unknown[];
+      completeness: { state: string; failed: { id: string }[] };
+      _truncated: { total: number; returned: number };
+    };
+
+    expect(parsed.data.length).toBeLessThan(rows.length);
+    expect(parsed._truncated.total).toBe(rows.length);
+    expect(parsed._truncated.returned).toBe(parsed.data.length);
+    expect(parsed.completeness).toMatchObject({
+      state: "partial",
+      failed: [{ id: "KOSDAQ" }],
+    });
+    expect(
+      Buffer.byteLength(result.content[0]!.text, "utf8"),
+    ).toBeLessThanOrEqual(500_000);
+  });
+
+  it("retains a watchlist envelope when nested stock rows are truncated", () => {
+    const stocks = Array.from({ length: 1_000 }, (_, index) => ({
+      ISU_CD: String(index),
+      payload: "x".repeat(1_000),
+    }));
+    const result = compositeResult({
+      success: true,
+      data: { date: "20260310", stocks },
+      completeness: {
+        state: "complete",
+        requested: ["KOSPI", "KOSDAQ"],
+        succeeded: ["KOSPI", "KOSDAQ"],
+        failed: [],
+        skipped: [],
+      },
+    });
+    const parsed = JSON.parse(result.content[0]!.text) as {
+      data: { date: string; stocks: unknown[] };
+      completeness: { state: string };
+      _truncated: { path: string; total: number; returned: number };
+    };
+
+    expect(parsed.data.date).toBe("20260310");
+    expect(parsed.data.stocks.length).toBeLessThan(stocks.length);
+    expect(parsed._truncated).toMatchObject({
+      path: "data.stocks",
+      total: stocks.length,
+      returned: parsed.data.stocks.length,
+    });
+    expect(parsed.completeness.state).toBe("complete");
+    expect(
+      Buffer.byteLength(result.content[0]!.text, "utf8"),
+    ).toBeLessThanOrEqual(500_000);
   });
 });
