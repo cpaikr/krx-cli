@@ -1,6 +1,6 @@
 # Goal: Production-readiness hardening
 
-Status: active
+Status: complete
 Planning scope: ROADMAP.md
 
 ## Original contract
@@ -41,14 +41,15 @@ _None._
 - Exchange-aware trading dates — GitHub issue #9.
 - Versioned, fresh, atomic cache behavior — GitHub issue #12.
 - Consistent CLI and documentation contracts — GitHub issue #10.
+- Production-readiness definition — GitHub issue #11.
 
 ### Current in-scope result
 
-Production-readiness definition — GitHub issue #11.
+None. The contracted production-readiness baseline is complete.
 
 ### Next in-scope action
 
-Audit every tracker outcome against repository evidence, reconcile planning and validation state, and complete the no-PR delivery lifecycle.
+No-PR delivery is complete. PR creation, pushes, issue mutation, publishing, release, and upstream contribution remain outside this contract and are reserved for later reviewed aggregation.
 
 ### Evidence and blockers
 
@@ -87,3 +88,8 @@ Audit every tracker outcome against repository evidence, reconcile planning and 
 - Single-endpoint rows now explicitly default to tables on a TTY and JSON when redirected, while date ranges, stock search, market summary, and watchlist prices preserve their JSON completeness envelopes. Root help and `docs/CLI-CONTRACT.md` state the intentionally narrower behavioral scope of inherited options rather than implying they affect every subcommand.
 - `README.md`, `SKILL.md`, serve help, MCP errors, the contract checker, cache diagnostics, and implementation now consistently use the canonical environment names. Documentation distinguishes local stdio from authenticated HTTP MCP, states the ambiguity of HTTP 401 versus explicit approval-denial HTTP 403, links the official KRX key instructions and service catalog, uses placeholder credentials/current syntax, and identifies deterministic `pnpm verify` versus manual agent E2E execution.
 - CLI-contract validation: `pnpm verify` passed 327 tests, all-source coverage of 70.85% statements / 62.17% branches / 80.36% functions / 71.21% lines, a clean production audit, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. The structured root review corrected silent invalid stock-search/filter handling, classified typed user input as exit 2, validated filters before CLI/MCP requests, tightened empty-success exit wording, and found no Bucket II decision; delegated review could not inspect because its isolated thread could not recover the active goal.
+- Tracker #11 audit matched all 13 production-ready definition items to the completed issue slices and repository evidence: local CLI/stdio functionality, fail-closed HTTP MCP, safe credential lifecycle, clean bundled dependencies, cross-platform/release gates, bounded HTTP and exact quota behavior, composite completeness, credential-bound approval status, live drift machinery, exchange-aware dates, cache lifecycle integrity, and aligned public contracts.
+- Final validation: `pnpm verify` passed 327 tests across 36 files, all-source coverage of 71.41% statements / 62.33% branches / 81.06% functions / 71.81% lines, zero production advisories, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. The live public calendar check found 2025 and 2026 current. Contract dry-run reported 31 registered probes, zero exclusions, a 31-call KRX maximum, 32 expected official reads, a 65-read official cap, and an owner-only report.
+- The tracker-requested `upstream` remote now points to `https://github.com/kyo504/krx-cli.git`. The final review found no remaining actionable or decision-level issue, and the bundled skill now defers per-service availability dates to the official catalog instead of making a false blanket 2010 claim.
+- `ROADMAP.md` records the completed baseline, deterministic acceptance gate, ongoing calendar/contract/dependency duties, and the later decisions that remain outside this delivery.
+- Truthful external validation boundary: no `KRX_API_KEY` was available, so the intentionally credentialed live market probe was not run; its scheduled/manual workflow and deterministic 31-endpoint substitute are present. The GitHub Actions Ubuntu/Windows Node 22/24 matrix was not launched because this no-PR contract forbids pushes; its reusable release dependency is configured and the identical local gate passed. No PR, push, issue mutation, publish, release, or upstream contribution occurred.
