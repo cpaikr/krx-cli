@@ -9,6 +9,7 @@ import {
   withRetry,
 } from "./retry.js";
 import { verbose } from "../utils/logger.js";
+import { PUBLIC_CONTRACT } from "../user-contract.js";
 
 export const BASE_URL = "https://data-dbg.krx.co.kr";
 export const DEFAULT_ATTEMPT_TIMEOUT_MS = 15_000;
@@ -30,6 +31,8 @@ export interface KrxRequestOptions {
   readonly params: Record<string, string>;
   readonly apiKey: string;
   readonly cache?: boolean;
+  /** Bypass a cache read and replace the matching entry after a successful fetch. */
+  readonly refresh?: boolean;
   readonly retries?: number;
   readonly signal?: AbortSignal;
   readonly attemptTimeoutMs?: number;
@@ -206,15 +209,18 @@ function redactCredential(message: string, apiKey: string): string {
 export async function krxFetch<T = Record<string, string>>(
   options: KrxRequestOptions,
 ): Promise<KrxResponse<T>> {
-  const useCache = options.cache !== false;
+  const writeCache = options.cache !== false;
+  const readCache = writeCache && options.refresh !== true;
 
-  if (useCache) {
+  if (readCache) {
     const cached = getCached<T>(options.endpoint, options.params);
     if (cached) {
       verbose(`cache hit — ${options.endpoint}`);
       return { success: true, data: cached };
     }
     verbose(`cache miss — ${options.endpoint}`);
+  } else if (options.refresh && writeCache) {
+    verbose(`cache refresh — ${options.endpoint}`);
   }
 
   const url = `${BASE_URL}${options.endpoint}`;
@@ -266,7 +272,7 @@ export async function krxFetch<T = Record<string, string>>(
         );
       },
       {
-        maxRetries: options.retries ?? 3,
+        maxRetries: options.retries ?? PUBLIC_CONTRACT.requests.maxRetries,
         overallTimeoutMs:
           options.overallTimeoutMs ?? DEFAULT_OVERALL_TIMEOUT_MS,
         signal: options.signal,
@@ -361,7 +367,7 @@ export async function krxFetch<T = Record<string, string>>(
   }
 
   verbose(`response: ${outBlock.length} rows in ${elapsed}ms`);
-  if (useCache) setCached(options.endpoint, options.params, outBlock as T[]);
+  if (writeCache) setCached(options.endpoint, options.params, outBlock as T[]);
   return { success: true, data: outBlock as T[] };
 }
 

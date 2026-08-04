@@ -369,7 +369,7 @@ describe("fetchDateRange", () => {
     });
   });
 
-  it("passes cache option through to krxFetch", async () => {
+  it("passes cache and refresh options through to krxFetch", async () => {
     mockTradingDays(["20260309"]);
     mockedKrxFetch.mockResolvedValue({
       success: true,
@@ -381,11 +381,12 @@ describe("fetchDateRange", () => {
       from: "20260309",
       to: "20260309",
       apiKey: "test-key",
-      cache: false,
+      cache: true,
+      refresh: true,
     });
 
     expect(mockedKrxFetch).toHaveBeenCalledWith(
-      expect.objectContaining({ cache: false }),
+      expect.objectContaining({ cache: true, refresh: true }),
     );
   });
 

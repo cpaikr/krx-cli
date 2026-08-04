@@ -24,6 +24,7 @@ interface MarketSummaryOptions {
   readonly apiKey: string;
   readonly date: string;
   readonly cache?: boolean;
+  readonly refresh?: boolean;
   readonly signal?: AbortSignal;
 }
 
@@ -104,7 +105,7 @@ function safeFetch(...args: Parameters<typeof krxFetch>): Promise<KrxResponse> {
 export async function fetchMarketSummary(
   options: MarketSummaryOptions,
 ): Promise<MarketSummaryResult> {
-  const { apiKey, date, cache, signal } = options;
+  const { apiKey, date, cache, refresh, signal } = options;
   const params = { basDd: date };
 
   const [kospiIdx, kosdaqIdx, kospiStk, kosdaqStk] = await Promise.all([
@@ -113,6 +114,7 @@ export async function fetchMarketSummary(
       params,
       apiKey,
       cache,
+      refresh,
       signal,
     }),
     safeFetch({
@@ -120,6 +122,7 @@ export async function fetchMarketSummary(
       params,
       apiKey,
       cache,
+      refresh,
       signal,
     }),
     safeFetch({
@@ -127,6 +130,7 @@ export async function fetchMarketSummary(
       params,
       apiKey,
       cache,
+      refresh,
       signal,
     }),
     safeFetch({
@@ -134,6 +138,7 @@ export async function fetchMarketSummary(
       params,
       apiKey,
       cache,
+      refresh,
       signal,
     }),
   ]);

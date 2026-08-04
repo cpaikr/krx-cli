@@ -16,6 +16,7 @@ interface DateRangeOptions {
   readonly to: string;
   readonly apiKey: string;
   readonly cache?: boolean;
+  readonly refresh?: boolean;
   readonly concurrency?: number;
   readonly extraParams?: Record<string, string>;
   readonly signal?: AbortSignal;
@@ -62,7 +63,8 @@ async function fetchWithConcurrency<T>(
 export async function fetchDateRange<T = Record<string, string>>(
   options: DateRangeOptions,
 ): Promise<DateRangeResult<T>> {
-  const { endpoint, from, to, apiKey, cache, extraParams, signal } = options;
+  const { endpoint, from, to, apiKey, cache, refresh, extraParams, signal } =
+    options;
   const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
   const selection = getTradingDaySelection(from, to);
 
@@ -119,6 +121,7 @@ export async function fetchDateRange<T = Record<string, string>>(
       params,
       apiKey,
       cache,
+      refresh,
       signal,
     });
   });

@@ -14,6 +14,8 @@ import { EXIT_CODES } from "../exit-codes.js";
 import { handleKrxError } from "../error-handler.js";
 import { withCliCancellation } from "../cancellation.js";
 import { applyCompositeExitPolicy } from "../composite.js";
+import { resolveCacheOptions } from "../command-helper.js";
+import { missingApiKeyMessage } from "../../user-contract.js";
 
 export function registerWatchlistCommand(program: Command): void {
   const watchlist = program
@@ -26,9 +28,7 @@ export function registerWatchlistCommand(program: Command): void {
     .action(async (name: string) => {
       const apiKey = getApiKey();
       if (!apiKey) {
-        writeError(
-          "No API key configured. Use 'krx auth set' or set KRX_API_KEY env var.",
-        );
+        writeError(missingApiKeyMessage());
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }
 
@@ -159,9 +159,7 @@ export function registerWatchlistCommand(program: Command): void {
     .action(async (opts) => {
       const apiKey = getApiKey();
       if (!apiKey) {
-        writeError(
-          "No API key configured. Use 'krx auth set' or set KRX_API_KEY env var.",
-        );
+        writeError(missingApiKeyMessage());
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }
 
@@ -184,14 +182,14 @@ export function registerWatchlistCommand(program: Command): void {
         process.exit(EXIT_CODES.USAGE_ERROR);
       }
 
-      const parentOpts = program.opts();
+      const cacheOptions = resolveCacheOptions(program);
       const isuCds = new Set(entries.flatMap((e) => [e.isuCd, e.isuSrtCd]));
       const result = await withCliCancellation((signal) =>
         fetchWatchlistPrices({
           apiKey,
           date,
           securityCodes: isuCds,
-          cache: parentOpts.cache as boolean,
+          ...cacheOptions,
           signal,
         }),
       );

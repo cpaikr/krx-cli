@@ -14,10 +14,11 @@ import {
   formatOutput,
   detectOutputFormat,
 } from "../../output/formatter.js";
-import { EXIT_CODES } from "../index.js";
+import { EXIT_CODES } from "../exit-codes.js";
 import { readSecret } from "../secret-input.js";
 import { withCliCancellation } from "../cancellation.js";
 import { handleKrxError } from "../error-handler.js";
+import { missingApiKeyMessage, PUBLIC_CONTRACT } from "../../user-contract.js";
 
 export function registerAuthCommand(program: Command): void {
   const auth = program
@@ -53,7 +54,9 @@ export function registerAuthCommand(program: Command): void {
     .description("Remove the persisted KRX API key")
     .action(() => {
       const removed = removeApiKey();
-      const environmentStillActive = Boolean(process.env["KRX_API_KEY"]);
+      const environmentStillActive = Boolean(
+        process.env[PUBLIC_CONTRACT.environment.apiKey],
+      );
       writeOutput(
         JSON.stringify({
           success: true,
@@ -61,7 +64,9 @@ export function registerAuthCommand(program: Command): void {
             ? "Persisted API key removed"
             : "No persisted API key found",
           ...(environmentStillActive
-            ? { note: "KRX_API_KEY remains active for this process" }
+            ? {
+                note: `${PUBLIC_CONTRACT.environment.apiKey} remains active for this process`,
+              }
             : {}),
         }),
       );
@@ -73,9 +78,7 @@ export function registerAuthCommand(program: Command): void {
     .action(async () => {
       const apiKey = getApiKey();
       if (!apiKey) {
-        writeError(
-          "No API key configured. Use 'krx auth set' or set KRX_API_KEY env var.",
-        );
+        writeError(missingApiKeyMessage());
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }
 
@@ -128,9 +131,7 @@ export function registerAuthCommand(program: Command): void {
     .action(async (category: string) => {
       const apiKey = getApiKey();
       if (!apiKey) {
-        writeError(
-          "No API key configured. Use 'krx auth set' or set KRX_API_KEY env var.",
-        );
+        writeError(missingApiKeyMessage());
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }
 

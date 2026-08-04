@@ -20,6 +20,7 @@ import { setVerbose, verbose } from "../utils/logger.js";
 import { withCliCancellation } from "./cancellation.js";
 import { applyCompositeExitPolicy } from "./composite.js";
 import { completenessForOutput } from "../client/completeness.js";
+import { missingApiKeyMessage } from "../user-contract.js";
 
 export function resolveDate(
   dateOpt: string | undefined,
@@ -40,6 +41,20 @@ export function resolveDate(
   process.exit(EXIT_CODES.USAGE_ERROR);
 }
 
+export function resolveCacheOptions(program: Command): {
+  readonly cache: boolean;
+  readonly refresh: boolean;
+} {
+  const options = program.opts();
+  const cache = options.cache !== false;
+  const refresh = Boolean(options.refresh);
+  if (!cache && refresh) {
+    writeError("--refresh cannot be combined with --no-cache");
+    process.exit(EXIT_CODES.USAGE_ERROR);
+  }
+  return { cache, refresh };
+}
+
 interface ExecuteCommandOptions {
   readonly endpoint: string;
   readonly params: Record<string, string>;
@@ -54,13 +69,12 @@ export async function executeCommand(
 
   const apiKey = getApiKey();
   if (!apiKey) {
-    writeError(
-      "No API key configured. Use 'krx auth set' or set KRX_API_KEY env var.",
-    );
+    writeError(missingApiKeyMessage());
     process.exit(EXIT_CODES.AUTH_FAILURE);
   }
 
   const parentOpts = program.opts();
+  const cacheOptions = resolveCacheOptions(program);
 
   if (parentOpts.verbose) {
     setVerbose(true);
@@ -134,7 +148,7 @@ export async function executeCommand(
         from: fromDate,
         to: toDate,
         apiKey,
-        cache: parentOpts.cache as boolean,
+        ...cacheOptions,
         extraParams: restParams,
         signal,
       });
@@ -159,7 +173,7 @@ export async function executeCommand(
         endpoint,
         params: finalParams,
         apiKey,
-        cache: parentOpts.cache as boolean,
+        ...cacheOptions,
         retries: parentOpts.retries as number | undefined,
         signal,
       });

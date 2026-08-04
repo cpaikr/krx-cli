@@ -28,6 +28,7 @@ interface WatchlistPricesOptions {
   readonly date: string;
   readonly securityCodes: ReadonlySet<string>;
   readonly cache?: boolean;
+  readonly refresh?: boolean;
   readonly signal?: AbortSignal;
 }
 
@@ -41,6 +42,7 @@ export async function fetchWatchlistPrices(
         params: { basDd: options.date },
         apiKey: options.apiKey,
         cache: options.cache,
+        refresh: options.refresh,
         signal: options.signal,
       }).catch(
         (error: unknown): KrxResponse<Record<string, string>> => ({

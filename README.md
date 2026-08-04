@@ -149,7 +149,13 @@ krx watchlist show --date 20260310  # 특정 날짜 시세
 ```bash
 krx cache status    # 캐시 현황 조회
 krx cache clear     # 캐시 전체 삭제
+krx stock list --market kospi --date 20260310 --refresh  # 해당 항목만 갱신
 ```
+
+과거 응답은 기본 7일 동안 유효하며 `KRX_CACHE_MAX_AGE_HOURS`로 조정할 수
+있습니다. `--refresh`는 일치하는 날짜/엔드포인트만 다시 받아 원자적으로 교체하고,
+`--no-cache`는 읽기와 쓰기를 모두 건너뜁니다. 버전, 손상 격리, 동시 쓰기 계약은
+[캐시 수명주기 문서](docs/CACHE.md)를 참고하세요.
 
 ### 요청 안정성 및 승인 확인
 
@@ -248,6 +254,7 @@ krx schema stock.stk_bydd_trd
 | `--from <date>`         | 기간 조회 시작일 (YYYYMMDD)         | -                              |
 | `--to <date>`           | 기간 조회 종료일 (YYYYMMDD)         | -                              |
 | `--no-cache`            | 캐시 무시하고 새로 조회             | -                              |
+| `--refresh`             | 일치하는 과거 캐시를 다시 받아 교체 | -                              |
 | `--filter <expression>` | 필터 표현식 (예: "FLUC_RT > 5")     | -                              |
 | `--save <path>`         | 결과를 파일로 저장                  | -                              |
 | `--retries <n>`         | 네트워크 에러 시 재시도 (기본: 3)   | -                              |

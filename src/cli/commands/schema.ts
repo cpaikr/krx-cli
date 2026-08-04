@@ -5,7 +5,7 @@ import {
   type ResponseFieldDef,
 } from "../../client/endpoints.js";
 import { writeOutput, writeError } from "../../output/formatter.js";
-import { EXIT_CODES } from "../index.js";
+import { EXIT_CODES } from "../exit-codes.js";
 
 interface SchemaEntry {
   readonly command: string;

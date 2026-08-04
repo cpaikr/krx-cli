@@ -1,12 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { krxFetch, BASE_URL } from "../../src/client/client.js";
 import { reserveCall } from "../../src/client/rate-limit.js";
+import { getCached, setCached } from "../../src/cache/store.js";
 
 vi.mock("../../src/client/rate-limit.js", () => ({
   reserveCall: vi.fn(),
 }));
 
+vi.mock("../../src/cache/store.js", () => ({
+  getCached: vi.fn(),
+  setCached: vi.fn(),
+}));
+
 const mockedReserveCall = vi.mocked(reserveCall);
+const mockedGetCached = vi.mocked(getCached);
+const mockedSetCached = vi.mocked(setCached);
 
 function response(
   status: number,
@@ -24,6 +32,9 @@ describe("krxFetch", () => {
     vi.restoreAllMocks();
     vi.useRealTimers();
     mockedReserveCall.mockReset();
+    mockedGetCached.mockReset();
+    mockedGetCached.mockReturnValue(null);
+    mockedSetCached.mockReset();
     mockedReserveCall.mockResolvedValue({
       date: "20260313",
       count: 1,
@@ -34,6 +45,62 @@ describe("krxFetch", () => {
       advisory: true,
       reserved: true,
     });
+  });
+
+  it("returns a fresh cache hit without quota or network use", async () => {
+    mockedGetCached.mockReturnValue([{ A: "cached" }]);
+    vi.stubGlobal("fetch", vi.fn());
+
+    await expect(
+      krxFetch({
+        endpoint: "/svc/apis/idx/kospi_dd_trd",
+        params: { basDd: "20240105" },
+        apiKey: "key",
+      }),
+    ).resolves.toMatchObject({ data: [{ A: "cached" }] });
+
+    expect(mockedReserveCall).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("refreshes only the matching entry after a successful network fetch", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(response(200, { OutBlock_1: [{ A: "new" }] })),
+    );
+    const endpoint = "/svc/apis/idx/kospi_dd_trd";
+    const params = { basDd: "20240105" };
+
+    const result = await krxFetch({
+      endpoint,
+      params,
+      apiKey: "key",
+      refresh: true,
+    });
+
+    expect(result).toMatchObject({ data: [{ A: "new" }] });
+    expect(mockedGetCached).not.toHaveBeenCalled();
+    expect(mockedReserveCall).toHaveBeenCalledTimes(1);
+    expect(mockedSetCached).toHaveBeenCalledWith(endpoint, params, [
+      { A: "new" },
+    ]);
+  });
+
+  it("does not write when cache use is disabled", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(response(200, { OutBlock_1: [{ A: "new" }] })),
+    );
+
+    await krxFetch({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      params: { basDd: "20240105" },
+      apiKey: "key",
+      cache: false,
+    });
+
+    expect(mockedGetCached).not.toHaveBeenCalled();
+    expect(mockedSetCached).not.toHaveBeenCalled();
   });
 
   it("reserves quota before sending the authenticated POST", async () => {

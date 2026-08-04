@@ -15,6 +15,7 @@ invariants:
   - Rate limit is 10,000 API calls per day
   - Local usage is an advisory, per-credential KST counter; KRX is authoritative
   - Uncached requests have a 15s attempt timeout and 45s overall deadline
+  - Historical cache entries expire after 7 days unless KRX_CACHE_MAX_AGE_HOURS overrides it
   - Each API category requires separate approval from KRX
   - Composite results must be checked via completeness.state before analysis
   - All response field values are strings (including numbers)
@@ -162,6 +163,7 @@ krx watchlist show --date 20260310  # Specific date
 ```bash
 krx cache status    # Show cache size, files, dates
 krx cache clear     # Clear all cached data
+krx stock list --market kospi --date 20260310 --refresh # Replace one matching entry
 ```
 
 ### Version & Update
@@ -210,6 +212,7 @@ krx schema index.kospi_dd_trd # Specific endpoint schema
 --from <date>            Start date for range query (YYYYMMDD)
 --to <date>              End date for range query (YYYYMMDD)
 --no-cache               Bypass cache and fetch fresh data
+--refresh                Bypass and replace matching historical cache entries
 --filter <expression>    Filter results (e.g. "FLUC_RT > 5", "MKT_NM == KOSPI")
 --dry-run                Show request details without calling API
 --save <path>            Save output to file instead of stdout
