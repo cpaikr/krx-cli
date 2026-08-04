@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { UserInputError } from "../errors.js";
 
 const DATE_PATTERN = /^\d{8}$/;
 
@@ -44,7 +45,7 @@ export function validateNoInjection(input: string): string | null {
 export function validateDate(value: string): string {
   const result = dateSchema.safeParse(value);
   if (!result.success) {
-    throw new Error(result.error.issues[0]?.message ?? "Invalid date");
+    throw new UserInputError(result.error.issues[0]?.message ?? "Invalid date");
   }
   return result.data;
 }
@@ -52,7 +53,7 @@ export function validateDate(value: string): string {
 export function validateMarket(value: string): Market {
   const result = marketSchema.safeParse(value.toLowerCase());
   if (!result.success) {
-    throw new Error(
+    throw new UserInputError(
       `Invalid market: ${value}. Must be one of: kospi, kosdaq, konex, krx`,
     );
   }

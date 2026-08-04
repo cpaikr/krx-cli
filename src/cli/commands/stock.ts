@@ -17,6 +17,8 @@ import { EXIT_CODES } from "../exit-codes.js";
 import { handleKrxError } from "../error-handler.js";
 import { withCliCancellation } from "../cancellation.js";
 import { applyCompositeExitPolicy } from "../composite.js";
+import { missingApiKeyMessage } from "../../user-contract.js";
+import { UserInputError } from "../../errors.js";
 
 const TRADING_ENDPOINTS: Record<string, string> = {
   kospi: "/svc/apis/sto/stk_bydd_trd",
@@ -74,13 +76,12 @@ export function registerStockCommand(program: Command): void {
     .command("search <query>")
     .description("Search stocks by name")
     .action(async (query: string) => {
-      validateNoInjection(query);
+      const injectionError = validateNoInjection(query);
+      if (injectionError) throw new UserInputError(injectionError);
 
       const apiKey = getApiKey();
       if (!apiKey) {
-        writeError(
-          "No API key configured. Use 'krx auth set' or set KRX_API_KEY env var.",
-        );
+        writeError(missingApiKeyMessage());
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }
 

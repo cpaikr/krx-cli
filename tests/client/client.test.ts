@@ -151,6 +151,32 @@ describe("krxFetch", () => {
     });
   });
 
+  it("classifies HTTP 401 as an ambiguous authentication-shaped failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          response(401, { respCode: "401", respMsg: "Unauthorized API Call" }),
+        ),
+    );
+
+    const result = await krxFetch({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      params: { basDd: "20240105" },
+      apiKey: "key",
+      cache: false,
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      success: false,
+      errorCode: "401",
+      errorType: "authentication",
+      httpStatus: 401,
+    });
+  });
+
   it("retries a transient status and reserves each actual attempt", async () => {
     vi.useFakeTimers();
     vi.stubGlobal(

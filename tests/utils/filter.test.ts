@@ -139,9 +139,10 @@ describe("filterData", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("returns all data for invalid expression", () => {
-    const result = filterData(sampleData, "invalid expression");
-    expect(result).toEqual(sampleData);
+  it("rejects an invalid expression instead of returning unfiltered data", () => {
+    expect(() => filterData(sampleData, "invalid expression")).toThrow(
+      "Invalid filter expression",
+    );
   });
 
   it("returns empty array for empty data", () => {

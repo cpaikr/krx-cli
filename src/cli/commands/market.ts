@@ -21,24 +21,17 @@ export function registerMarketCommand(program: Command): void {
     .description("Market summary: indices, top movers, volume")
     .option("-d, --date <date>", "trading date (YYYYMMDD)")
     .action(async (opts) => {
+      const requestedDate = opts.date as string | undefined;
+      if (requestedDate) validateDate(requestedDate);
+      const cacheOptions = resolveCacheOptions(program);
+
       const apiKey = getApiKey();
       if (!apiKey) {
         writeError(missingApiKeyMessage());
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }
 
-      const date = (opts.date as string | undefined) ?? getRecentTradingDate();
-
-      try {
-        validateDate(date);
-      } catch (err) {
-        writeError(
-          `Invalid date: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        process.exit(EXIT_CODES.USAGE_ERROR);
-      }
-
-      const cacheOptions = resolveCacheOptions(program);
+      const date = requestedDate ?? getRecentTradingDate();
 
       const result = await withCliCancellation((signal) =>
         fetchMarketSummary({

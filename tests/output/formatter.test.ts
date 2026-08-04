@@ -1,10 +1,46 @@
-import { describe, it, expect } from "vitest";
-import { formatOutput } from "../../src/output/formatter.js";
+import { afterEach, describe, it, expect } from "vitest";
+import {
+  detectOutputFormat,
+  formatOutput,
+} from "../../src/output/formatter.js";
 
 const SAMPLE_DATA = [
   { IDX_NM: "코스피", CLSPRC_IDX: "2650.00", FLUC_RT: "0.5" },
   { IDX_NM: "코스피 200", CLSPRC_IDX: "350.00", FLUC_RT: "-0.2" },
 ];
+
+const originalIsTTY = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+
+afterEach(() => {
+  if (originalIsTTY) {
+    Object.defineProperty(process.stdout, "isTTY", originalIsTTY);
+  } else {
+    Reflect.deleteProperty(process.stdout, "isTTY");
+  }
+});
+
+describe("detectOutputFormat", () => {
+  it("defaults to table on a TTY and JSON when redirected", () => {
+    Object.defineProperty(process.stdout, "isTTY", {
+      configurable: true,
+      value: true,
+    });
+    expect(detectOutputFormat()).toBe("table");
+
+    Object.defineProperty(process.stdout, "isTTY", {
+      configurable: true,
+      value: false,
+    });
+    expect(detectOutputFormat()).toBe("json");
+  });
+
+  it("accepts supported explicit formats and rejects unsupported ones", () => {
+    expect(detectOutputFormat("ndjson")).toBe("ndjson");
+    expect(() => detectOutputFormat("yaml")).toThrow(
+      "Unsupported output format: yaml",
+    );
+  });
+});
 
 describe("formatOutput", () => {
   describe("json", () => {

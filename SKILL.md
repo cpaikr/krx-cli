@@ -10,15 +10,15 @@ metadata:
   version: "1.8.1"
 invariants:
   - Always use YYYYMMDD format for --date (e.g., 20260310)
-  - Data is T-1 (previous trading day), available from 2010 onwards
-  - Default output is JSON to stdout, errors go to stderr
+  - Data is non-real-time; service availability dates vary and must be checked in the official catalog
+  - Single-endpoint output defaults to table on a TTY and JSON when redirected; composites always return JSON envelopes
   - Rate limit is 10,000 API calls per day
   - Local usage is an advisory, per-credential KST counter; KRX is authoritative
   - Uncached requests have a 15s attempt timeout and 45s overall deadline
   - Historical cache entries expire after 7 days unless KRX_CACHE_MAX_AGE_HOURS overrides it
   - Each API category requires separate approval from KRX
   - Composite results must be checked via completeness.state before analysis
-  - All response field values are strings (including numbers)
+  - KRX row field values are strings (including numbers); envelope metadata retains JSON types
 ---
 
 # krx-cli
@@ -43,13 +43,16 @@ Use this skill when the user asks about:
 # Install
 npm install -g krx-cli
 
-# Set API key (get from https://openapi.krx.co.kr/)
+# Set API key (official steps: https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp)
 krx auth set                       # Hidden interactive input
 # or: printf '%s' "$KRX_API_KEY" | krx auth set --stdin
 
 # Check which services are approved
 krx auth status
 ```
+
+Review the official service catalog before requesting category access:
+https://openapi.krx.co.kr/contents/OPP/INFO/service/OPPINFO004.cmd
 
 ## Commands
 
@@ -135,7 +138,7 @@ krx stock search SK           # Partial match
 ### Market Summary (시장 요약)
 
 ```bash
-krx market summary                    # Today's market overview
+krx market summary                    # Most recent verified-session overview
 krx market summary --date 20260310    # Specific date
 ```
 
@@ -173,7 +176,11 @@ krx version    # Show current version and check for updates
 krx update     # Update to the latest version (npm install -g krx-cli)
 ```
 
-### MCP HTTP Server
+### MCP transports
+
+`krx-mcp` uses local stdio: it opens no network listener and relies on the local
+OS account and client configuration as its security boundary. `krx serve` is a
+network service and requires the controls below.
 
 ```bash
 export KRX_MCP_TOKEN="$(openssl rand -hex 32)"
@@ -199,39 +206,48 @@ krx schema --all              # All 31 endpoint schemas (JSON)
 krx schema index.kospi_dd_trd # Specific endpoint schema
 ```
 
-## Global Flags
+## Root Query Flags
+
+These flags are parsed at the root, but each has a documented command scope.
+Row pipeline and file flags apply to endpoint row queries; composite commands
+retain their JSON completeness envelope. `--fields` also applies to stock
+search, while cache flags additionally apply to market summary and watchlist
+prices.
 
 ```
---output, -o <format>    json (default) | table | ndjson | csv
---fields, -f <fields>    Filter output fields: --fields ISU_NM,TDD_CLSPRC,FLUC_RT
---code <isuCd>           Filter by stock code (ISU_CD)
---sort <field>           Sort results by field name
+--output, -o <format>    json | table | ndjson | csv (TTY: table; redirected: JSON)
+--fields, -f <fields>    Endpoint-row or stock-search fields
+--code <isuCd>           Filter endpoint rows by stock code (ISU_CD)
+--sort <field>           Sort endpoint rows by field name
 --asc                    Sort ascending (default: descending)
 --offset <n>             Skip first N results (for pagination)
 --limit <n>              Limit number of results
 --from <date>            Start date for range query (YYYYMMDD)
 --to <date>              End date for range query (YYYYMMDD)
---no-cache               Bypass cache and fetch fresh data
+--no-cache               Bypass cache reads and writes
 --refresh                Bypass and replace matching historical cache entries
 --filter <expression>    Filter results (e.g. "FLUC_RT > 5", "MKT_NM == KOSPI")
 --dry-run                Show request details without calling API
 --save <path>            Save output to file instead of stdout
---retries <n>            Max retries on network error (default: 3)
+--retries <n>            Direct endpoint retry limit (default: 3)
 --verbose, -v            Verbose logging to stderr
 ```
 
 ## Exit Codes
 
 ```
-0 = Success
-1 = General error
-2 = Usage error (bad arguments)
-3 = No data found
-4 = Auth failure (no/invalid API key)
-5 = Rate limit exceeded (10,000/day)
-6 = Service not approved (category not activated)
-7 = Partial success (inspect completeness before using data)
+0 = No reportable failure or required-result miss
+1 = Upstream/network/timeout/cancellation/invalid-response/local-state failure
+2 = Invalid or incomplete arguments/input
+3 = Requested market data or local target was absent
+4 = Missing API key or ambiguous KRX HTTP 401 credential/approval failure
+5 = Local quota admission rejection or KRX HTTP 429
+6 = Explicit KRX HTTP 403 service-approval rejection
+7 = Usable composite data with one or more failed components
 ```
+
+KRX HTTP 401 does not reliably distinguish an invalid key from missing service
+approval. Treat it as ambiguous; only HTTP 403 proves the approval rejection.
 
 ## Handling Large Results
 

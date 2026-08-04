@@ -11,6 +11,7 @@ import { validateDate } from "../../validator/index.js";
 import { getRecentTradingDate } from "../../utils/date.js";
 import type { ToolDefinition } from "./index.js";
 import { compositeResult } from "./result.js";
+import { missingApiKeyMessage } from "../../user-contract.js";
 
 function textResult(data: unknown, isError = false) {
   return {
@@ -22,7 +23,7 @@ function textResult(data: unknown, isError = false) {
 async function handleAdd(name: string, signal?: AbortSignal) {
   const apiKey = getApiKey();
   if (!apiKey) {
-    return textResult({ error: "API key not configured" }, true);
+    return textResult({ error: missingApiKeyMessage() }, true);
   }
 
   const searchResult = await searchStock(apiKey, name, signal);
@@ -67,7 +68,7 @@ async function handleAdd(name: string, signal?: AbortSignal) {
 async function handleShow(dateArg?: string, signal?: AbortSignal) {
   const apiKey = getApiKey();
   if (!apiKey) {
-    return textResult({ error: "API key not configured" }, true);
+    return textResult({ error: missingApiKeyMessage() }, true);
   }
 
   const entries = getWatchlist();

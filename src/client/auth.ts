@@ -6,6 +6,7 @@ import { krxFetch, type KrxErrorType } from "./client.js";
 import { getRecentTradingDate } from "../utils/date.js";
 import { writeFileAtomicSync } from "../utils/atomic-file.js";
 import { credentialFingerprint } from "./rate-limit.js";
+import { PUBLIC_CONTRACT } from "../user-contract.js";
 
 const CONFIG_DIR = path.join(os.homedir(), ".krx-cli");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
@@ -125,7 +126,7 @@ function writeConfig(config: Config): void {
 }
 
 export function getApiKey(): string | undefined {
-  return process.env["KRX_API_KEY"] ?? readConfig().apiKey;
+  return process.env[PUBLIC_CONTRACT.environment.apiKey] ?? readConfig().apiKey;
 }
 
 export function saveApiKey(apiKey: string): void {

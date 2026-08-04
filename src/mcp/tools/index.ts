@@ -18,6 +18,8 @@ import {
 } from "./result.js";
 import { matchesIsuCode } from "../../utils/isin.js";
 import { completenessForOutput } from "../../client/completeness.js";
+import { missingApiKeyMessage } from "../../user-contract.js";
+import { assertFilterExpression } from "../../utils/filter.js";
 
 type ZodRawShape = Record<string, z.ZodType>;
 
@@ -107,9 +109,16 @@ function buildInputSchema(endpoints: readonly EndpointDef[]): ZodRawShape {
       .describe("Sort direction (default: desc)"),
     offset: z
       .number()
+      .int()
+      .nonnegative()
       .optional()
       .describe("Skip first N results (use with limit for pagination)"),
-    limit: z.number().optional().describe("Limit number of results returned"),
+    limit: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .describe("Limit number of results returned"),
     filter: z
       .string()
       .optional()
@@ -152,9 +161,7 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
     handler: async (args, signal) => {
       const apiKey = getApiKey();
       if (!apiKey) {
-        return errorResult(
-          "API key not configured. Set KRX_API_KEY environment variable.",
-        );
+        return errorResult(missingApiKeyMessage());
       }
 
       const shortName = args.endpoint as string;
@@ -168,6 +175,17 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
       const dateFrom = args.date_from as string | undefined;
       const dateTo = args.date_to as string | undefined;
       const isuCd = args.isuCd as string | undefined;
+      const filterExpression = args.filter as string | undefined;
+
+      if (filterExpression) {
+        try {
+          assertFilterExpression(filterExpression);
+        } catch (error) {
+          return errorResult(
+            error instanceof Error ? error.message : "Invalid filter",
+          );
+        }
+      }
 
       if ((dateFrom && !dateTo) || (!dateFrom && dateTo)) {
         return errorResult(
@@ -209,14 +227,13 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
           );
         }
 
-        const filterExpr = args.filter as string | undefined;
         const sortField = args.sort as string | undefined;
         const sortDirection = (args.sort_direction as "asc" | "desc") ?? "desc";
         const offsetN = args.offset as number | undefined;
         const limitN = args.limit as number | undefined;
 
         data = applyPipeline(data, {
-          filter: filterExpr,
+          filter: filterExpression,
           sort: sortField,
           direction: sortDirection,
           offset: offsetN,
@@ -268,7 +285,6 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
         );
       }
 
-      const filterExpr2 = args.filter as string | undefined;
       const sortField = args.sort as string | undefined;
       const sortDirection = (args.sort_direction as "asc" | "desc") ?? "desc";
       const offsetN = args.offset as number | undefined;
@@ -283,7 +299,7 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
       }
 
       data = applyPipeline(data, {
-        filter: filterExpr2,
+        filter: filterExpression,
         sort: sortField,
         direction: sortDirection,
         offset: offsetN,

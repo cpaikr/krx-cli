@@ -21,6 +21,7 @@ import { withCliCancellation } from "./cancellation.js";
 import { applyCompositeExitPolicy } from "./composite.js";
 import { completenessForOutput } from "../client/completeness.js";
 import { missingApiKeyMessage } from "../user-contract.js";
+import { assertFilterExpression } from "../utils/filter.js";
 
 export function resolveDate(
   dateOpt: string | undefined,
@@ -67,14 +68,16 @@ export async function executeCommand(
 ): Promise<void> {
   const { endpoint, params, program, noDataMessage } = options;
 
+  const parentOpts = program.opts();
+  const filterExpression = parentOpts.filter as string | undefined;
+  if (filterExpression) assertFilterExpression(filterExpression);
+  const cacheOptions = resolveCacheOptions(program);
+
   const apiKey = getApiKey();
   if (!apiKey) {
     writeError(missingApiKeyMessage());
     process.exit(EXIT_CODES.AUTH_FAILURE);
   }
-
-  const parentOpts = program.opts();
-  const cacheOptions = resolveCacheOptions(program);
 
   if (parentOpts.verbose) {
     setVerbose(true);

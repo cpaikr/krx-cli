@@ -16,6 +16,7 @@ import { registerUpdateCommand } from "./commands/update.js";
 import { registerServeCommand } from "./commands/serve.js";
 import { PUBLIC_CONTRACT } from "../user-contract.js";
 import { EXIT_CODES } from "./exit-codes.js";
+import { UserInputError } from "../errors.js";
 
 interface CliExitError extends Error {
   readonly code?: string;
@@ -27,6 +28,7 @@ export function exitCodeForCliError(error: unknown): number {
 
   const cliError = error as CliExitError;
   if (cliError.exitCode === 0) return EXIT_CODES.SUCCESS;
+  if (error instanceof UserInputError) return EXIT_CODES.USAGE_ERROR;
   if (cliError.code?.startsWith("commander.")) {
     return EXIT_CODES.USAGE_ERROR;
   }
@@ -62,27 +64,37 @@ export function createProgram(): Command {
         "row output format; defaults to table on a TTY and JSON when redirected (composite commands always return JSON)",
       ).choices([...PUBLIC_CONTRACT.output.formats]),
     )
-    .option("-f, --fields <fields>", "comma-separated fields to include")
-    .option("--dry-run", "show request without calling API")
+    .option("-f, --fields <fields>", "fields for endpoint rows or stock search")
+    .option("--dry-run", "show an endpoint row request without calling API")
     .option("-v, --verbose", "verbose output to stderr")
-    .option("--code <isuCd>", "filter by stock code (ISU_CD)")
-    .option("--sort <field>", "sort results by field name")
-    .option("--asc", "sort ascending (default: descending)")
+    .option("--code <isuCd>", "filter endpoint rows by stock code (ISU_CD)")
+    .option("--sort <field>", "sort endpoint rows by field name")
+    .option("--asc", "sort endpoint rows ascending (default: descending)")
     .option(
       "--offset <n>",
-      "skip first N results (for pagination)",
+      "skip the first N endpoint rows",
       parseNonNegativeInteger,
     )
-    .option("--limit <n>", "limit number of results", parseNonNegativeInteger)
-    .option("--no-cache", "bypass cache reads and writes")
-    .option("--refresh", "bypass and replace matching historical cache entries")
-    .option("--from <date>", "start date for range query (YYYYMMDD)")
-    .option("--to <date>", "end date for range query (YYYYMMDD)")
-    .option("--filter <expression>", 'filter results (e.g. "FLUC_RT > 5")')
-    .option("--save <path>", "save output to file instead of stdout")
+    .option(
+      "--limit <n>",
+      "limit endpoint row results",
+      parseNonNegativeInteger,
+    )
+    .option("--no-cache", "bypass reads and writes for supported data commands")
+    .option(
+      "--refresh",
+      "replace matching historical entries for supported data commands",
+    )
+    .option("--from <date>", "start date for endpoint row range (YYYYMMDD)")
+    .option("--to <date>", "end date for endpoint row range (YYYYMMDD)")
+    .option(
+      "--filter <expression>",
+      'filter endpoint rows (e.g. "FLUC_RT > 5")',
+    )
+    .option("--save <path>", "save endpoint row output to a file")
     .option(
       "--retries <n>",
-      `max retries on retryable failures (default: ${PUBLIC_CONTRACT.requests.maxRetries})`,
+      `max retries for a direct endpoint row request (default: ${PUBLIC_CONTRACT.requests.maxRetries})`,
       parseNonNegativeInteger,
     );
 

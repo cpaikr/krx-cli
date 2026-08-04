@@ -40,14 +40,15 @@ _None._
 - Live KRX contract-drift detection — GitHub issue #8.
 - Exchange-aware trading dates — GitHub issue #9.
 - Versioned, fresh, atomic cache behavior — GitHub issue #12.
+- Consistent CLI and documentation contracts — GitHub issue #10.
 
 ### Current in-scope result
 
-Consistent CLI and documentation contracts — GitHub issue #10.
+Production-readiness definition — GitHub issue #11.
 
 ### Next in-scope action
 
-Reconcile CLI help, examples, generated/reference documentation, and machine-readable output descriptions with implemented behavior; add deterministic checks that prevent maintained contracts from drifting again.
+Audit every tracker outcome against repository evidence, reconcile planning and validation state, and complete the no-PR delivery lifecycle.
 
 ### Evidence and blockers
 
@@ -82,3 +83,7 @@ Reconcile CLI help, examples, generated/reference documentation, and machine-rea
 - Historical entries are fresh for seven days by default, with a bounded `KRX_CACHE_MAX_AGE_HOURS` override from zero through one year. Stale entries revalidate on demand, `--refresh` bypasses and replaces only the endpoint/date/request identities selected by the command, `--no-cache` bypasses both reads and writes, and failed refreshes preserve the prior entry.
 - Cache writes reuse the owner-only sibling-temporary, file-fsync, rename, and directory-fsync path, so readers see complete old or new JSON and concurrent writers are last-writer-wins without corrupting the entry. Tests cover metadata, default and configured staleness, format upgrades, corruption quarantine, explicit refresh, interrupted temporary files, and interleaved writers/readers.
 - Cache validation: `pnpm verify` passed 324 tests, all-source coverage of 69.41% statements / 61.60% branches / 78.42% functions / 69.71% lines, a clean production audit, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. The structured root review found and fixed an omitted executable `--refresh` registration and reported no Bucket II decision; delegated review stopped without inspection because child goal recovery returned no active goal.
+- The executable CLI contract is centralized in the Commander program for option syntax and validation, `PUBLIC_CONTRACT` for output/request/environment constants, and `EXIT_CODE_CONTRACT` for exact status triggers. Unsupported output formats, malformed numeric options, invalid ports, unsafe stock-search input, invalid dates and markets, malformed filters, and conflicting credential inputs all exit 2; malformed CLI and MCP filters are rejected before KRX network access.
+- Single-endpoint rows now explicitly default to tables on a TTY and JSON when redirected, while date ranges, stock search, market summary, and watchlist prices preserve their JSON completeness envelopes. Root help and `docs/CLI-CONTRACT.md` state the intentionally narrower behavioral scope of inherited options rather than implying they affect every subcommand.
+- `README.md`, `SKILL.md`, serve help, MCP errors, the contract checker, cache diagnostics, and implementation now consistently use the canonical environment names. Documentation distinguishes local stdio from authenticated HTTP MCP, states the ambiguity of HTTP 401 versus explicit approval-denial HTTP 403, links the official KRX key instructions and service catalog, uses placeholder credentials/current syntax, and identifies deterministic `pnpm verify` versus manual agent E2E execution.
+- CLI-contract validation: `pnpm verify` passed 327 tests, all-source coverage of 70.85% statements / 62.17% branches / 80.36% functions / 71.21% lines, a clean production audit, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. The structured root review corrected silent invalid stock-search/filter handling, classified typed user input as exit 2, validated filters before CLI/MCP requests, tightened empty-success exit wording, and found no Bucket II decision; delegated review could not inspect because its isolated thread could not recover the active goal.

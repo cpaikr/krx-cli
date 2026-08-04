@@ -55,7 +55,7 @@ export function applyPipeline(
     result = result.slice(options.offset);
   }
 
-  if (options.limit && options.limit > 0) {
+  if (options.limit !== undefined) {
     result = limitData(result, options.limit);
   }
 

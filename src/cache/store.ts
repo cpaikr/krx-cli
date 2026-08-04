@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as crypto from "node:crypto";
 import { formatDateToYYYYMMDD } from "../utils/date.js";
 import { writeFileAtomicSync } from "../utils/atomic-file.js";
+import { PUBLIC_CONTRACT } from "../user-contract.js";
 
 const CACHE_DIR = path.join(os.homedir(), ".krx-cli", "cache");
 const DATE_FORMAT = /^\d{8}$/;
@@ -57,7 +58,8 @@ function isToday(dateStr: string, now = new Date()): boolean {
 }
 
 function configuredMaxAgeMs(): number {
-  const configured = process.env["KRX_CACHE_MAX_AGE_HOURS"];
+  const variable = PUBLIC_CONTRACT.environment.cacheMaxAgeHours;
+  const configured = process.env[variable];
   if (configured === undefined) return DEFAULT_CACHE_MAX_AGE_HOURS * HOUR_MS;
 
   const hours = Number(configured);
@@ -72,7 +74,7 @@ function configuredMaxAgeMs(): number {
   if (!warnedInvalidMaxAge) {
     warnedInvalidMaxAge = true;
     process.stderr.write(
-      `[krx-cli] invalid KRX_CACHE_MAX_AGE_HOURS=${JSON.stringify(configured)}; using ${DEFAULT_CACHE_MAX_AGE_HOURS}\n`,
+      `[krx-cli] invalid ${variable}=${JSON.stringify(configured)}; using ${DEFAULT_CACHE_MAX_AGE_HOURS}\n`,
     );
   }
   return DEFAULT_CACHE_MAX_AGE_HOURS * HOUR_MS;

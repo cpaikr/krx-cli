@@ -1,6 +1,7 @@
 import { writeFileAtomicSync } from "../utils/atomic-file.js";
 import { parseContractArguments } from "./cli-options.js";
 import { buildContractPlan, runContractCheck } from "./runner.js";
+import { PUBLIC_CONTRACT } from "../user-contract.js";
 
 function usage(): string {
   return `Usage: krx-contract-check [options]
@@ -29,7 +30,8 @@ if (options.help) {
   process.stdout.write(`${usage()}\n`);
   process.exit(0);
 }
-const date = options.date ?? process.env["KRX_CONTRACT_DATE"];
+const date =
+  options.date ?? process.env[PUBLIC_CONTRACT.environment.contractDate];
 const plan = buildContractPlan(date);
 
 if (options.dryRun) {
@@ -44,7 +46,7 @@ if (options.dryRun) {
     options.reportPath,
   );
 } else {
-  const apiKey = process.env["KRX_API_KEY"] ?? "";
+  const apiKey = process.env[PUBLIC_CONTRACT.environment.apiKey] ?? "";
   try {
     const report = await runContractCheck({ apiKey, date: plan.date });
     emit(report, options.reportPath);

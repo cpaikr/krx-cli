@@ -5,6 +5,7 @@ import { validateDate } from "../../validator/index.js";
 import { getRecentTradingDate } from "../../utils/date.js";
 import type { ToolDefinition } from "./index.js";
 import { compositeResult } from "./result.js";
+import { missingApiKeyMessage } from "../../user-contract.js";
 
 export function createMarketSummaryTool(): ToolDefinition {
   return {
@@ -37,8 +38,7 @@ Returns:
             {
               type: "text" as const,
               text: JSON.stringify({
-                error:
-                  "API key not configured. Set KRX_API_KEY environment variable.",
+                error: missingApiKeyMessage(),
               }),
             },
           ],

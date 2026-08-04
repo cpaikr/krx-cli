@@ -235,4 +235,25 @@ describe("시나리오: 종목 검색 → 시세 조회", () => {
     expect(Array.isArray(parsed)).toBe(true);
     expect(parsed.length).toBe(0);
   });
+
+  it("잘못된 필터는 전체 데이터를 반환하지 않고 입력 오류로 거절", async () => {
+    handle = await startHttpServer({ port: 0, host: HOST, authToken: TOKEN });
+    client = await createMcpClient(handle.port);
+
+    const result = await client.callTool({
+      name: "krx_stock",
+      arguments: {
+        endpoint: "stk_bydd_trd",
+        date: "20260313",
+        filter: "invalid expression",
+      },
+    });
+
+    const text = (result.content as { type: string; text: string }[])[0]!.text;
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(text)).toMatchObject({
+      error: expect.stringContaining("Invalid filter expression"),
+    });
+    expect(mockedKrxFetch).not.toHaveBeenCalled();
+  });
 });

@@ -19,6 +19,7 @@ import { readSecret } from "../secret-input.js";
 import { withCliCancellation } from "../cancellation.js";
 import { handleKrxError } from "../error-handler.js";
 import { missingApiKeyMessage, PUBLIC_CONTRACT } from "../../user-contract.js";
+import { UserInputError } from "../../errors.js";
 
 export function registerAuthCommand(program: Command): void {
   const auth = program
@@ -32,7 +33,7 @@ export function registerAuthCommand(program: Command): void {
     .action(
       async (apiKey: string | undefined, options: { stdin?: boolean }) => {
         if (apiKey && options.stdin) {
-          throw new Error(
+          throw new UserInputError(
             "Provide the API key either as an argument or via stdin",
           );
         }
@@ -42,6 +43,9 @@ export function registerAuthCommand(program: Command): void {
           );
         }
         const secret = apiKey ?? (await readSecret());
+        if (!secret.trim()) {
+          throw new UserInputError("API key must not be empty");
+        }
         saveApiKey(secret);
         writeOutput(
           JSON.stringify({ success: true, message: "API key saved" }),
@@ -129,18 +133,17 @@ export function registerAuthCommand(program: Command): void {
     .command("check <category>")
     .description("Check approval for a specific category")
     .action(async (category: string) => {
+      const validCategories = CATEGORIES.map((c) => c.id);
+      if (!validCategories.includes(category as CategoryId)) {
+        throw new UserInputError(
+          `Invalid category: ${category}. Must be one of: ${validCategories.join(", ")}`,
+        );
+      }
+
       const apiKey = getApiKey();
       if (!apiKey) {
         writeError(missingApiKeyMessage());
         process.exit(EXIT_CODES.AUTH_FAILURE);
-      }
-
-      const validCategories = CATEGORIES.map((c) => c.id);
-      if (!validCategories.includes(category as CategoryId)) {
-        writeError(
-          `Invalid category: ${category}. Must be one of: ${validCategories.join(", ")}`,
-        );
-        process.exit(EXIT_CODES.USAGE_ERROR);
       }
 
       const { status, cancelled } = await withCliCancellation(

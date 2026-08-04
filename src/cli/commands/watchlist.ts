@@ -16,6 +16,7 @@ import { withCliCancellation } from "../cancellation.js";
 import { applyCompositeExitPolicy } from "../composite.js";
 import { resolveCacheOptions } from "../command-helper.js";
 import { missingApiKeyMessage } from "../../user-contract.js";
+import { UserInputError } from "../../errors.js";
 
 export function registerWatchlistCommand(program: Command): void {
   const watchlist = program
@@ -26,16 +27,13 @@ export function registerWatchlistCommand(program: Command): void {
     .command("add <name>")
     .description("Add stock to watchlist by name (searches first)")
     .action(async (name: string) => {
+      const injectionError = validateNoInjection(name);
+      if (injectionError) throw new UserInputError(injectionError);
+
       const apiKey = getApiKey();
       if (!apiKey) {
         writeError(missingApiKeyMessage());
         process.exit(EXIT_CODES.AUTH_FAILURE);
-      }
-
-      const injectionError = validateNoInjection(name);
-      if (injectionError) {
-        writeError(`Invalid input: ${injectionError}`);
-        process.exit(EXIT_CODES.USAGE_ERROR);
       }
 
       const searchResult = await withCliCancellation((signal) =>
@@ -111,10 +109,7 @@ export function registerWatchlistCommand(program: Command): void {
     .description("Remove stock from watchlist by name or code")
     .action((name: string) => {
       const injectionError = validateNoInjection(name);
-      if (injectionError) {
-        writeError(`Invalid input: ${injectionError}`);
-        process.exit(EXIT_CODES.USAGE_ERROR);
-      }
+      if (injectionError) throw new UserInputError(injectionError);
 
       const result = removeFromWatchlist(name);
 
@@ -157,11 +152,9 @@ export function registerWatchlistCommand(program: Command): void {
     .description("Show current prices for watchlist stocks")
     .option("-d, --date <date>", "trading date (YYYYMMDD)")
     .action(async (opts) => {
-      const apiKey = getApiKey();
-      if (!apiKey) {
-        writeError(missingApiKeyMessage());
-        process.exit(EXIT_CODES.AUTH_FAILURE);
-      }
+      const requestedDate = opts.date as string | undefined;
+      if (requestedDate) validateDate(requestedDate);
+      const cacheOptions = resolveCacheOptions(program);
 
       const entries = getWatchlist();
       if (entries.length === 0) {
@@ -171,18 +164,13 @@ export function registerWatchlistCommand(program: Command): void {
         return;
       }
 
-      const date = (opts.date as string | undefined) ?? getRecentTradingDate();
-
-      try {
-        validateDate(date);
-      } catch (err) {
-        writeError(
-          `Invalid date: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        process.exit(EXIT_CODES.USAGE_ERROR);
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        writeError(missingApiKeyMessage());
+        process.exit(EXIT_CODES.AUTH_FAILURE);
       }
 
-      const cacheOptions = resolveCacheOptions(program);
+      const date = requestedDate ?? getRecentTradingDate();
       const isuCds = new Set(entries.flatMap((e) => [e.isuCd, e.isuSrtCd]));
       const result = await withCliCancellation((signal) =>
         fetchWatchlistPrices({

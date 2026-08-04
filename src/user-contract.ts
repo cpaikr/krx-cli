@@ -12,6 +12,7 @@ export const PUBLIC_CONTRACT = {
     apiKey: "KRX_API_KEY",
     mcpToken: "KRX_MCP_TOKEN",
     mcpAllowedHosts: "KRX_MCP_ALLOWED_HOSTS",
+    cacheMaxAgeHours: "KRX_CACHE_MAX_AGE_HOURS",
     contractDate: "KRX_CONTRACT_DATE",
   },
 } as const;

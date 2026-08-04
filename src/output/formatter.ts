@@ -1,10 +1,21 @@
-export type OutputFormat = "json" | "table" | "ndjson" | "csv";
+import {
+  isOutputFormat,
+  PUBLIC_CONTRACT,
+  type OutputFormat,
+} from "../user-contract.js";
+
+export type { OutputFormat } from "../user-contract.js";
 
 export function detectOutputFormat(explicit?: string): OutputFormat {
   if (explicit) {
-    return explicit as OutputFormat;
+    if (!isOutputFormat(explicit)) {
+      throw new RangeError(`Unsupported output format: ${explicit}`);
+    }
+    return explicit;
   }
-  return process.stdout.isTTY ? "table" : "json";
+  return process.stdout.isTTY
+    ? PUBLIC_CONTRACT.output.interactiveDefault
+    : PUBLIC_CONTRACT.output.redirectedDefault;
 }
 
 export function formatOutput(

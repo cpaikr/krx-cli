@@ -706,7 +706,8 @@ KODEX 200 Buy & Hold: +7.1%
 | 시장 요약   | `krx market summary`  | `krx_market_summary` | --date                                    |
 | 워치리스트  | `krx watchlist`       | `krx_watchlist`      | add/remove/list/show                      |
 | 스키마 조회 | `krx schema`          | `krx_schema`         | 엔드포인트명                              |
-| Rate Limit  | `krx cache status`    | `krx_rate_limit`     | -                                         |
+| 응답 캐시   | `krx cache status`    | -                    | -                                         |
+| Rate Limit  | -                     | `krx_rate_limit`     | -                                         |
 
 ### 공통 파라미터 패턴
 

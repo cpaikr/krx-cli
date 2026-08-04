@@ -10,13 +10,13 @@ Claude Code, GPT, Cursor 등의 AI 에이전트가 Bash tool 또는 MCP를 통�
 
 ## 특징
 
-- **Agent-Native**: JSON 출력 기본, 시맨틱 exit code, 스키마 인트로스펙션
+- **Agent-Native**: 파이프에서는 JSON, TTY에서는 표, 시맨틱 exit code, 스키마 인트로스펙션
 - **전체 시장 커버리지**: 지수, 주식, ETF/ETN/ELW, 채권, 파생상품, 일반상품, ESG (31개 엔드포인트)
 - **종목 검색**: 종목명으로 검색 후 코드 조회 (`krx stock search`)
 - **시장 요약**: 한 번의 호출로 지수/상승·하락/Top movers 확인 (`krx market summary`)
 - **워치리스트**: 관심 종목 저장 및 일괄 시세 조회 (`krx watchlist`)
 - **기간 조회**: `--from/--to`로 여러 날짜 데이터 병렬 조회
-- **데이터 파이프라인**: `--sort`, `--limit`, `--code` 로 서버 사이드 필터링
+- **데이터 파이프라인**: `--sort`, `--limit`, `--code` 로 로컬 결과 필터링
 - **파일 캐싱**: 과거 데이터 자동 캐싱으로 rate limit 절약
 - **안전한 사용**: 입력 검증, rate limit 추적, dry-run 지원
 - **서비스 승인 관리**: API별 승인 상태 자동 확인
@@ -36,6 +36,10 @@ yarn global add krx-cli
 ### 1. API 키 발급
 
 [KRX Open API 포털](https://openapi.krx.co.kr/)에서 회원가입 후 API 키를 발급받습니다.
+공식 [서비스 이용방법](https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp)은
+인증키 신청과 API별 활용 신청 절차를 설명하며,
+[서비스 목록](https://openapi.krx.co.kr/contents/OPP/INFO/service/OPPINFO004.cmd)에서
+현재 제공 API와 데이터 시작일을 확인할 수 있습니다.
 
 ### 2. API 키 등록
 
@@ -171,6 +175,10 @@ KRX 서버의 한도가 최종 기준입니다. 자세한 계약은
 오류, 타임아웃, 빈 응답 및 판별할 수 없는 HTTP 401은 승인 거절이 아니라
 `inconclusive`로 보고됩니다.
 
+HTTP 401은 잘못된 키와 미승인 카테고리를 안정적으로 구분하지 못하므로 exit code
+`4`는 인증 형태의 모호한 접근 실패를 뜻합니다. 명시적인 HTTP 403만 서비스
+미승인으로 분류해 exit code `6`을 사용합니다.
+
 ### 복합 결과 완전성
 
 기간 조회, 종목 검색, 시장 요약, 워치리스트 시세는 여러 KRX 요청을 결합하므로
@@ -240,39 +248,48 @@ krx schema --all
 krx schema stock.stk_bydd_trd
 ```
 
-## 글로벌 옵션
+## 루트 조회 옵션
 
-| 옵션                    | 설명                                | 기본값                         |
-| ----------------------- | ----------------------------------- | ------------------------------ |
-| `-o, --output <format>` | 출력 형식: json, table, ndjson, csv | json (파이프) / table (터미널) |
-| `-f, --fields <fields>` | 출력 필드 필터 (쉼표 구분)          | 전체                           |
-| `--code <isuCd>`        | 종목코드 필터 (ISU_CD)              | -                              |
-| `--sort <field>`        | 결과 정렬 기준 필드                 | -                              |
-| `--asc`                 | 오름차순 정렬 (기본: 내림차순)      | -                              |
-| `--offset <n>`          | 처음 N개 건너뛰기 (페이지네이션)    | -                              |
-| `--limit <n>`           | 결과 개수 제한                      | -                              |
-| `--from <date>`         | 기간 조회 시작일 (YYYYMMDD)         | -                              |
-| `--to <date>`           | 기간 조회 종료일 (YYYYMMDD)         | -                              |
-| `--no-cache`            | 캐시 무시하고 새로 조회             | -                              |
-| `--refresh`             | 일치하는 과거 캐시를 다시 받아 교체 | -                              |
-| `--filter <expression>` | 필터 표현식 (예: "FLUC_RT > 5")     | -                              |
-| `--save <path>`         | 결과를 파일로 저장                  | -                              |
-| `--retries <n>`         | 네트워크 에러 시 재시도 (기본: 3)   | -                              |
-| `--dry-run`             | API 호출 없이 요청 내용 출력        | -                              |
-| `-v, --verbose`         | 상세 로그 (stderr)                  | -                              |
+이 옵션들은 루트에서 파싱되지만 명령별 적용 범위가 다릅니다. 행 필터와 파일 저장은
+엔드포인트 행 조회에 적용되고, 복합 명령은 JSON 완전성 envelope를 유지합니다.
+정확한 적용 범위는 [CLI 계약 문서](docs/CLI-CONTRACT.md)의 표를 참고하세요.
+
+| 옵션                    | 설명                                            | 기본값                         |
+| ----------------------- | ----------------------------------------------- | ------------------------------ |
+| `-o, --output <format>` | 출력 형식: json, table, ndjson, csv             | json (파이프) / table (터미널) |
+| `-f, --fields <fields>` | 출력 필드 필터 (쉼표 구분)                      | 전체                           |
+| `--code <isuCd>`        | 종목코드 필터 (ISU_CD)                          | -                              |
+| `--sort <field>`        | 결과 정렬 기준 필드                             | -                              |
+| `--asc`                 | 오름차순 정렬 (기본: 내림차순)                  | -                              |
+| `--offset <n>`          | 처음 N개 건너뛰기 (페이지네이션)                | -                              |
+| `--limit <n>`           | 결과 개수 제한                                  | -                              |
+| `--from <date>`         | 기간 조회 시작일 (YYYYMMDD)                     | -                              |
+| `--to <date>`           | 기간 조회 종료일 (YYYYMMDD)                     | -                              |
+| `--no-cache`            | 캐시 읽기와 쓰기를 모두 건너뜀                  | -                              |
+| `--refresh`             | 일치하는 과거 캐시를 다시 받아 교체             | -                              |
+| `--filter <expression>` | 필터 표현식 (예: "FLUC_RT > 5")                 | -                              |
+| `--save <path>`         | 결과를 파일로 저장                              | -                              |
+| `--retries <n>`         | 재시도 가능한 실패의 최대 재시도 횟수 (기본: 3) | -                              |
+| `--dry-run`             | API 호출 없이 요청 내용 출력                    | -                              |
+| `-v, --verbose`         | 상세 로그 (stderr)                              | -                              |
+
+단일 엔드포인트 행 출력은 TTY에서는 `table`, 파이프 또는 리다이렉션에서는
+`json`이 기본입니다. 기간 조회와 다른 복합 명령은 완전성 정보를 보존하기 위해
+항상 JSON envelope를 반환합니다. 전체 사용자 계약은
+[CLI 계약 문서](docs/CLI-CONTRACT.md)를 참고하세요.
 
 ## Exit Codes
 
-| 코드 | 의미                          |
-| ---- | ----------------------------- |
-| 0    | 성공                          |
-| 1    | 일반 오류                     |
-| 2    | 사용법 오류 (잘못된 인자)     |
-| 3    | 데이터 없음                   |
-| 4    | 인증 실패                     |
-| 5    | Rate limit 초과 (일 10,000건) |
-| 6    | 서비스 미승인                 |
-| 7    | 부분 성공 (완전성 확인 필요)  |
+| 코드 | 정확한 조건                                                        |
+| ---: | ------------------------------------------------------------------ |
+|    0 | 보고할 실패나 필수 결과 누락 없이 명령 완료                        |
+|    1 | upstream, 네트워크, timeout, 취소, 잘못된 응답 또는 로컬 상태 오류 |
+|    2 | 잘못되었거나 불완전한 인자/입력                                    |
+|    3 | 요청한 시장 데이터 또는 로컬 대상이 없음                           |
+|    4 | API 키가 없거나 KRX HTTP 401인 모호한 인증/승인 실패               |
+|    5 | 로컬 quota admission 거절 또는 KRX HTTP 429                        |
+|    6 | KRX HTTP 403으로 명시된 서비스 미승인                              |
+|    7 | 일부 구성요소가 실패했지만 사용 가능한 데이터를 반환한 복합 결과   |
 
 ## AI 에이전트 연동
 
@@ -334,13 +351,13 @@ skills.sh는 40개 이상의 에이전트를 지원합니다:
 
 ```
 "오늘 코스피 지수 보여줘"
-→ krx index list --date 20250311 --market kospi --fields IDX_NM,CLSPRC_IDX,FLUC_RT
+→ krx index list --date 20260310 --market kospi --fields IDX_NM,CLSPRC_IDX,FLUC_RT
 
 "삼성전자 주가 알려줘"
-→ krx stock list --date 20250311 --market kospi --fields ISU_NM,TDD_CLSPRC,FLUC_RT -o json
+→ krx stock list --date 20260310 --market kospi --fields ISU_NM,TDD_CLSPRC,FLUC_RT -o json
 
 "금 시세 확인해줘"
-→ krx commodity list --date 20250311 --type gold
+→ krx commodity list --date 20260310 --type gold
 
 "어떤 API가 승인되어 있어?"
 → krx auth status
@@ -398,6 +415,9 @@ KRX API 키는 `krx auth set`으로 등록한 것이 자동으로 사용되며,
 ```
 
 설정 후 앱을 재시작하면 MCP 도구가 활성화됩니다.
+stdio 전송은 네트워크 포트를 열지 않고 로컬 클라이언트가 자식 프로세스를 직접
+실행하므로 별도 Bearer 토큰이 없습니다. 로컬 OS 계정과 설정 파일 접근 권한이
+보안 경계입니다.
 
 ### Streamable HTTP
 
@@ -415,7 +435,8 @@ export KRX_MCP_ALLOWED_HOSTS="mcp.example.com"
 krx serve --host 0.0.0.0 --port 3000
 ```
 
-공개 배포는 TLS와 인증 헤더 전달을 지원하는 역방향 프록시 뒤에서만 사용하세요.
+HTTP 전송은 네트워크 서비스입니다. 공개 배포는 TLS와 인증 헤더 전달을 지원하는
+역방향 프록시 뒤에서만 사용하세요.
 정적 토큰은 단일 사용자 전체 권한 자격 증명으로, 보유자는 관심종목 추가/삭제도
 수행할 수 있습니다. 토큰을 공유하는 다중 사용자 운영은 지원하지 않으며 OAuth
 또는 identity-aware proxy가 필요합니다. 기본 제한은 클라이언트당 분당 120개
@@ -474,12 +495,15 @@ MCP 클라이언트에서 자연어로 요청하면 됩니다:
 
 ```bash
 pnpm install
+pnpm verify       # pull request와 release를 막는 결정적 CI gate
+
+# 선택적 수동 agent 시나리오: build, claude CLI, 유료 인증 세션 필요
 pnpm build
-pnpm test
 pnpm test:e2e
-pnpm typecheck
-pnpm lint
 ```
+
+`test:e2e`는 모델 출력과 외부 서비스 상태에 의존하므로 일반 CI나 release gate에서
+실행하지 않습니다. 테스트 계층은 [테스트 문서](docs/TESTING.md)를 참고하세요.
 
 KRX upstream 계약 드리프트는 일반 테스트와 분리된 opt-in 검사로 확인합니다.
 `pnpm contract:dry-run`은 네트워크나 일일 할당량을 사용하지 않고 정확한 호출

@@ -12,6 +12,7 @@ import {
   MAX_OFFICIAL_SERVICE_DETAILS,
 } from "./official-spec.js";
 import type { ContractPlan, ContractReport } from "./types.js";
+import { PUBLIC_CONTRACT } from "../user-contract.js";
 
 export function buildContractPlan(date = getRecentTradingDate()): ContractPlan {
   validateDate(date);
@@ -45,7 +46,9 @@ export async function runContractCheck(
 ): Promise<ContractReport> {
   const plan = buildContractPlan(options.date);
   if (!options.apiKey) {
-    throw new Error("KRX_API_KEY is required for a live contract check");
+    throw new Error(
+      `${PUBLIC_CONTRACT.environment.apiKey} is required for a live contract check`,
+    );
   }
 
   const officialSpecs = await fetchOfficialRegistry(options.fetchImpl);

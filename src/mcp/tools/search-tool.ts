@@ -3,6 +3,7 @@ import { getApiKey } from "../../client/auth.js";
 import { searchStock } from "../../client/search.js";
 import type { ToolDefinition } from "./index.js";
 import { compositeResult } from "./result.js";
+import { missingApiKeyMessage } from "../../user-contract.js";
 
 export function createSearchTool(): ToolDefinition {
   return {
@@ -26,8 +27,7 @@ export function createSearchTool(): ToolDefinition {
             {
               type: "text" as const,
               text: JSON.stringify({
-                error:
-                  "API key not configured. Set KRX_API_KEY environment variable.",
+                error: missingApiKeyMessage(),
               }),
             },
           ],

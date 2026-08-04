@@ -135,6 +135,10 @@ describe("applyPipeline", () => {
     expect(result[0]?.["ISU_NM"]).toBe("A");
   });
 
+  it("honors an explicit zero limit", () => {
+    expect(applyPipeline(data, { limit: 0 })).toEqual([]);
+  });
+
   it("returns original data when no options", () => {
     const result = applyPipeline(data, {});
     expect(result).toEqual(data);

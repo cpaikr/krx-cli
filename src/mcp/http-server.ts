@@ -6,6 +6,7 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createServer } from "./server.js";
 import { getVersion } from "../cli/commands/version.js";
+import { PUBLIC_CONTRACT } from "../user-contract.js";
 
 const MAX_SESSIONS = 100;
 const MAX_SESSIONS_PER_CLIENT = 10;
@@ -37,14 +38,14 @@ export function startHttpServer(
   if (authToken.length < MIN_TOKEN_LENGTH) {
     return Promise.reject(
       new Error(
-        `KRX_MCP_TOKEN must contain at least ${MIN_TOKEN_LENGTH} characters`,
+        `${PUBLIC_CONTRACT.environment.mcpToken} must contain at least ${MIN_TOKEN_LENGTH} characters`,
       ),
     );
   }
   if (!isLoopbackHost(host) && !options.allowedHosts?.length) {
     return Promise.reject(
       new Error(
-        "Non-loopback MCP servers require KRX_MCP_ALLOWED_HOSTS for DNS rebinding protection",
+        `Non-loopback MCP servers require ${PUBLIC_CONTRACT.environment.mcpAllowedHosts} for DNS rebinding protection`,
       ),
     );
   }

@@ -1,4 +1,5 @@
 import { parseKrxNumber, isKrxNumericString } from "./krx-number.js";
+import { UserInputError } from "../errors.js";
 
 type FilterOperator = ">" | "<" | ">=" | "<=" | "==" | "!=";
 
@@ -25,6 +26,16 @@ export function parseFilterExpression(
     operator: match[2] as FilterOperator,
     value: match[3].trim(),
   };
+}
+
+export function assertFilterExpression(expression: string): FilterExpression {
+  const parsed = parseFilterExpression(expression);
+  if (!parsed) {
+    throw new UserInputError(
+      'Invalid filter expression. Expected "FIELD <operator> VALUE".',
+    );
+  }
+  return parsed;
 }
 
 function compareValues(
@@ -80,11 +91,7 @@ export function filterData<T extends Record<string, unknown>>(
   data: readonly T[],
   expression: string,
 ): readonly T[] {
-  const parsed = parseFilterExpression(expression);
-
-  if (!parsed) {
-    return data;
-  }
+  const parsed = assertFilterExpression(expression);
 
   return data.filter((row) => {
     const fieldValue = row[parsed.field];
