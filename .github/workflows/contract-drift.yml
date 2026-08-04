@@ -1,0 +1,61 @@
+name: KRX Contract Drift
+
+on:
+  schedule:
+    - cron: "20 21 * * 3"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Plan calls without contacting KRX or its specification site
+        required: true
+        default: true
+        type: boolean
+      date:
+        description: Optional confirmed KRX trading date in YYYYMMDD format
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: krx-contract-drift
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KRX_CONTRACT_DATE: ${{ inputs.date || '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Report planned calls
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: pnpm contract:dry-run -- --report artifacts/krx-contract-report.json
+
+      - name: Check live KRX contracts
+        if: github.event_name == 'schedule' || !inputs.dry_run
+        run: pnpm contract:check -- --report artifacts/krx-contract-report.json
+        env:
+          KRX_API_KEY: ${{ secrets.KRX_API_KEY }}
+
+      - name: Upload redacted contract report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: krx-contract-report
+          path: artifacts/krx-contract-report.json
+          if-no-files-found: warn
+          retention-days: 14

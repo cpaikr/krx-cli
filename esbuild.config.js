@@ -25,4 +25,9 @@ await Promise.all([
     entryPoints: ["src/mcp/index.ts"],
     outfile: "dist/mcp.js",
   }),
+  build({
+    ...commonOptions,
+    entryPoints: ["src/contracts/index.ts"],
+    outfile: "dist/contract-check.js",
+  }),
 ]);

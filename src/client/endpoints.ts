@@ -2,11 +2,18 @@ import { RESPONSE_FIELDS, type ResponseFieldDef } from "./response-fields.js";
 
 export type { ResponseFieldDef };
 
+export interface RequestFieldDef {
+  readonly name: string;
+  readonly type: "string";
+  readonly required: true;
+}
+
 export interface EndpointDef {
   readonly path: string;
   readonly description: string;
   readonly descriptionKo: string;
   readonly category: CategoryId;
+  readonly requestFields: readonly RequestFieldDef[];
   readonly responseFields: readonly ResponseFieldDef[];
 }
 
@@ -90,6 +97,7 @@ function ep(
     description,
     descriptionKo,
     category,
+    requestFields: [{ name: "basDd", type: "string", required: true }],
     responseFields: RESPONSE_FIELDS[path] ?? [],
   };
 }

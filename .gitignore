@@ -5,3 +5,4 @@ dist/
 .krx-cli/
 coverage/
 tests/e2e/reports/
+artifacts/

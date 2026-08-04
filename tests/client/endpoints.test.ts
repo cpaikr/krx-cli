@@ -18,6 +18,10 @@ describe("ENDPOINTS", () => {
       expect(ep.description).toBeTruthy();
       expect(ep.descriptionKo).toBeTruthy();
       expect(ep.category).toBeTruthy();
+      expect(ep.requestFields).toEqual([
+        { name: "basDd", type: "string", required: true },
+      ]);
+      expect(ep.responseFields.length).toBeGreaterThan(0);
     }
   });
 

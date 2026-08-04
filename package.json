@@ -23,6 +23,8 @@
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "typecheck": "tsc --noEmit",
     "test:e2e": "vitest run --config tests/vitest.config.e2e.ts",
+    "contract:check": "pnpm build && node dist/contract-check.js",
+    "contract:dry-run": "pnpm build && node dist/contract-check.js --dry-run",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm audit:prod && pnpm build && pnpm test:package",
     "sync-skill-version": "node scripts/sync-skill-version.mjs",

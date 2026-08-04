@@ -6,6 +6,7 @@ Planning scope: ROADMAP.md
 ## Original contract
 
 Goal contract
+
 - Outcome: Bring krx-cli to the production-readiness baseline defined by tracker #11 across every open implementation issue.
 - Goal state: goals/production-readiness-hardening.md
 - Included results and sources (semantic results define scope; paths supply detail):
@@ -36,14 +37,15 @@ _None._
 - Audited dependencies and reproducible cross-platform gates — GitHub issues #3 and #7.
 - Bounded HTTP, accurate quota accounting, and trustworthy approval checks — GitHub issues #4 and #6.
 - Explicit composite-result completeness — GitHub issue #5.
+- Live KRX contract-drift detection — GitHub issue #8.
 
 ### Current in-scope result
 
-Live KRX contract-drift detection — GitHub issue #8.
+Exchange-aware trading dates — GitHub issue #9.
 
 ### Next in-scope action
 
-Add an opt-in credentialed contract suite with a deterministic dry run, a bounded probe budget, explicit endpoint coverage or exclusions, actionable schema drift reports, and documented registry-update workflow while retaining mocked fork-safe tests.
+Replace weekday-only date selection with an authoritative, KST-explicit exchange calendar or safe verified-session strategy; classify known non-trading dates as skipped, define an observable fallback, and cover Korean holidays, ad-hoc closures, year boundaries, weekends, and non-KST hosts.
 
 ### Evidence and blockers
 
@@ -65,3 +67,7 @@ Add an opt-in credentialed contract suite with a deterministic dry run, a bounde
 - Market-summary failures produce `null` unavailable components and suppress all stock-derived statistics unless both stock markets succeeded, so missing input is never represented by a derived zero. CLI composite output remains JSON, warns on partial success with exit code 7, and uses exit code 3 for genuine empty results.
 - MCP size truncation composes with the same completeness envelope for top-level rows and nested watchlist stocks; `_truncated.path` identifies only the transport-truncated collection without changing semantic completeness.
 - Composite validation: `pnpm verify` passed 281 tests, all-source coverage of 63.25% statements / 57.42% branches / 71.87% functions / 63.08% lines, a clean production audit, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. Structured review found and fixed nested watchlist truncation and unsupported generic pagination guidance, then reported no remaining actionable P0–P2 findings.
+- The opt-in contract checker plans and probes every maintained endpoint (31 probes, zero exclusions), reserves at most one non-retried KRX call per probe, enforces 15-second attempt deadlines, and reports HTTP, KRX-envelope, `OutBlock_1`, empty-session, added/missing/type-changed field, and quota-admission outcomes without retaining market rows.
+- Public KRX specification drift is bounded to 65 reads, restricted to the official origin, and compares service membership, duplicate paths, request/response fields and reviewed modification dates. A read-only live catalog validation on 2026-08-04 found exactly 31 services and no maintained-contract drift; the portal's sample credential was never parsed or reported.
+- Dry-run validation performed no network requests or quota reservations and atomically produced an owner-only report with 31 registered probes, a 31-call credentialed maximum, 32 expected public reads and a 65-read public safety cap. No local `KRX_API_KEY` was present, so credentialed production execution remains an explicit scheduled/manual operational check using the repository secret.
+- Contract validation: `pnpm verify` passed 301 tests, all-source coverage of 65.22% statements / 58.59% branches / 73.58% functions / 65.33% lines, a clean production audit, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. Structured review corrected pnpm argument forwarding, report-directory permission mutation, non-JSON HTTP-failure classification, bounded official reads, catalog origin enforcement, and exact reservation terminology; a deterministic full-run test then exercised all 31 endpoints with 63 mocked public/live requests. No Bucket I or Bucket II issue remains; the only residual validation gap is the intentionally secret-dependent live market-data run.

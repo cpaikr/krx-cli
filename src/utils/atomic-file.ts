@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 export interface AtomicWriteOptions {
   readonly directoryMode?: number;
+  readonly enforceDirectoryMode?: boolean;
   readonly fileMode?: number;
 }
 
@@ -22,7 +23,7 @@ export function writeFileAtomicSync(
   );
 
   fs.mkdirSync(directory, { recursive: true, mode: directoryMode });
-  if (process.platform !== "win32") {
+  if (process.platform !== "win32" && options.enforceDirectoryMode !== false) {
     fs.chmodSync(directory, directoryMode);
   }
 

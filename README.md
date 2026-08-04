@@ -474,6 +474,11 @@ pnpm typecheck
 pnpm lint
 ```
 
+KRX upstream 계약 드리프트는 일반 테스트와 분리된 opt-in 검사로 확인합니다.
+`pnpm contract:dry-run`은 네트워크나 일일 할당량을 사용하지 않고 정확한 호출
+계획을 출력합니다. 자격 증명, 31회 상한, 공식 명세 비교 및 업데이트 절차는
+[KRX 계약 테스트 문서](docs/KRX-CONTRACT-TESTING.md)를 참고하세요.
+
 ## 라이선스
 
 MIT
