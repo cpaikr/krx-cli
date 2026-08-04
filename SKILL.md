@@ -13,6 +13,8 @@ invariants:
   - Data is T-1 (previous trading day), available from 2010 onwards
   - Default output is JSON to stdout, errors go to stderr
   - Rate limit is 10,000 API calls per day
+  - Local usage is an advisory, per-credential KST counter; KRX is authoritative
+  - Uncached requests have a 15s attempt timeout and 45s overall deadline
   - Each API category requires separate approval from KRX
   - All response field values are strings (including numbers)
 ---

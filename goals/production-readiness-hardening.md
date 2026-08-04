@@ -34,14 +34,15 @@ _None._
 
 - Secure remote MCP and KRX credentials — GitHub issues #1–#2.
 - Audited dependencies and reproducible cross-platform gates — GitHub issues #3 and #7.
+- Bounded HTTP, accurate quota accounting, and trustworthy approval checks — GitHub issues #4 and #6.
 
 ### Current in-scope result
 
-Bounded HTTP, accurate quota accounting, and trustworthy approval checks — GitHub issues #4 and #6.
+Explicit composite-result completeness — GitHub issue #5.
 
 ### Next in-scope action
 
-Introduce bounded, cancellable retry attempts and persistent per-attempt quota reservations, then make service-approval probes fresh and credential-bound.
+Define shared complete, partial, empty, and failed composite states with explicit requested, succeeded, failed, and skipped partitions, then preserve them through CLI and MCP output contracts.
 
 ### Evidence and blockers
 
@@ -53,3 +54,8 @@ Introduce bounded, cancellable retry attempts and persistent per-attempt quota r
 - Security slice validation: `pnpm check` passed 239 tests; `pnpm build` passed; focused post-review validation passed 19 authentication, credential, and terminal-lifecycle tests.
 - Dependency and gate slice: the MCP SDK is upgraded to 1.30.0 with zero locked production advisories; Node 22/24 runs on Ubuntu and Windows, and release verification smoke-tests the same packed artifact later passed to `npm publish` through its installed `krx` and `krx-mcp` entrypoints.
 - Gate validation: `pnpm verify` passed 239 tests, all-source coverage of 56.47% statements / 48.21% branches / 64.45% functions / 56.05% lines, a clean production audit, both builds, and a packed artifact smoke covering 31 schemas and 12 MCP tools. Independent review found and verified fixes for Windows command-shim execution and direct-dist smoke bypass.
+- HTTP reliability uses a 15-second attempt timeout and 45-second overall deadline across quota admission, fetch and body reads, retry delays, and caller cancellation. Retries are limited to network or attempt-timeout failures and HTTP 408/429/500/502/503/504, with bounded jitter and deadline-aware `Retry-After` handling.
+- Every outbound attempt first reserves one advisory quota unit in a versioned, per-credential SHA-256 counter keyed to the KST calendar day. Owner locks serialize independent processes, atomic fsync-and-rename writes prevent malformed state, corrupt state fails closed, and concurrency tests prove exact admission at the 10,000-call boundary.
+- Approval probes always bypass market-data cache and use the checked-in official category endpoint. Persisted observations are credential-bound, fresh for 15 minutes, and expose approved, rejected, or inconclusive states without credential identity; ambiguous KRX 401 responses remain inconclusive while explicit 403 approval denials are rejected.
+- Typed timeout, cancellation, quota, authentication, approval, network, upstream, invalid-response, and local-state failures now survive direct and composite CLI/MCP paths. CLI SIGINT and MCP request cancellation reach all request families, cancellation dominates partial aggregate data, and body-stream network failures remain retryable.
+- Reliability validation: `pnpm verify` passed 265 tests, all-source coverage of 61.05% statements / 53.57% branches / 68.42% functions / 60.85% lines, a clean production audit, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. Independent review passed 94 targeted tests and reported no actionable P0–P2 findings.

@@ -1,7 +1,7 @@
 import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { getWatchlist } from "../../watchlist/store.js";
 import { getRateLimitStatus } from "../../client/rate-limit.js";
-import { getCachedServiceStatus } from "../../client/auth.js";
+import { getApiKey, getCachedServiceStatus } from "../../client/auth.js";
 
 export interface McpResource {
   readonly name: string;
@@ -46,7 +46,7 @@ export function createRateLimitResource(): McpResource {
     uri: "krx://rate-limit",
     handler: async (uri: URL): Promise<ReadResourceResult> => {
       try {
-        const status = getRateLimitStatus();
+        const status = getRateLimitStatus(getApiKey() ?? "");
         return jsonContent(uri, status);
       } catch {
         return errorContent(uri, "Failed to read rate limit status");

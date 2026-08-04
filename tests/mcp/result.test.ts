@@ -47,6 +47,15 @@ describe("errorResult", () => {
     const parsed = JSON.parse(result.content[0]!.text);
     expect(parsed.error).toBe("something failed");
   });
+
+  it("includes a stable error type when provided", () => {
+    const result = errorResult("request expired", "timeout");
+
+    expect(JSON.parse(result.content[0]!.text)).toEqual({
+      error: "request expired",
+      errorType: "timeout",
+    });
+  });
 });
 
 describe("textResult", () => {

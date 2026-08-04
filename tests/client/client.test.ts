@@ -1,21 +1,46 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { krxFetch, BASE_URL } from "../../src/client/client.js";
+import { reserveCall } from "../../src/client/rate-limit.js";
+
+vi.mock("../../src/client/rate-limit.js", () => ({
+  reserveCall: vi.fn(),
+}));
+
+const mockedReserveCall = vi.mocked(reserveCall);
+
+function response(
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Response {
+  return new Response(body === undefined ? undefined : JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json", ...headers },
+  });
+}
 
 describe("krxFetch", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
+    mockedReserveCall.mockReset();
+    mockedReserveCall.mockResolvedValue({
+      date: "20260313",
+      count: 1,
+      limit: 10_000,
+      remaining: 9_999,
+      allowed: true,
+      warning: false,
+      advisory: true,
+      reserved: true,
+    });
   });
 
-  it("sends POST with correct headers and body", async () => {
-    const mockResponse = {
-      ok: true,
-      json: async () => ({
-        OutBlock_1: [{ BAS_DD: "20240105", IDX_NM: "코스피" }],
-      }),
-    };
-
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockResponse));
-
+  it("reserves quota before sending the authenticated POST", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(response(200, { OutBlock_1: [{ A: "1" }] })),
+    );
     const result = await krxFetch({
       endpoint: "/svc/apis/idx/kospi_dd_trd",
       params: { basDd: "20240105" },
@@ -23,117 +48,175 @@ describe("krxFetch", () => {
       cache: false,
     });
 
+    expect(mockedReserveCall).toHaveBeenCalledTimes(1);
     expect(fetch).toHaveBeenCalledWith(
       `${BASE_URL}/svc/apis/idx/kospi_dd_trd`,
-      {
+      expect.objectContaining({
         method: "POST",
         headers: {
           AUTH_KEY: "test-key",
           "Content-Type": "application/json; charset=utf-8",
         },
         body: JSON.stringify({ basDd: "20240105" }),
-      },
-    );
-
-    expect(result.success).toBe(true);
-    expect(result.data).toHaveLength(1);
-    expect(result.data[0]).toEqual({
-      BAS_DD: "20240105",
-      IDX_NM: "코스피",
-    });
-  });
-
-  it("returns error on non-ok response without JSON body", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 403,
-        statusText: "Forbidden",
-        json: async () => {
-          throw new Error("not json");
-        },
+        signal: expect.any(AbortSignal),
       }),
     );
-
-    const result = await krxFetch({
-      endpoint: "/svc/apis/idx/kospi_dd_trd",
-      params: { basDd: "20240105" },
-      apiKey: "bad-key",
-      cache: false,
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("403");
-    expect(result.errorCode).toBeUndefined();
+    expect(result).toMatchObject({ success: true, data: [{ A: "1" }] });
   });
 
-  it("parses error body with respMsg and respCode on 401", async () => {
+  it("does not retry a permanent 4xx and classifies it", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 401,
-        statusText: "Unauthorized",
-        json: async () => ({
-          respMsg: "Unauthorized API Call",
-          respCode: "401",
-        }),
-      }),
+      vi.fn().mockResolvedValue(response(403, { respMsg: "Forbidden" })),
     );
-
     const result = await krxFetch({
       endpoint: "/svc/apis/esg/esg_index_info",
       params: { basDd: "20240105" },
-      apiKey: "test-key",
+      apiKey: "key",
       cache: false,
     });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toBe("Unauthorized API Call");
-    expect(result.errorCode).toBe("401");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(mockedReserveCall).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      success: false,
+      errorType: "approval",
+      httpStatus: 403,
+    });
   });
 
-  it("returns error when OutBlock_1 is missing", async () => {
+  it("retries a transient status and reserves each actual attempt", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(response(503, { error: "busy" }))
+        .mockResolvedValueOnce(response(200, { OutBlock_1: [] })),
+    );
+    const pending = krxFetch({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      params: { basDd: "20240105" },
+      apiKey: "key",
+      cache: false,
+      retries: 1,
+    });
+    await vi.runAllTimersAsync();
+    expect((await pending).success).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(mockedReserveCall).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a network failure while reading the response body", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: new Headers(),
+          text: () => Promise.reject(new TypeError("body stream reset")),
+        })
+        .mockResolvedValueOnce(response(200, { OutBlock_1: [{ A: "1" }] })),
+    );
+
+    const pending = krxFetch({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      params: { basDd: "20240105" },
+      apiKey: "key",
+      cache: false,
+      retries: 1,
+    });
+    await vi.runAllTimersAsync();
+
+    await expect(pending).resolves.toMatchObject({ success: true });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(mockedReserveCall).toHaveBeenCalledTimes(2);
+  });
+
+  it("bounds a stalled response body, not only response headers", async () => {
+    vi.useFakeTimers();
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ unexpected: "format" }),
+        status: 200,
+        statusText: "OK",
+        headers: new Headers(),
+        text: () => new Promise<string>(() => undefined),
       }),
     );
-
-    const result = await krxFetch({
+    const pending = krxFetch({
       endpoint: "/svc/apis/idx/kospi_dd_trd",
       params: { basDd: "20240105" },
-      apiKey: "test-key",
+      apiKey: "key",
       cache: false,
+      retries: 0,
+      attemptTimeoutMs: 20,
+      overallTimeoutMs: 100,
     });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("OutBlock_1");
+    const expectation = expect(pending).resolves.toMatchObject({
+      success: false,
+      errorType: "timeout",
+      errorCode: "TIMEOUT",
+    });
+    await vi.advanceTimersByTimeAsync(20);
+    await expectation;
   });
 
-  it("returns empty data array on error", async () => {
+  it("cancels before dispatch without consuming quota", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    vi.stubGlobal("fetch", vi.fn());
+    const result = await krxFetch({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      params: { basDd: "20240105" },
+      apiKey: "key",
+      cache: false,
+      signal: controller.signal,
+    });
+    expect(result.errorType).toBe("cancelled");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("classifies quota persistence failures as local state errors", async () => {
+    mockedReserveCall.mockRejectedValueOnce(new Error("invalid quota JSON"));
+    vi.stubGlobal("fetch", vi.fn());
+
+    const result = await krxFetch({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      params: { basDd: "20240105" },
+      apiKey: "key",
+      cache: false,
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      errorType: "local_state",
+      errorCode: "LOCAL_STATE",
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not misclassify unexpected fetch failures as quota corruption", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-        statusText: "Internal Server Error",
-        json: async () => {
-          throw new Error("not json");
-        },
-      }),
+      vi.fn().mockRejectedValue(new Error("remote connection closed")),
     );
 
     const result = await krxFetch({
       endpoint: "/svc/apis/idx/kospi_dd_trd",
       params: { basDd: "20240105" },
-      apiKey: "test-key",
+      apiKey: "key",
       cache: false,
     });
 
-    expect(result.data).toEqual([]);
+    expect(result).toMatchObject({
+      success: false,
+      errorType: "upstream",
+      errorCode: "UPSTREAM",
+    });
   });
 });

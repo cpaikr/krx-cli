@@ -1,4 +1,9 @@
-import { krxFetch } from "./client.js";
+import {
+  KrxRequestError,
+  krxFetch,
+  selectKrxFailure,
+  type KrxResponse,
+} from "./client.js";
 import { getRecentTradingDate } from "../utils/date.js";
 
 interface StockSearchResult {
@@ -16,39 +21,60 @@ const BASE_INFO_ENDPOINTS = [
 export async function searchStock(
   apiKey: string,
   query: string,
+  signal?: AbortSignal,
 ): Promise<readonly StockSearchResult[]> {
   const basDd = getRecentTradingDate();
   const lowerQuery = query.toLowerCase();
 
-  const results = await Promise.all(
+  const responses = await Promise.all(
     BASE_INFO_ENDPOINTS.map(async ({ endpoint, market }) => {
-      const result = await krxFetch<Record<string, string>>({
+      const response = await krxFetch<Record<string, string>>({
         endpoint,
         params: { basDd },
         apiKey,
-      });
-
-      if (!result.success) {
-        return [];
-      }
-
-      return result.data
-        .filter((row) => {
-          const name = row["ISU_NM"] ?? "";
-          const shortName = row["ISU_ABBRV"] ?? "";
-          return (
-            name.toLowerCase().includes(lowerQuery) ||
-            shortName.toLowerCase().includes(lowerQuery)
-          );
-        })
-        .map((row) => ({
-          ISU_CD: row["ISU_CD"] ?? "",
-          ISU_SRT_CD: row["ISU_SRT_CD"] ?? "",
-          ISU_NM: row["ISU_NM"] ?? row["ISU_ABBRV"] ?? "",
-          MKT_NM: market,
-        }));
+        signal,
+      }).catch(
+        (error: unknown): KrxResponse<Record<string, string>> => ({
+          success: false,
+          data: [],
+          error:
+            error instanceof Error
+              ? error.message
+              : "Unexpected search failure",
+          errorType: "upstream",
+        }),
+      );
+      return { market, response };
     }),
   );
 
-  return results.flat();
+  const failures = responses.map(({ response }) => response);
+  const cancellation = failures.find(
+    (response) => !response.success && response.errorType === "cancelled",
+  );
+  if (cancellation) throw new KrxRequestError(cancellation);
+  if (failures.every((response) => !response.success)) {
+    const primaryFailure = selectKrxFailure(failures);
+    if (primaryFailure) throw new KrxRequestError(primaryFailure);
+  }
+
+  return responses.flatMap(({ market, response }) =>
+    response.success
+      ? response.data
+          .filter((row) => {
+            const name = row["ISU_NM"] ?? "";
+            const shortName = row["ISU_ABBRV"] ?? "";
+            return (
+              name.toLowerCase().includes(lowerQuery) ||
+              shortName.toLowerCase().includes(lowerQuery)
+            );
+          })
+          .map((row) => ({
+            ISU_CD: row["ISU_CD"] ?? "",
+            ISU_SRT_CD: row["ISU_SRT_CD"] ?? "",
+            ISU_NM: row["ISU_NM"] ?? row["ISU_ABBRV"] ?? "",
+            MKT_NM: market,
+          }))
+      : [],
+  );
 }

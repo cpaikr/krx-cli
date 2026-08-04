@@ -1,7 +1,9 @@
 import { z } from "zod/v4";
 import { getApiKey } from "../../client/auth.js";
+import { KrxRequestError } from "../../client/client.js";
 import { searchStock } from "../../client/search.js";
 import type { ToolDefinition } from "./index.js";
+import { errorResult } from "./result.js";
 
 export function createSearchTool(): ToolDefinition {
   return {
@@ -15,7 +17,7 @@ export function createSearchTool(): ToolDefinition {
           "Stock name or partial name to search (e.g., '삼성전자', '카카오')",
         ),
     },
-    handler: async (args) => {
+    handler: async (args, signal) => {
       const query = args.query as string;
 
       const apiKey = getApiKey();
@@ -34,7 +36,21 @@ export function createSearchTool(): ToolDefinition {
         };
       }
 
-      const results = await searchStock(apiKey, query);
+      let results: Awaited<ReturnType<typeof searchStock>>;
+      try {
+        results = await searchStock(apiKey, query, signal);
+      } catch (error) {
+        if (error instanceof KrxRequestError) {
+          return errorResult(
+            error.response.error ?? "Stock search failed",
+            error.response.errorType,
+          );
+        }
+        return errorResult(
+          error instanceof Error ? error.message : "Stock search failed",
+          "upstream",
+        );
+      }
 
       if (results.length === 0) {
         return {

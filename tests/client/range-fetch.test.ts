@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fetchDateRange } from "../../src/client/range-fetch.js";
 
-vi.mock("../../src/client/client.js", () => ({
+vi.mock("../../src/client/client.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/client/client.js")>()),
   krxFetch: vi.fn(),
 }));
 
@@ -101,6 +102,36 @@ describe("fetchDateRange", () => {
     expect(result.error).toBeDefined();
   });
 
+  it("preserves the highest-priority typed error when all days fail", async () => {
+    mockedGetTradingDays.mockReturnValue(["20260309", "20260310"]);
+    mockedKrxFetch
+      .mockResolvedValueOnce({
+        success: false,
+        data: [],
+        error: "Gateway unavailable",
+        errorType: "upstream",
+      })
+      .mockResolvedValueOnce({
+        success: false,
+        data: [],
+        error: "KRX request deadline exceeded",
+        errorType: "timeout",
+      });
+
+    const result = await fetchDateRange({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      from: "20260309",
+      to: "20260310",
+      apiKey: "test-key",
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      error: "KRX request deadline exceeded",
+      errorType: "timeout",
+    });
+  });
+
   it("returns partial results when some days fail", async () => {
     mockedGetTradingDays.mockReturnValue(["20260309", "20260310"]);
     mockedKrxFetch
@@ -123,6 +154,31 @@ describe("fetchDateRange", () => {
 
     expect(result.success).toBe(true);
     expect(result.data).toHaveLength(1);
+  });
+
+  it("does not hide cancellation behind an earlier successful day", async () => {
+    mockedGetTradingDays.mockReturnValue(["20260309", "20260310"]);
+    mockedKrxFetch
+      .mockResolvedValueOnce({
+        success: true,
+        data: [{ BAS_DD: "20260309" }],
+      })
+      .mockResolvedValueOnce({
+        success: false,
+        data: [],
+        error: "KRX request was cancelled",
+        errorType: "cancelled",
+      });
+
+    const result = await fetchDateRange({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      from: "20260309",
+      to: "20260310",
+      apiKey: "test-key",
+    });
+
+    expect(result).toMatchObject({ success: false, errorType: "cancelled" });
+    expect(result.data).toEqual([]);
   });
 
   it("respects concurrency limit", async () => {

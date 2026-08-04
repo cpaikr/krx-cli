@@ -4,6 +4,7 @@ import { getApiKey } from "../../client/auth.js";
 import { validateDate } from "../../validator/index.js";
 import { getRecentTradingDate } from "../../utils/date.js";
 import type { ToolDefinition } from "./index.js";
+import { errorResult } from "./result.js";
 
 export function createMarketSummaryTool(): ToolDefinition {
   return {
@@ -26,7 +27,7 @@ Returns:
           "Trading date in YYYYMMDD format (default: recent trading day)",
         ),
     },
-    handler: async (args) => {
+    handler: async (args, signal) => {
       const apiKey = getApiKey();
       if (!apiKey) {
         return {
@@ -65,20 +66,14 @@ Returns:
       const result = await fetchMarketSummary({
         apiKey,
         date: dateStr,
+        signal,
       });
 
       if (!result.success) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({
-                error: result.error ?? "Failed to fetch market summary",
-              }),
-            },
-          ],
-          isError: true,
-        };
+        return errorResult(
+          result.error ?? "Failed to fetch market summary",
+          result.errorType,
+        );
       }
 
       return {

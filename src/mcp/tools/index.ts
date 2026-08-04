@@ -20,7 +20,10 @@ interface ToolDefinition {
   readonly name: string;
   readonly description: string;
   readonly inputSchema: ZodRawShape;
-  readonly handler: (args: Record<string, unknown>) => Promise<{
+  readonly handler: (
+    args: Record<string, unknown>,
+    signal?: AbortSignal,
+  ) => Promise<{
     content: { type: "text"; text: string }[];
     isError?: boolean;
   }>;
@@ -140,7 +143,7 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
     name: `krx_${categoryId}`,
     description: buildDescription(categoryId, endpoints),
     inputSchema: buildInputSchema(endpoints),
-    handler: async (args) => {
+    handler: async (args, signal) => {
       const apiKey = getApiKey();
       if (!apiKey) {
         return errorResult(
@@ -184,10 +187,14 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
           from: dateFrom,
           to: dateTo,
           apiKey,
+          signal,
         });
 
         if (!rangeResult.success) {
-          return errorResult(rangeResult.error ?? "Date range fetch failed");
+          return errorResult(
+            rangeResult.error ?? "Date range fetch failed",
+            rangeResult.errorType,
+          );
         }
 
         let data: readonly Record<string, string>[] =
@@ -241,10 +248,14 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
         endpoint: endpoint.path,
         params,
         apiKey,
+        signal,
       });
 
       if (!result.success) {
-        return errorResult(result.error ?? "API request failed");
+        return errorResult(
+          result.error ?? "API request failed",
+          result.errorType,
+        );
       }
 
       const filterExpr2 = args.filter as string | undefined;

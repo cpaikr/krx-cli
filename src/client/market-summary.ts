@@ -1,4 +1,9 @@
-import { krxFetch, type KrxResponse } from "./client.js";
+import {
+  krxFetch,
+  selectKrxFailure,
+  type KrxErrorType,
+  type KrxResponse,
+} from "./client.js";
 import { parseKrxNumber } from "../utils/data-pipeline.js";
 
 const KOSPI_INDEX_ENDPOINT = "/svc/apis/idx/kospi_dd_trd";
@@ -12,6 +17,7 @@ interface MarketSummaryOptions {
   readonly apiKey: string;
   readonly date: string;
   readonly cache?: boolean;
+  readonly signal?: AbortSignal;
 }
 
 interface StockStats {
@@ -35,6 +41,7 @@ interface MarketSummaryResult {
   readonly success: boolean;
   readonly data?: MarketSummaryData;
   readonly error?: string;
+  readonly errorType?: KrxErrorType;
 }
 
 function computeStockStats(
@@ -84,6 +91,7 @@ function safeFetch(...args: Parameters<typeof krxFetch>): Promise<KrxResponse> {
       success: false,
       data: [],
       error: err instanceof Error ? err.message : "Network error",
+      errorType: "upstream",
     }),
   );
 }
@@ -91,15 +99,51 @@ function safeFetch(...args: Parameters<typeof krxFetch>): Promise<KrxResponse> {
 export async function fetchMarketSummary(
   options: MarketSummaryOptions,
 ): Promise<MarketSummaryResult> {
-  const { apiKey, date, cache } = options;
+  const { apiKey, date, cache, signal } = options;
   const params = { basDd: date };
 
   const [kospiIdx, kosdaqIdx, kospiStk, kosdaqStk] = await Promise.all([
-    safeFetch({ endpoint: KOSPI_INDEX_ENDPOINT, params, apiKey, cache }),
-    safeFetch({ endpoint: KOSDAQ_INDEX_ENDPOINT, params, apiKey, cache }),
-    safeFetch({ endpoint: KOSPI_STOCK_ENDPOINT, params, apiKey, cache }),
-    safeFetch({ endpoint: KOSDAQ_STOCK_ENDPOINT, params, apiKey, cache }),
+    safeFetch({
+      endpoint: KOSPI_INDEX_ENDPOINT,
+      params,
+      apiKey,
+      cache,
+      signal,
+    }),
+    safeFetch({
+      endpoint: KOSDAQ_INDEX_ENDPOINT,
+      params,
+      apiKey,
+      cache,
+      signal,
+    }),
+    safeFetch({
+      endpoint: KOSPI_STOCK_ENDPOINT,
+      params,
+      apiKey,
+      cache,
+      signal,
+    }),
+    safeFetch({
+      endpoint: KOSDAQ_STOCK_ENDPOINT,
+      params,
+      apiKey,
+      cache,
+      signal,
+    }),
   ]);
+
+  const responses = [kospiIdx, kosdaqIdx, kospiStk, kosdaqStk];
+  const cancellation = responses.find(
+    (response) => !response.success && response.errorType === "cancelled",
+  );
+  if (cancellation) {
+    return {
+      success: false,
+      error: cancellation.error ?? "Market summary fetch was cancelled",
+      errorType: "cancelled",
+    };
+  }
 
   const allFailed =
     !kospiIdx.success &&
@@ -108,9 +152,11 @@ export async function fetchMarketSummary(
     !kosdaqStk.success;
 
   if (allFailed) {
+    const primaryFailure = selectKrxFailure(responses);
     return {
       success: false,
-      error: "All market data fetches failed",
+      error: primaryFailure?.error ?? "Market summary fetch failed",
+      errorType: primaryFailure?.errorType,
     };
   }
 

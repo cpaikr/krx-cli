@@ -17,6 +17,7 @@ import { matchesIsuCode } from "../utils/isin.js";
 import { validateDate } from "../validator/index.js";
 import { setVerbose, verbose } from "../utils/logger.js";
 import { getRecentTradingDate } from "../utils/date.js";
+import { withCliCancellation } from "./cancellation.js";
 
 export function resolveDate(
   dateOpt: string | undefined,
@@ -120,46 +121,52 @@ export async function executeCommand(
 
   const isDateRange = fromDate && toDate;
 
-  let data: Record<string, unknown>[];
+  let data = await withCliCancellation(async (signal) => {
+    if (isDateRange) {
+      const restParams = Object.fromEntries(
+        Object.entries(finalParams).filter(([k]) => k !== "basDd"),
+      );
+      const rangeResult = await fetchDateRange({
+        endpoint,
+        from: fromDate,
+        to: toDate,
+        apiKey,
+        cache: parentOpts.cache as boolean,
+        extraParams: restParams,
+        signal,
+      });
 
-  if (isDateRange) {
-    const restParams = Object.fromEntries(
-      Object.entries(finalParams).filter(([k]) => k !== "basDd"),
-    );
-    const rangeResult = await fetchDateRange({
-      endpoint,
-      from: fromDate,
-      to: toDate,
-      apiKey,
-      cache: parentOpts.cache as boolean,
-      extraParams: restParams,
-    });
+      if (!rangeResult.success) {
+        handleKrxError({
+          success: false,
+          data: [],
+          error: rangeResult.error ?? "Date range fetch failed",
+          errorType: rangeResult.errorType,
+        });
+      }
 
-    if (!rangeResult.success) {
-      writeError(rangeResult.error ?? "Date range fetch failed");
-      process.exit(EXIT_CODES.GENERAL_ERROR);
+      if (rangeResult.failedDays > 0) {
+        writeError(`Warning: ${rangeResult.failedDays} day(s) failed to fetch`);
+      }
+
+      return rangeResult.data as unknown as Record<string, unknown>[];
+    } else {
+      const result = await krxFetch({
+        endpoint,
+        params: finalParams,
+        apiKey,
+        cache: parentOpts.cache as boolean,
+        retries: parentOpts.retries as number | undefined,
+        signal,
+      });
+
+      if (!result.success) {
+        handleKrxError(result);
+      }
+
+      return result.data as unknown as Record<string, unknown>[];
     }
-
-    if (rangeResult.failedDays > 0) {
-      writeError(`Warning: ${rangeResult.failedDays} day(s) failed to fetch`);
-    }
-
-    data = rangeResult.data as unknown as Record<string, unknown>[];
-  } else {
-    const result = await krxFetch({
-      endpoint,
-      params: finalParams,
-      apiKey,
-      cache: parentOpts.cache as boolean,
-      retries: parentOpts.retries as number | undefined,
-    });
-
-    if (!result.success) {
-      handleKrxError(result);
-    }
-
-    data = result.data as unknown as Record<string, unknown>[];
-  }
+  });
 
   if (codeFilter) {
     data = data.filter((row) =>

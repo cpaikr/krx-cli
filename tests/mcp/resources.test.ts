@@ -10,6 +10,7 @@ vi.mock("../../src/client/rate-limit.js", () => ({
 
 vi.mock("../../src/client/auth.js", () => ({
   getCachedServiceStatus: vi.fn(),
+  getApiKey: vi.fn(() => "active-key"),
 }));
 
 import {
@@ -132,16 +133,26 @@ describe("MCP Resources", () => {
     it("returns service status as JSON content", async () => {
       mockGetCachedServiceStatus.mockReturnValue({
         index: {
+          state: "approved",
           approved: true,
           checkedAt: "2026-03-12T09:00:00.000Z",
+          validUntil: "2026-03-12T09:15:00.000Z",
+          fresh: true,
         },
         stock: {
+          state: "approved",
           approved: true,
           checkedAt: "2026-03-12T09:00:00.000Z",
+          validUntil: "2026-03-12T09:15:00.000Z",
+          fresh: true,
         },
         esg: {
+          state: "rejected",
           approved: false,
           checkedAt: "2026-03-12T09:00:00.000Z",
+          validUntil: "2026-03-12T09:15:00.000Z",
+          fresh: false,
+          failureType: "approval",
           error: "Unauthorized API Call",
         },
       });
@@ -156,6 +167,7 @@ describe("MCP Resources", () => {
       expect(parsed.index.approved).toBe(true);
       expect(parsed.stock.approved).toBe(true);
       expect(parsed.esg.approved).toBe(false);
+      expect(parsed.esg.fresh).toBe(false);
       expect(parsed.esg.error).toBe("Unauthorized API Call");
     });
 

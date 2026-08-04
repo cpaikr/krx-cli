@@ -16,6 +16,8 @@ import {
 } from "../../output/formatter.js";
 import { EXIT_CODES } from "../index.js";
 import { readSecret } from "../secret-input.js";
+import { withCliCancellation } from "../cancellation.js";
+import { handleKrxError } from "../error-handler.js";
 
 export function registerAuthCommand(program: Command): void {
   const auth = program
@@ -78,7 +80,20 @@ export function registerAuthCommand(program: Command): void {
       }
 
       writeError("Checking service approvals...");
-      const statuses = await checkAllCategories(apiKey);
+      const { statuses, cancelled } = await withCliCancellation(
+        async (signal) => ({
+          statuses: await checkAllCategories(apiKey, { signal }),
+          cancelled: signal.aborted,
+        }),
+      );
+      if (cancelled) {
+        handleKrxError({
+          success: false,
+          data: [],
+          error: "KRX approval checks were cancelled",
+          errorType: "cancelled",
+        });
+      }
 
       const format = detectOutputFormat(
         program.parent?.opts().output ?? program.opts().output,
@@ -97,7 +112,7 @@ export function registerAuthCommand(program: Command): void {
           return {
             category: cat.id,
             name: cat.nameKo,
-            approved: status?.approved ? "YES" : "NO",
+            approved: status?.state.toUpperCase() ?? "INCONCLUSIVE",
             checked_at: status?.checkedAt ?? "-",
           };
         });
@@ -127,10 +142,22 @@ export function registerAuthCommand(program: Command): void {
         process.exit(EXIT_CODES.USAGE_ERROR);
       }
 
-      const status = await checkCategoryApproval(
-        apiKey,
-        category as CategoryId,
+      const { status, cancelled } = await withCliCancellation(
+        async (signal) => ({
+          status: await checkCategoryApproval(apiKey, category as CategoryId, {
+            signal,
+          }),
+          cancelled: signal.aborted,
+        }),
       );
+      if (cancelled) {
+        handleKrxError({
+          success: false,
+          data: [],
+          error: "KRX approval check was cancelled",
+          errorType: "cancelled",
+        });
+      }
       writeOutput(JSON.stringify({ category, ...status }, null, 2));
     });
 }

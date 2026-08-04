@@ -7,6 +7,7 @@ import {
   resolveDate,
 } from "../command-helper.js";
 import { getApiKey } from "../../client/auth.js";
+import { KrxRequestError } from "../../client/client.js";
 import { searchStock } from "../../client/search.js";
 import {
   writeOutput,
@@ -15,6 +16,8 @@ import {
   detectOutputFormat,
 } from "../../output/formatter.js";
 import { EXIT_CODES } from "../exit-codes.js";
+import { handleKrxError } from "../error-handler.js";
+import { withCliCancellation } from "../cancellation.js";
 
 const TRADING_ENDPOINTS: Record<string, string> = {
   kospi: "/svc/apis/sto/stk_bydd_trd",
@@ -82,7 +85,17 @@ export function registerStockCommand(program: Command): void {
         process.exit(EXIT_CODES.AUTH_FAILURE);
       }
 
-      const results = await searchStock(apiKey, query);
+      let results: Awaited<ReturnType<typeof searchStock>>;
+      try {
+        results = await withCliCancellation((signal) =>
+          searchStock(apiKey, query, signal),
+        );
+      } catch (error) {
+        if (error instanceof KrxRequestError) {
+          handleKrxError(error.response);
+        }
+        throw error;
+      }
 
       if (results.length === 0) {
         writeError(`No stocks found matching "${query}"`);

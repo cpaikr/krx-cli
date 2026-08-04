@@ -1,4 +1,9 @@
-import { krxFetch, type KrxResponse } from "./client.js";
+import {
+  krxFetch,
+  selectKrxFailure,
+  type KrxErrorType,
+  type KrxResponse,
+} from "./client.js";
 import { getTradingDays } from "../utils/date.js";
 import { verbose } from "../utils/logger.js";
 
@@ -10,12 +15,14 @@ interface DateRangeOptions {
   readonly cache?: boolean;
   readonly concurrency?: number;
   readonly extraParams?: Record<string, string>;
+  readonly signal?: AbortSignal;
 }
 
 interface DateRangeResult<T = Record<string, string>> {
   readonly success: boolean;
   readonly data: readonly T[];
   readonly error?: string;
+  readonly errorType?: KrxErrorType;
   readonly fetchedDays: number;
   readonly failedDays: number;
 }
@@ -53,7 +60,7 @@ async function fetchWithConcurrency<T>(
 export async function fetchDateRange<T = Record<string, string>>(
   options: DateRangeOptions,
 ): Promise<DateRangeResult<T>> {
-  const { endpoint, from, to, apiKey, cache, extraParams } = options;
+  const { endpoint, from, to, apiKey, cache, extraParams, signal } = options;
   const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
 
   if (from > to) {
@@ -85,21 +92,37 @@ export async function fetchDateRange<T = Record<string, string>>(
       params,
       apiKey,
       cache,
+      signal,
     });
   });
 
   const results = await fetchWithConcurrency(tasks, concurrency);
 
   const failedDays = results.filter((r) => !r.success).length;
+  const cancellation = results.find(
+    (result) => !result.success && result.errorType === "cancelled",
+  );
+  if (cancellation) {
+    return {
+      success: false,
+      data: [],
+      error: cancellation.error ?? "Date range fetch was cancelled",
+      errorType: "cancelled",
+      fetchedDays: results.filter((result) => result.success).length,
+      failedDays,
+    };
+  }
   const mergedData = results
     .filter((r) => r.success)
     .flatMap((r) => [...r.data]);
 
   if (mergedData.length === 0 && failedDays > 0) {
+    const primaryFailure = selectKrxFailure(results);
     return {
       success: false,
       data: [],
-      error: `All ${failedDays} trading day(s) failed to fetch`,
+      error: primaryFailure?.error ?? "Date range fetch failed",
+      errorType: primaryFailure?.errorType,
       fetchedDays: 0,
       failedDays,
     };

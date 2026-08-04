@@ -69,16 +69,30 @@ krx auth status
 {
   "api_key_set": true,
   "services": {
-    "index": { "approved": true },
-    "stock": { "approved": true },
-    "etp": { "approved": true },
-    "bond": { "approved": true },
-    "derivative": { "approved": true },
-    "commodity": { "approved": true },
-    "esg": { "approved": false, "error": "Unauthorized API Call" }
+    "index": {
+      "state": "approved",
+      "approved": true,
+      "fresh": true,
+      "checkedAt": "2026-08-04T01:00:00.000Z",
+      "validUntil": "2026-08-04T01:15:00.000Z"
+    },
+    "esg": {
+      "state": "inconclusive",
+      "fresh": true,
+      "checkedAt": "2026-08-04T01:00:00.000Z",
+      "validUntil": "2026-08-04T01:15:00.000Z",
+      "failureType": "authentication",
+      "error": "KRX returned an ambiguous authentication response"
+    }
   }
 }
 ```
+
+`approved`는 `state`가 `approved` 또는 `rejected`일 때만 포함됩니다. 네트워크,
+시간 초과, 모호한 인증 응답은 `inconclusive`이며 서비스 거절로 간주하지 않습니다.
+승인 검사는 일반 데이터 캐시를 우회하고, 동일 자격 증명에 대해 15분 동안 결과를
+신선한 관측값으로 표시합니다. `auth status`와 `auth check` 실행 자체는 항상 KRX를
+다시 확인합니다.
 
 ## 사용법
 
@@ -136,6 +150,20 @@ krx watchlist show --date 20260310  # 특정 날짜 시세
 krx cache status    # 캐시 현황 조회
 krx cache clear     # 캐시 전체 삭제
 ```
+
+### 요청 안정성 및 승인 확인
+
+캐시되지 않은 KRX 요청은 시도당 15초, 전체 45초로 제한됩니다. 네트워크
+오류, 타임아웃 및 HTTP 408/429/500/502/503/504만 재시도하며 `Retry-After`와
+지터가 포함된 지수 백오프를 적용합니다. 각 실제 HTTP 시도는 KST 날짜와 API
+키별 로컬 카운터에 원자적으로 먼저 예약됩니다. 이 카운터는 보조 지표이며
+KRX 서버의 한도가 최종 기준입니다. 자세한 계약은
+[요청 안정성 문서](docs/HTTP-RELIABILITY.md)를 참고하세요.
+
+`krx auth status`와 `krx auth check`는 데이터 캐시를 사용하지 않습니다. 승인
+결과는 현재 API 키에만 연결되고 15분 후 오래된 상태로 표시됩니다. 네트워크
+오류, 타임아웃, 빈 응답 및 판별할 수 없는 HTTP 401은 승인 거절이 아니라
+`inconclusive`로 보고됩니다.
 
 ### 버전 관리
 

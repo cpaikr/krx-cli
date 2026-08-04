@@ -28,9 +28,13 @@ export function createServer(): McpServer {
   ];
 
   for (const tool of allTools) {
-    server.tool(tool.name, tool.description, tool.inputSchema, async (args) => {
-      return tool.handler(args as Record<string, unknown>);
-    });
+    server.tool(
+      tool.name,
+      tool.description,
+      tool.inputSchema,
+      async (args, extra) =>
+        tool.handler(args as Record<string, unknown>, extra.signal),
+    );
   }
 
   const allResources = [

@@ -1,7 +1,13 @@
 import { Command } from "commander";
 import { getApiKey } from "../../client/auth.js";
 import { searchStock } from "../../client/search.js";
-import { krxFetch } from "../../client/client.js";
+import {
+  formatKrxFailure,
+  KrxRequestError,
+  krxFetch,
+  selectKrxFailure,
+  type KrxResponse,
+} from "../../client/client.js";
 import {
   getWatchlist,
   addToWatchlist,
@@ -11,6 +17,8 @@ import { getRecentTradingDate } from "../../utils/date.js";
 import { validateDate, validateNoInjection } from "../../validator/index.js";
 import { writeOutput, writeError } from "../../output/formatter.js";
 import { EXIT_CODES } from "../exit-codes.js";
+import { handleKrxError } from "../error-handler.js";
+import { withCliCancellation } from "../cancellation.js";
 
 const STOCK_ENDPOINTS = {
   KOSPI: "/svc/apis/sto/stk_bydd_trd",
@@ -42,8 +50,13 @@ export function registerWatchlistCommand(program: Command): void {
 
       let results: Awaited<ReturnType<typeof searchStock>>;
       try {
-        results = await searchStock(apiKey, name);
+        results = await withCliCancellation((signal) =>
+          searchStock(apiKey, name, signal),
+        );
       } catch (err) {
+        if (err instanceof KrxRequestError) {
+          handleKrxError(err.response);
+        }
         writeError(
           `Search failed: ${err instanceof Error ? err.message : String(err)}`,
         );
@@ -182,42 +195,54 @@ export function registerWatchlistCommand(program: Command): void {
 
       const parentOpts = program.opts();
       const isuCds = new Set(entries.flatMap((e) => [e.isuCd, e.isuSrtCd]));
-      const errors: string[] = [];
+      const [kospiResult, kosdaqResult] = await withCliCancellation((signal) =>
+        Promise.all([
+          krxFetch<Record<string, string>>({
+            endpoint: STOCK_ENDPOINTS.KOSPI,
+            params: { basDd: date },
+            apiKey,
+            cache: parentOpts.cache as boolean,
+            signal,
+          }).catch(
+            (err: unknown): KrxResponse<Record<string, string>> => ({
+              success: false,
+              data: [],
+              error: err instanceof Error ? err.message : String(err),
+              errorType: "upstream",
+            }),
+          ),
+          krxFetch<Record<string, string>>({
+            endpoint: STOCK_ENDPOINTS.KOSDAQ,
+            params: { basDd: date },
+            apiKey,
+            cache: parentOpts.cache as boolean,
+            signal,
+          }).catch(
+            (err: unknown): KrxResponse<Record<string, string>> => ({
+              success: false,
+              data: [],
+              error: err instanceof Error ? err.message : String(err),
+              errorType: "upstream",
+            }),
+          ),
+        ]),
+      );
 
-      const [kospiResult, kosdaqResult] = await Promise.all([
-        krxFetch<Record<string, string>>({
-          endpoint: STOCK_ENDPOINTS.KOSPI,
-          params: { basDd: date },
-          apiKey,
-          cache: parentOpts.cache as boolean,
-        }).catch((err: unknown) => {
-          errors.push(
-            `KOSPI: ${err instanceof Error ? err.message : String(err)}`,
-          );
-          return {
-            success: false as const,
-            data: [] as Record<string, string>[],
-          };
-        }),
-        krxFetch<Record<string, string>>({
-          endpoint: STOCK_ENDPOINTS.KOSDAQ,
-          params: { basDd: date },
-          apiKey,
-          cache: parentOpts.cache as boolean,
-        }).catch((err: unknown) => {
-          errors.push(
-            `KOSDAQ: ${err instanceof Error ? err.message : String(err)}`,
-          );
-          return {
-            success: false as const,
-            data: [] as Record<string, string>[],
-          };
-        }),
-      ]);
+      const cancellation = [kospiResult, kosdaqResult].find(
+        (result) => !result.success && result.errorType === "cancelled",
+      );
+      if (cancellation) handleKrxError(cancellation);
 
       if (!kospiResult.success && !kosdaqResult.success) {
-        writeError(`All market data fetches failed: ${errors.join("; ")}`);
-        process.exit(EXIT_CODES.GENERAL_ERROR);
+        const primaryFailure = selectKrxFailure([kospiResult, kosdaqResult]);
+        handleKrxError(
+          primaryFailure ?? {
+            success: false,
+            data: [],
+            error: "Watchlist market data fetch failed",
+            errorType: "upstream",
+          },
+        );
       }
 
       const allStocks = [
@@ -230,8 +255,16 @@ export function registerWatchlistCommand(program: Command): void {
       );
 
       const output: Record<string, unknown> = { date, stocks: watchlistData };
-      if (errors.length > 0) {
-        output["warnings"] = errors;
+      const warnings = [
+        ...(kospiResult.success
+          ? []
+          : [`KOSPI: ${formatKrxFailure(kospiResult)}`]),
+        ...(kosdaqResult.success
+          ? []
+          : [`KOSDAQ: ${formatKrxFailure(kosdaqResult)}`]),
+      ];
+      if (warnings.length > 0) {
+        output["warnings"] = warnings;
       }
 
       writeOutput(JSON.stringify(output, null, 2));

@@ -41,9 +41,17 @@ export function successResult(
   return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
 }
 
-export function errorResult(message: string): ToolResult {
+export function errorResult(message: string, errorType?: string): ToolResult {
   return {
-    content: [{ type: "text", text: JSON.stringify({ error: message }) }],
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          error: message,
+          ...(errorType ? { errorType } : {}),
+        }),
+      },
+    ],
     isError: true,
   };
 }

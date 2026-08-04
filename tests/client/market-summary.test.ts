@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fetchMarketSummary } from "../../src/client/market-summary.js";
 
-vi.mock("../../src/client/client.js", () => ({
+vi.mock("../../src/client/client.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/client/client.js")>()),
   krxFetch: vi.fn(),
 }));
 
@@ -217,6 +218,26 @@ describe("fetchMarketSummary", () => {
     expect(result.error).toBeDefined();
   });
 
+  it("preserves typed errors when every component fails", async () => {
+    mockedKrxFetch.mockResolvedValue({
+      success: false,
+      data: [],
+      error: "KRX request was cancelled",
+      errorType: "cancelled",
+    });
+
+    const result = await fetchMarketSummary({
+      apiKey: "test-key",
+      date: "20260310",
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      error: "KRX request was cancelled",
+      errorType: "cancelled",
+    });
+  });
+
   it("returns partial data when some fetches fail", async () => {
     mockedKrxFetch
       .mockResolvedValueOnce({
@@ -246,6 +267,29 @@ describe("fetchMarketSummary", () => {
     expect(result.success).toBe(true);
     expect(result.data!.kospiIndex).toHaveLength(1);
     expect(result.data!.kosdaqIndex).toEqual([]);
+  });
+
+  it("does not hide cancellation behind completed components", async () => {
+    mockedKrxFetch
+      .mockResolvedValueOnce({
+        success: true,
+        data: [makeIndexData("코스피", "2,700", "1.00")],
+      })
+      .mockResolvedValueOnce({
+        success: false,
+        data: [],
+        error: "KRX request was cancelled",
+        errorType: "cancelled",
+      })
+      .mockResolvedValue({ success: true, data: [] });
+
+    const result = await fetchMarketSummary({
+      apiKey: "test-key",
+      date: "20260310",
+    });
+
+    expect(result).toMatchObject({ success: false, errorType: "cancelled" });
+    expect(result.data).toBeUndefined();
   });
 
   it("handles network errors gracefully", async () => {

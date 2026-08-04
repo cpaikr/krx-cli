@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { KrxRequestError } from "../../src/client/client.js";
 import { searchStock } from "../../src/client/search.js";
 
-vi.mock("../../src/client/client.js", () => ({
+vi.mock("../../src/client/client.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/client/client.js")>()),
   krxFetch: vi.fn(),
 }));
 
@@ -119,15 +121,49 @@ describe("searchStock", () => {
     expect(results[0]?.ISU_NM).toBe("현대자동차");
   });
 
-  it("handles API failure gracefully", async () => {
+  it("throws a typed request error when every market fails", async () => {
     mockKrxFetch.mockResolvedValue({
       success: false,
       data: [],
-      error: "API error",
+      error: "KRX request deadline exceeded",
+      errorType: "timeout",
     });
 
-    const results = await searchStock("test-key", "삼성");
-    expect(results).toEqual([]);
+    const pending = searchStock("test-key", "삼성");
+    await expect(pending).rejects.toBeInstanceOf(KrxRequestError);
+    await expect(pending).rejects.toMatchObject({
+      response: { errorType: "timeout" },
+    });
+  });
+
+  it("uses results from the market that succeeds", async () => {
+    mockKrxFetch
+      .mockResolvedValueOnce({
+        success: false,
+        data: [],
+        error: "KOSPI unavailable",
+        errorType: "upstream",
+      })
+      .mockResolvedValueOnce({ success: true, data: MOCK_KOSDAQ_DATA });
+
+    const results = await searchStock("test-key", "카카오");
+    expect(results).toHaveLength(1);
+    expect(results[0]?.MKT_NM).toBe("KOSDAQ");
+  });
+
+  it("does not hide cancellation behind results from another market", async () => {
+    mockKrxFetch
+      .mockResolvedValueOnce({ success: true, data: MOCK_KOSPI_DATA })
+      .mockResolvedValueOnce({
+        success: false,
+        data: [],
+        error: "KRX request was cancelled",
+        errorType: "cancelled",
+      });
+
+    await expect(searchStock("test-key", "삼성")).rejects.toMatchObject({
+      response: { errorType: "cancelled" },
+    });
   });
 
   it("returns multiple matches", async () => {

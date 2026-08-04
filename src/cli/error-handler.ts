@@ -4,12 +4,16 @@ import { EXIT_CODES } from "./exit-codes.js";
 
 export function handleKrxError(result: KrxResponse): never {
   const exitCode =
-    result.errorCode === "RATE_LIMIT"
+    result.errorType === "rate_limit" || result.errorCode === "RATE_LIMIT"
       ? EXIT_CODES.RATE_LIMIT
-      : result.errorCode === "401"
-        ? EXIT_CODES.SERVICE_NOT_APPROVED
-        : EXIT_CODES.GENERAL_ERROR;
+      : result.errorType === "authentication"
+        ? EXIT_CODES.AUTH_FAILURE
+        : result.errorType === "approval"
+          ? EXIT_CODES.SERVICE_NOT_APPROVED
+          : EXIT_CODES.GENERAL_ERROR;
 
-  writeError(result.error ?? "Unknown error");
+  writeError(
+    `${result.errorType ?? "upstream"}: ${result.error ?? "Unknown error"}`,
+  );
   process.exit(exitCode);
 }

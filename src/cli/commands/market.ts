@@ -5,6 +5,8 @@ import { getRecentTradingDate } from "../../utils/date.js";
 import { validateDate } from "../../validator/index.js";
 import { writeOutput, writeError } from "../../output/formatter.js";
 import { EXIT_CODES } from "../exit-codes.js";
+import { handleKrxError } from "../error-handler.js";
+import { withCliCancellation } from "../cancellation.js";
 
 export function registerMarketCommand(program: Command): void {
   const market = program
@@ -37,15 +39,22 @@ export function registerMarketCommand(program: Command): void {
 
       const parentOpts = program.opts();
 
-      const result = await fetchMarketSummary({
-        apiKey,
-        date,
-        cache: parentOpts.cache as boolean,
-      });
+      const result = await withCliCancellation((signal) =>
+        fetchMarketSummary({
+          apiKey,
+          date,
+          cache: parentOpts.cache as boolean,
+          signal,
+        }),
+      );
 
       if (!result.success) {
-        writeError(result.error ?? "Failed to fetch market summary");
-        process.exit(EXIT_CODES.GENERAL_ERROR);
+        handleKrxError({
+          success: false,
+          data: [],
+          error: result.error ?? "Failed to fetch market summary",
+          errorType: result.errorType,
+        });
       }
 
       writeOutput(JSON.stringify(result.data, null, 2));
