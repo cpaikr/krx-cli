@@ -7,7 +7,7 @@ function usage(): string {
 
 Options:
   --dry-run         Print the planned credentialed and official request counts
-  --date YYYYMMDD   Probe a confirmed trading date (default: recent weekday)
+  --date YYYYMMDD   Probe a confirmed trading date (default: verified KRX session)
   --report PATH     Atomically write the redacted JSON report to PATH
   --help            Show this help`;
 }

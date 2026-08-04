@@ -479,6 +479,10 @@ KRX upstream 계약 드리프트는 일반 테스트와 분리된 opt-in 검사�
 계획을 출력합니다. 자격 증명, 31회 상한, 공식 명세 비교 및 업데이트 절차는
 [KRX 계약 테스트 문서](docs/KRX-CONTRACT-TESTING.md)를 참고하세요.
 
+기본 날짜와 기간 조회는 KST 기준 [KRX 거래일 캘린더](docs/KRX-CALENDAR.md)를
+사용하여 공휴일과 거래소 휴장일을 호출 전에 제외합니다. 캘린더 범위 밖의
+명시적 과거 조회는 결과의 `calendar` 메타데이터에 fallback 상태를 표시합니다.
+
 ## 라이선스
 
 MIT

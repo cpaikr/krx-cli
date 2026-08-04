@@ -38,14 +38,15 @@ _None._
 - Bounded HTTP, accurate quota accounting, and trustworthy approval checks — GitHub issues #4 and #6.
 - Explicit composite-result completeness — GitHub issue #5.
 - Live KRX contract-drift detection — GitHub issue #8.
+- Exchange-aware trading dates — GitHub issue #9.
 
 ### Current in-scope result
 
-Exchange-aware trading dates — GitHub issue #9.
+Consistent CLI and documentation contracts — GitHub issue #10.
 
 ### Next in-scope action
 
-Replace weekday-only date selection with an authoritative, KST-explicit exchange calendar or safe verified-session strategy; classify known non-trading dates as skipped, define an observable fallback, and cover Korean holidays, ad-hoc closures, year boundaries, weekends, and non-KST hosts.
+Reconcile CLI help, examples, generated/reference documentation, and machine-readable output descriptions with implemented behavior; add deterministic checks that prevent maintained contracts from drifting again.
 
 ### Evidence and blockers
 
@@ -71,3 +72,8 @@ Replace weekday-only date selection with an authoritative, KST-explicit exchange
 - Public KRX specification drift is bounded to 65 reads, restricted to the official origin, and compares service membership, duplicate paths, request/response fields and reviewed modification dates. A read-only live catalog validation on 2026-08-04 found exactly 31 services and no maintained-contract drift; the portal's sample credential was never parsed or reported.
 - Dry-run validation performed no network requests or quota reservations and atomically produced an owner-only report with 31 registered probes, a 31-call credentialed maximum, 32 expected public reads and a 65-read public safety cap. No local `KRX_API_KEY` was present, so credentialed production execution remains an explicit scheduled/manual operational check using the repository secret.
 - Contract validation: `pnpm verify` passed 301 tests, all-source coverage of 65.22% statements / 58.59% branches / 73.58% functions / 65.33% lines, a clean production audit, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. Structured review corrected pnpm argument forwarding, report-directory permission mutation, non-JSON HTTP-failure classification, bounded official reads, catalog origin enforcement, and exact reservation terminology; a deterministic full-run test then exercised all 31 endpoints with 63 mocked public/live requests. No Bucket I or Bucket II issue remains; the only residual validation gap is the intentionally secret-dependent live market-data run.
+- Trading-session selection now uses a checked-in KRX Market Closing snapshot for 2016–2026, treats every covered weekday not listed as a verified session, and performs all instant and calendar arithmetic explicitly in KST/UTC so host timezone cannot change results. A live public `pnpm calendar:check -- 2025 2026` comparison on 2026-08-04 found both maintained years current without using a credential or market-data quota.
+- Recent defaults walk backward from KST T-1 to a verified session across weekends, Lunar New Year, Chuseok, elections, temporary closures, and year-end boundaries. Stale coverage never guesses a default across unknown weekdays: it returns the last verified session with `stale_fallback` metadata and an explicit `KRX_CALENDAR_FALLBACK` diagnostic, or fails after the bounded one-year search.
+- Date ranges avoid KRX calls for verified non-trading dates, include all requested dates in completeness, classify known closures and weekends as skipped, keep upstream failures distinct, and expose calendar version/source/retrieval/coverage/fallback metadata. Explicit uncovered historical weekdays remain observable probes; conservative fixed-closure rules apply only beyond the latest official snapshot year.
+- The maintainer update path performs bounded 15-second official reads, detects added, removed, and renamed closures, writes snapshot updates through a sibling temporary file and rename, and is checked before credentialed calls in the weekly contract workflow. Calendar behavior, fallback, and update operations are documented in `docs/KRX-CALENDAR.md`.
+- Calendar validation: `pnpm verify` passed 303 tests, all-source coverage of 66.28% statements / 60.02% branches / 74.10% functions / 66.43% lines, a clean production audit, both builds, and packed-artifact smoke for 31 schemas and 12 MCP tools. Structured root review applied the safe historical fallback fix and found no actionable P0–P2 issue; delegated review was attempted but the agent thread limit rejected a new reviewer despite no live child task.

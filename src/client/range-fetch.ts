@@ -1,5 +1,8 @@
 import { krxFetch, selectKrxFailure, type KrxResponse } from "./client.js";
-import { getTradingDays } from "../utils/date.js";
+import {
+  getTradingDaySelection,
+  type KrxCalendarSelection,
+} from "../utils/date.js";
 import { verbose } from "../utils/logger.js";
 import {
   componentFailure,
@@ -23,6 +26,7 @@ export interface DateRangeResult<
 > extends CompositeResult<readonly T[], string> {
   readonly fetchedDays: number;
   readonly failedDays: number;
+  readonly calendar: KrxCalendarSelection;
 }
 
 const DEFAULT_CONCURRENCY = 5;
@@ -60,6 +64,7 @@ export async function fetchDateRange<T = Record<string, string>>(
 ): Promise<DateRangeResult<T>> {
   const { endpoint, from, to, apiKey, cache, extraParams, signal } = options;
   const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
+  const selection = getTradingDaySelection(from, to);
 
   if (from > to) {
     return {
@@ -73,23 +78,33 @@ export async function fetchDateRange<T = Record<string, string>>(
       }),
       fetchedDays: 0,
       failedDays: 0,
+      calendar: selection.calendar,
     };
   }
 
-  const tradingDays = getTradingDays(from, to);
+  const { requestedDates, skippedDays, tradingDays } = selection;
 
-  verbose(`date range: ${from}~${to} → ${tradingDays.length} trading days`);
+  verbose(
+    `date range: ${from}~${to} → ${tradingDays.length} requestable, ${skippedDays.length} known non-trading`,
+  );
+  if (selection.calendar.coverage === "fallback") {
+    verbose(
+      `KRX calendar fallback: ${selection.calendar.unverifiedDates.length} uncovered weekday(s) will be probed`,
+    );
+  }
 
   if (tradingDays.length === 0) {
     return {
       success: true,
       data: [],
       completeness: createCompleteness({
-        requested: [],
+        requested: requestedDates,
+        skipped: skippedDays,
         hasData: false,
       }),
       fetchedDays: 0,
       failedDays: 0,
+      calendar: selection.calendar,
     };
   }
 
@@ -116,9 +131,10 @@ export async function fetchDateRange<T = Record<string, string>>(
   const succeeded = outcomes
     .filter(({ response }) => response.success && response.data.length > 0)
     .map(({ date }) => date);
-  const skipped = outcomes
+  const emptyResponseDays = outcomes
     .filter(({ response }) => response.success && response.data.length === 0)
     .map(({ date }) => date);
+  const skipped = [...skippedDays, ...emptyResponseDays];
   const failures = outcomes
     .filter(({ response }) => !response.success)
     .map(({ date, response }) => componentFailure(date, response));
@@ -130,12 +146,16 @@ export async function fetchDateRange<T = Record<string, string>>(
     .filter((result) => result.success)
     .flatMap((result) => [...result.data]);
   const completeness = createCompleteness({
-    requested: tradingDays,
+    requested: requestedDates,
     succeeded,
     failed: failures,
     skipped,
     hasData: mergedData.length > 0,
-    forceFailed: Boolean(cancellation),
+    forceFailed:
+      Boolean(cancellation) ||
+      (failures.length > 0 &&
+        succeeded.length === 0 &&
+        emptyResponseDays.length === 0),
   });
 
   if (cancellation) {
@@ -145,8 +165,9 @@ export async function fetchDateRange<T = Record<string, string>>(
       error: cancellation.error ?? "Date range fetch was cancelled",
       errorType: "cancelled",
       completeness,
-      fetchedDays: succeeded.length + skipped.length,
+      fetchedDays: succeeded.length + emptyResponseDays.length,
       failedDays,
+      calendar: selection.calendar,
     };
   }
 
@@ -160,6 +181,7 @@ export async function fetchDateRange<T = Record<string, string>>(
       completeness,
       fetchedDays: 0,
       failedDays,
+      calendar: selection.calendar,
     };
   }
 
@@ -167,7 +189,8 @@ export async function fetchDateRange<T = Record<string, string>>(
     success: true,
     data: mergedData,
     completeness,
-    fetchedDays: succeeded.length + skipped.length,
+    fetchedDays: succeeded.length + emptyResponseDays.length,
     failedDays,
+    calendar: selection.calendar,
   };
 }

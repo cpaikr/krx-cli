@@ -7,15 +7,35 @@ vi.mock("../../src/client/client.js", async (importOriginal) => ({
 }));
 
 vi.mock("../../src/utils/date.js", () => ({
-  getTradingDays: vi.fn(),
+  getTradingDaySelection: vi.fn(),
   formatDateToYYYYMMDD: () => "20260312",
 }));
 
 import { krxFetch } from "../../src/client/client.js";
-import { getTradingDays } from "../../src/utils/date.js";
+import { getTradingDaySelection } from "../../src/utils/date.js";
 
 const mockedKrxFetch = vi.mocked(krxFetch);
-const mockedGetTradingDays = vi.mocked(getTradingDays);
+const mockedGetTradingDaySelection = vi.mocked(getTradingDaySelection);
+
+function mockTradingDays(
+  tradingDays: readonly string[],
+  skippedDays: readonly string[] = [],
+  unverifiedDates: readonly string[] = [],
+): void {
+  mockedGetTradingDaySelection.mockReturnValue({
+    requestedDates: [...tradingDays, ...skippedDays].sort(),
+    tradingDays,
+    skippedDays,
+    calendar: {
+      version: 1,
+      source: "https://global.krx.co.kr/calendar",
+      retrievedAt: "2026-08-04",
+      coverage: unverifiedDates.length > 0 ? "fallback" : "verified",
+      fallbackYears: unverifiedDates.map((date) => Number(date.slice(0, 4))),
+      unverifiedDates,
+    },
+  });
+}
 
 describe("fetchDateRange", () => {
   beforeEach(() => {
@@ -24,7 +44,7 @@ describe("fetchDateRange", () => {
   });
 
   it("fetches data for each trading day and merges results", async () => {
-    mockedGetTradingDays.mockReturnValue(["20260309", "20260310"]);
+    mockTradingDays(["20260309", "20260310"]);
     mockedKrxFetch
       .mockResolvedValueOnce({
         success: true,
@@ -64,7 +84,7 @@ describe("fetchDateRange", () => {
   });
 
   it("skips days with empty data (holidays)", async () => {
-    mockedGetTradingDays.mockReturnValue(["20260309", "20260310", "20260311"]);
+    mockTradingDays(["20260309", "20260310", "20260311"]);
     mockedKrxFetch
       .mockResolvedValueOnce({
         success: true,
@@ -95,8 +115,57 @@ describe("fetchDateRange", () => {
     });
   });
 
+  it("skips known exchange closures without spending KRX calls", async () => {
+    mockTradingDays(
+      ["20260923", "20260928"],
+      ["20260924", "20260925", "20260926", "20260927"],
+    );
+    mockedKrxFetch.mockResolvedValue({ success: true, data: [{ value: "1" }] });
+
+    const result = await fetchDateRange({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      from: "20260923",
+      to: "20260928",
+      apiKey: "test-key",
+    });
+
+    expect(mockedKrxFetch).toHaveBeenCalledTimes(2);
+    expect(result.completeness).toMatchObject({
+      requested: [
+        "20260923",
+        "20260924",
+        "20260925",
+        "20260926",
+        "20260927",
+        "20260928",
+      ],
+      succeeded: ["20260923", "20260928"],
+      skipped: ["20260924", "20260925", "20260926", "20260927"],
+      failed: [],
+    });
+    expect(result.fetchedDays).toBe(2);
+  });
+
+  it("reports an observable fallback for uncovered historical weekdays", async () => {
+    mockTradingDays(["20150102"], [], ["20150102"]);
+    mockedKrxFetch.mockResolvedValue({ success: true, data: [{ value: "1" }] });
+
+    const result = await fetchDateRange({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      from: "20150102",
+      to: "20150102",
+      apiKey: "test-key",
+    });
+
+    expect(result.calendar).toMatchObject({
+      coverage: "fallback",
+      unverifiedDates: ["20150102"],
+    });
+    expect(mockedKrxFetch).toHaveBeenCalledTimes(1);
+  });
+
   it("returns error when all days fail", async () => {
-    mockedGetTradingDays.mockReturnValue(["20260309"]);
+    mockTradingDays(["20260309"]);
     mockedKrxFetch.mockResolvedValue({
       success: false,
       data: [],
@@ -118,8 +187,34 @@ describe("fetchDateRange", () => {
     });
   });
 
+  it("remains failed when every attempted session fails beside known closures", async () => {
+    mockTradingDays(["20260923"], ["20260924"]);
+    mockedKrxFetch.mockResolvedValue({
+      success: false,
+      data: [],
+      error: "HTTP 500",
+      errorType: "upstream",
+    });
+
+    const result = await fetchDateRange({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      from: "20260923",
+      to: "20260924",
+      apiKey: "test-key",
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      completeness: {
+        state: "failed",
+        failed: [{ id: "20260923" }],
+        skipped: ["20260924"],
+      },
+    });
+  });
+
   it("preserves the highest-priority typed error when all days fail", async () => {
-    mockedGetTradingDays.mockReturnValue(["20260309", "20260310"]);
+    mockTradingDays(["20260309", "20260310"]);
     mockedKrxFetch
       .mockResolvedValueOnce({
         success: false,
@@ -149,7 +244,7 @@ describe("fetchDateRange", () => {
   });
 
   it("returns partial results when some days fail", async () => {
-    mockedGetTradingDays.mockReturnValue(["20260309", "20260310"]);
+    mockTradingDays(["20260309", "20260310"]);
     mockedKrxFetch
       .mockResolvedValueOnce({
         success: true,
@@ -178,7 +273,7 @@ describe("fetchDateRange", () => {
   });
 
   it("does not hide cancellation behind an earlier successful day", async () => {
-    mockedGetTradingDays.mockReturnValue(["20260309", "20260310"]);
+    mockTradingDays(["20260309", "20260310"]);
     mockedKrxFetch
       .mockResolvedValueOnce({
         success: true,
@@ -207,7 +302,7 @@ describe("fetchDateRange", () => {
       const d = (1 + i).toString().padStart(2, "0");
       return `202603${d}`;
     });
-    mockedGetTradingDays.mockReturnValue(days);
+    mockTradingDays(days);
 
     let activeConcurrent = 0;
     let maxConcurrent = 0;
@@ -237,7 +332,7 @@ describe("fetchDateRange", () => {
   });
 
   it("returns empty data when no trading days in range", async () => {
-    mockedGetTradingDays.mockReturnValue([]);
+    mockTradingDays([], ["20260307", "20260308"]);
 
     const result = await fetchDateRange({
       endpoint: "/svc/apis/idx/kospi_dd_trd",
@@ -252,7 +347,7 @@ describe("fetchDateRange", () => {
   });
 
   it("distinguishes all successful empty dates from failures", async () => {
-    mockedGetTradingDays.mockReturnValue(["20260309", "20260310"]);
+    mockTradingDays(["20260309", "20260310"]);
     mockedKrxFetch.mockResolvedValue({ success: true, data: [] });
 
     const result = await fetchDateRange({
@@ -275,7 +370,7 @@ describe("fetchDateRange", () => {
   });
 
   it("passes cache option through to krxFetch", async () => {
-    mockedGetTradingDays.mockReturnValue(["20260309"]);
+    mockTradingDays(["20260309"]);
     mockedKrxFetch.mockResolvedValue({
       success: true,
       data: [{ BAS_DD: "20260309" }],
@@ -295,7 +390,7 @@ describe("fetchDateRange", () => {
   });
 
   it("preserves date order in results", async () => {
-    mockedGetTradingDays.mockReturnValue(["20260309", "20260310", "20260311"]);
+    mockTradingDays(["20260309", "20260310", "20260311"]);
 
     // Simulate out-of-order completion
     mockedKrxFetch
@@ -340,7 +435,7 @@ describe("fetchDateRange", () => {
   });
 
   it("passes additional params (like isuCd) to each fetch", async () => {
-    mockedGetTradingDays.mockReturnValue(["20260309"]);
+    mockTradingDays(["20260309"]);
     mockedKrxFetch.mockResolvedValue({
       success: true,
       data: [{ BAS_DD: "20260309" }],

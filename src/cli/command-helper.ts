@@ -17,7 +17,6 @@ import { applyPipeline } from "../utils/data-pipeline.js";
 import { matchesIsuCode } from "../utils/isin.js";
 import { validateDate } from "../validator/index.js";
 import { setVerbose, verbose } from "../utils/logger.js";
-import { getRecentTradingDate } from "../utils/date.js";
 import { withCliCancellation } from "./cancellation.js";
 import { applyCompositeExitPolicy } from "./composite.js";
 import { completenessForOutput } from "../client/completeness.js";
@@ -34,7 +33,7 @@ export function resolveDate(
   }
 
   if (fromDate && toDate) {
-    return getRecentTradingDate();
+    return validateDate(fromDate);
   }
 
   writeError("Either --date or --from/--to is required");
