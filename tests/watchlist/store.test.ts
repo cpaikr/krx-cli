@@ -9,14 +9,15 @@ vi.mock("node:os");
 const mockedFs = vi.mocked(fs);
 const mockedOs = vi.mocked(os);
 
-const WATCHLIST_PATH = "/mock-home/.krx-cli/watchlist.json";
+const MOCK_HOME = path.join(path.parse(process.cwd()).root, "mock-home");
+const WATCHLIST_PATH = path.join(MOCK_HOME, ".krx-cli", "watchlist.json");
 
 describe("watchlist store", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.restoreAllMocks();
     vi.clearAllMocks();
-    mockedOs.homedir.mockReturnValue("/mock-home");
+    mockedOs.homedir.mockReturnValue(MOCK_HOME);
   });
 
   afterEach(() => {

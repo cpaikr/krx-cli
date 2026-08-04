@@ -17,11 +17,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:package": "node scripts/package-smoke.mjs",
+    "audit:prod": "pnpm audit --prod --audit-level low",
     "lint": "eslint src/",
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "typecheck": "tsc --noEmit",
     "test:e2e": "vitest run --config tests/vitest.config.e2e.ts",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm audit:prod && pnpm build && pnpm test:package",
+    "sync-skill-version": "node scripts/sync-skill-version.mjs",
     "prepare": "husky",
     "release": "release-it"
   },
@@ -62,10 +66,10 @@
   },
   "packageManager": "pnpm@10.28.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "commander": "^14.0.3",
     "zod": "^4.3.6"
   },
@@ -75,6 +79,7 @@
     "@eslint/js": "^10.0.1",
     "@release-it/conventional-changelog": "^10.0.5",
     "@types/node": "^25.4.0",
+    "@vitest/coverage-v8": "4.0.18",
     "esbuild": "^0.27.3",
     "eslint": "^10.0.3",
     "husky": "^9.1.7",
@@ -102,8 +107,8 @@
   "release-it": {
     "$schema": "https://unpkg.com/release-it/schema/release-it.json",
     "git": {
-      "requireUpstream": false,
-      "requireCleanWorkingDir": false,
+      "requireUpstream": true,
+      "requireCleanWorkingDir": true,
       "tagName": "v${version}",
       "commitMessage": "chore(release): v${version}"
     },
@@ -111,7 +116,7 @@
       "release": true
     },
     "hooks": {
-      "after:bump": "sed -i '' \"s/  version: \\\".*\\\"/  version: \\\"${version}\\\"/\" SKILL.md && git add SKILL.md"
+      "after:bump": "pnpm sync-skill-version && git add SKILL.md"
     },
     "npm": {
       "publish": false

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- Upgrade the bundled Model Context Protocol SDK dependency and enforce a clean production dependency audit before release.
+
+### Build System
+
+- Gate releases on cross-platform validation and isolated smoke tests of the packed `krx` and `krx-mcp` binaries.
+
 ## [1.8.1](https://github.com/kyo504/krx-cli/compare/v1.8.0...v1.8.1) (2026-03-20)
 
 ### Bug Fixes

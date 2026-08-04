@@ -33,14 +33,15 @@ _None._
 ### Completed included results
 
 - Secure remote MCP and KRX credentials — GitHub issues #1–#2.
+- Audited dependencies and reproducible cross-platform gates — GitHub issues #3 and #7.
 
 ### Current in-scope result
 
-Audited dependencies and reproducible cross-platform gates — GitHub issues #3 and #7.
+Bounded HTTP, accurate quota accounting, and trustworthy approval checks — GitHub issues #4 and #6.
 
 ### Next in-scope action
 
-Upgrade the bundled MCP SDK dependency, establish a zero-high/critical production-audit gate, and add reproducible cross-platform packed-binary validation.
+Introduce bounded, cancellable retry attempts and persistent per-attempt quota reservations, then make service-approval probes fresh and credential-bound.
 
 ### Evidence and blockers
 
@@ -50,3 +51,5 @@ Upgrade the bundled MCP SDK dependency, establish a zero-high/critical productio
 - Non-loopback HTTP additionally requires an explicit DNS Host allowlist. Defaults bound each authenticated client to 120 requests/minute and 10 active sessions, with 100 sessions globally and 30-minute idle expiry.
 - Credential persistence uses hidden interactive or stdin input, environment precedence, owner-only POSIX permissions, strict reads, sibling temporary writes with fsync/rename, and explicit removal. Windows follows profile ACLs without POSIX chmod assumptions.
 - Security slice validation: `pnpm check` passed 239 tests; `pnpm build` passed; focused post-review validation passed 19 authentication, credential, and terminal-lifecycle tests.
+- Dependency and gate slice: the MCP SDK is upgraded to 1.30.0 with zero locked production advisories; Node 22/24 runs on Ubuntu and Windows, and release verification smoke-tests the same packed artifact later passed to `npm publish` through its installed `krx` and `krx-mcp` entrypoints.
+- Gate validation: `pnpm verify` passed 239 tests, all-source coverage of 56.47% statements / 48.21% branches / 64.45% functions / 56.05% lines, a clean production audit, both builds, and a packed artifact smoke covering 31 schemas and 12 MCP tools. Independent review found and verified fixes for Windows command-shim execution and direct-dist smoke bypass.

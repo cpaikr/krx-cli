@@ -5,8 +5,15 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+
   publish:
+    needs: verify
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,4 +34,13 @@ jobs:
 
       - run: pnpm build
 
-      - run: npm publish --provenance --access public
+      - name: Pack release artifact
+        run: |
+          mkdir -p release-artifact
+          npm pack --json --ignore-scripts --pack-destination release-artifact
+
+      - name: Smoke-test release artifact
+        run: pnpm test:package -- release-artifact/*.tgz
+
+      - name: Publish verified artifact
+        run: npm publish release-artifact/*.tgz --provenance --access public

@@ -7,7 +7,7 @@ const commonOptions = {
   bundle: true,
   format: "esm",
   platform: "node",
-  target: "node20",
+  target: "node22",
   sourcemap: true,
   banner: {
     js: "#!/usr/bin/env node\nimport{createRequire}from'node:module';const require=createRequire(import.meta.url);",
