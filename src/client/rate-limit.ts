@@ -138,6 +138,23 @@ function lockOwnerIsAlive(lockPath: string): boolean {
   }
 }
 
+function isRetryableLockContention(error: unknown, lockPath: string): boolean {
+  const code = (error as NodeJS.ErrnoException).code;
+  if (code === "EEXIST") return true;
+  if (process.platform !== "win32" || code !== "EPERM") return false;
+
+  // Windows can report EPERM instead of EEXIST while another process is
+  // removing or recreating the lock directory. Retry only when the lock is
+  // visible or its parent is writable, preserving genuine permission errors.
+  if (fs.existsSync(lockPath)) return true;
+  try {
+    fs.accessSync(path.dirname(lockPath), fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function acquireLock(
   filePath: string,
   options: RateLimitOptions,
@@ -158,12 +175,28 @@ async function acquireLock(
         }
         throw new RequestCancelledError();
       }
+      let acquired = false;
       try {
         fs.mkdirSync(lockPath, { mode: 0o700 });
-        fs.writeFileSync(path.join(lockPath, "owner"), owner, {
-          encoding: "utf8",
-          mode: 0o600,
-        });
+        acquired = true;
+      } catch (error) {
+        if (!isRetryableLockContention(error, lockPath)) throw error;
+      }
+
+      if (acquired) {
+        try {
+          fs.writeFileSync(path.join(lockPath, "owner"), owner, {
+            encoding: "utf8",
+            mode: 0o600,
+          });
+        } catch (error) {
+          try {
+            fs.rmdirSync(lockPath);
+          } catch {
+            // A partial owner write is recovered by the stale-lock policy.
+          }
+          throw error;
+        }
         return () => {
           try {
             if (
@@ -177,8 +210,6 @@ async function acquireLock(
             // A failed cleanup is recovered by the stale-lock policy.
           }
         };
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
       }
 
       try {
@@ -192,7 +223,8 @@ async function acquireLock(
           continue;
         }
       } catch {
-        continue;
+        // The lock changed while it was inspected. Retry after the bounded
+        // contention delay instead of spinning indefinitely.
       }
 
       if (Date.now() - started >= (options.lockTimeoutMs ?? LOCK_TIMEOUT_MS)) {

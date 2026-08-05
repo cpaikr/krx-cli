@@ -3,11 +3,11 @@ import { access, mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
+import { installedBinCommand } from "./package-smoke-command.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const temporaryRoot = await mkdtemp(join(tmpdir(), "krx-cli-package-smoke-"));
 const isWindows = process.platform === "win32";
-const commandShell = process.env.ComSpec ?? "cmd.exe";
 
 async function resolveNpmCommand() {
   if (!isWindows) return { args: [], command: "npm" };
@@ -102,25 +102,6 @@ async function createTarball(packDirectory) {
   }
 
   return resolve(packDirectory, report[0].filename);
-}
-
-function installedBinCommand(installRoot, name, args = []) {
-  const executable = join(
-    installRoot,
-    "node_modules",
-    ".bin",
-    `${name}${isWindows ? ".cmd" : ""}`,
-  );
-
-  if (!isWindows) return { args, command: executable };
-
-  const commandLine = [executable, ...args]
-    .map((value) => `"${value.replaceAll('"', '""')}"`)
-    .join(" ");
-  return {
-    args: ["/d", "/s", "/c", `call ${commandLine}`],
-    command: commandShell,
-  };
 }
 
 async function listPackedTools(installRoot, sdkRoot) {
