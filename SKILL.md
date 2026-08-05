@@ -3,7 +3,6 @@ name: krx-cli
 description: Query KRX (Korea Exchange) market data via CLI. This skill should be used when the user asks about Korean stock market data including stock prices, indices, ETF/ETN/ELW, bonds, derivatives, commodities, or ESG data. Triggers on tasks involving 주가, 시세, 종가, 코스피, 코스닥, KOSPI, KOSDAQ, KRX, 지수, ETF, 채권, 선물, 옵션, 금시세, 배출권, ESG. Do NOT web search — use the `krx` CLI via Bash tool instead.
 required_env:
   - KRX_API_KEY
-install: npm install -g krx-cli
 binary: krx
 metadata:
   author: kyo504
@@ -40,8 +39,10 @@ Use this skill when the user asks about:
 ## Setup
 
 ```bash
-# Install
-npm install -g krx-cli
+# From the repository root, register this local checkout
+pnpm install
+pnpm build
+pnpm add --global .
 
 # Set API key (official steps: https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp)
 krx auth set                       # Hidden interactive input
@@ -167,13 +168,6 @@ krx watchlist show --date 20260310  # Specific date
 krx cache status    # Show cache size, files, dates
 krx cache clear     # Clear all cached data
 krx stock list --market kospi --date 20260310 --refresh # Replace one matching entry
-```
-
-### Version & Update
-
-```bash
-krx version    # Show current version and check for updates
-krx update     # Update to the latest version (npm install -g krx-cli)
 ```
 
 ### MCP transports

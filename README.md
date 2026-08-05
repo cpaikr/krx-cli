@@ -1,8 +1,6 @@
 # krx-cli
 
-[![npm version](https://img.shields.io/npm/v/krx-cli.svg)](https://www.npmjs.com/package/krx-cli)
-[![npm downloads](https://img.shields.io/npm/dm/krx-cli.svg)](https://www.npmjs.com/package/krx-cli)
-[![license](https://img.shields.io/npm/l/krx-cli.svg)](https://github.com/kyo504/krx-cli/blob/main/LICENSE)
+[License: MIT](LICENSE)
 
 AI 에이전트를 위한 KRX(한국거래소) Open API CLI & MCP 서버입니다.
 
@@ -21,15 +19,22 @@ Claude Code, GPT, Cursor 등의 AI 에이전트가 Bash tool 또는 MCP를 통�
 - **안전한 사용**: 입력 검증, rate limit 추적, dry-run 지원
 - **서비스 승인 관리**: API별 승인 상태 자동 확인
 
-## 설치
+## 로컬 설치
+
+현재 이 포크는 npm 레지스트리 릴리스 대신 로컬 체크아웃에서 실행합니다. 저장소
+루트에서 의존성을 설치하고 빌드한 뒤, 현재 디렉터리의 바이너리를 전역 명령으로
+등록합니다.
 
 ```bash
-npm install -g krx-cli
-# 또는
-pnpm add -g krx-cli
-# 또는
-yarn global add krx-cli
+pnpm install
+pnpm build
+pnpm add --global .
+
+krx --help
 ```
+
+`pnpm add --global .`은 npm 레지스트리의 `krx-cli`를 내려받지 않고 현재 로컬
+패키지를 등록합니다. 소스 코드를 변경한 뒤에는 `pnpm build`를 다시 실행하세요.
 
 ## 설정
 
@@ -193,13 +198,6 @@ HTTP 401은 잘못된 키와 미승인 카테고리를 안정적으로 구분하
 잘리더라도 `_truncated`와 `completeness`가 같은 envelope에 유지됩니다. 자세한
 계약과 호환성 범위는 [복합 결과 문서](docs/COMPOSITE-RESULTS.md)를 참고하세요.
 
-### 버전 관리
-
-```bash
-krx version    # 현재 버전 확인 및 최신 버전 비교
-krx update     # 최신 버전으로 업데이트
-```
-
 ### ETF/ETN/ELW 조회
 
 ```bash
@@ -295,18 +293,12 @@ krx schema stock.stk_bydd_trd
 
 krx-cli는 AI 에이전트가 Bash tool로 직접 호출하도록 설계되었습니다. 연동은 2단계입니다:
 
-1. **CLI 설치** — 실제 실행 가능한 `krx` 바이너리
+1. **CLI 로컬 등록** — 현재 체크아웃의 `krx` 바이너리
 2. **스킬 설치** — 에이전트에게 사용법을 알려주는 SKILL.md
 
-### Step 1: CLI 설치
+### Step 1: CLI 로컬 등록
 
-```bash
-npm install -g krx-cli
-# 또는
-pnpm add -g krx-cli
-# 또는
-yarn global add krx-cli
-```
+위의 [로컬 설치](#로컬-설치)를 완료합니다.
 
 ### Step 2: 스킬 설치
 
@@ -314,14 +306,14 @@ yarn global add krx-cli
 
 ```bash
 # 모든 에이전트에 글로벌 설치 (권장)
-npx skills add kyo504/krx-cli -g
+npx skills add sjunepark/krx-cli -g
 
 # 특정 에이전트만 지정
-npx skills add kyo504/krx-cli -g -a claude-code
-npx skills add kyo504/krx-cli -g -a cursor
+npx skills add sjunepark/krx-cli -g -a claude-code
+npx skills add sjunepark/krx-cli -g -a cursor
 
 # 프로젝트 단위 설치 (팀 공유 시)
-npx skills add kyo504/krx-cli
+npx skills add sjunepark/krx-cli
 ```
 
 ### Step 3: API 키 설정
@@ -395,7 +387,7 @@ CLI 외에 MCP(Model Context Protocol) 서버도 제공합니다. 두 가지 전
 
 KRX API 키는 `krx auth set`으로 등록한 것이 자동으로 사용되며,
 `KRX_API_KEY`가 있으면 환경변수가 우선합니다.
-`krx-mcp`는 `npm install -g krx-cli`로 설치하면 함께 설치됩니다.
+`krx-mcp`도 [로컬 설치](#로컬-설치) 과정에서 `krx`와 함께 등록됩니다.
 
 ### Claude Desktop (stdio)
 
