@@ -107,9 +107,11 @@ describe("public CLI contract", () => {
     }
   });
 
-  it("keeps README, SKILL, and reference exit tables complete", () => {
+  it("keeps README, skill CLI reference, and contract exit tables complete", () => {
     const readme = readRepositoryFile("README.md");
-    const skill = readRepositoryFile("SKILL.md");
+    const skillReference = readRepositoryFile(
+      "skills/krx-cli/references/cli-usage.md",
+    );
     const reference = readRepositoryFile("docs/CLI-CONTRACT.md");
 
     for (const { code, trigger } of Object.values(EXIT_CODE_CONTRACT)) {
@@ -117,11 +119,11 @@ describe("public CLI contract", () => {
       expect(readme).toMatch(tableRow);
       expect(reference).toMatch(tableRow);
       expect(reference).toContain(trigger);
-      expect(skill).toMatch(new RegExp(`^${code} = `, "m"));
+      expect(skillReference).toMatch(new RegExp(`^${code} = `, "m"));
     }
     expect(readme).toContain("HTTP 401");
     expect(readme).toContain("HTTP 403");
-    expect(skill).toContain("ambiguous KRX HTTP 401");
+    expect(skillReference).toContain("ambiguous KRX HTTP 401");
     expect(reference.replace(/\s+/g, " ")).toContain(
       "Only an explicit HTTP 403",
     );
@@ -129,9 +131,11 @@ describe("public CLI contract", () => {
 
   it("keeps environment, output, security, CI, and official-link docs aligned", () => {
     const readme = readRepositoryFile("README.md");
-    const skill = readRepositoryFile("SKILL.md");
+    const skillReference = readRepositoryFile(
+      "skills/krx-cli/references/cli-usage.md",
+    );
     const reference = readRepositoryFile("docs/CLI-CONTRACT.md");
-    const documents = [readme, skill, reference];
+    const documents = [readme, skillReference, reference];
 
     for (const variable of Object.values(PUBLIC_CONTRACT.environment)) {
       expect(reference).toContain(variable);
@@ -148,7 +152,9 @@ describe("public CLI contract", () => {
 
     expect(readme).toContain("TTY에서는 `table`");
     expect(readme).toContain("항상 JSON envelope");
-    expect(skill).toContain("TTY and JSON when redirected");
+    expect(skillReference.replace(/\s+/g, " ")).toContain(
+      "table on a TTY and JSON when redirected",
+    );
     expect(reference).toContain("always return a JSON envelope");
     expect(reference.replace(/\s+/g, " ")).toContain(
       "behavioral scope is deliberate",
@@ -161,14 +167,17 @@ describe("public CLI contract", () => {
       "https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp";
     const officialServices =
       "https://openapi.krx.co.kr/contents/OPP/INFO/service/OPPINFO004.cmd";
-    for (const document of [readme, skill]) {
+    for (const document of [readme, skillReference]) {
       expect(document).toContain(officialUsage);
       expect(document).toContain(officialServices);
     }
   });
 
   it("uses placeholders or environment expansion in documented API-key examples", () => {
-    for (const path of ["README.md", "SKILL.md"]) {
+    for (const path of [
+      "README.md",
+      "skills/krx-cli/references/cli-usage.md",
+    ]) {
       const document = readRepositoryFile(path);
       const assignments = document.match(/^export KRX_API_KEY=(.+)$/gm) ?? [];
       for (const assignment of assignments) {

@@ -9,7 +9,7 @@
   },
   "files": [
     "dist",
-    "SKILL.md",
+    "skills",
     "CHANGELOG.md"
   ],
   "scripts": {
@@ -29,7 +29,6 @@
     "calendar:update": "node scripts/krx-calendar.mjs --write",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm audit:prod && pnpm build && pnpm test:package",
-    "sync-skill-version": "node scripts/sync-skill-version.mjs",
     "prepare": "husky",
     "release": "release-it"
   },
@@ -118,9 +117,6 @@
     },
     "github": {
       "release": true
-    },
-    "hooks": {
-      "after:bump": "pnpm sync-skill-version && git add SKILL.md"
     },
     "npm": {
       "publish": false

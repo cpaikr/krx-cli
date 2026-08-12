@@ -3,8 +3,8 @@
 The executable source of truth is `src/cli/program.ts` for option syntax and
 validation, `src/user-contract.ts` for output defaults, request defaults, and
 environment names, and `src/cli/exit-codes.ts` for process exit semantics.
-Contract tests keep this reference, `README.md`, `SKILL.md`, and Commander help
-aligned.
+Contract tests keep this reference, `README.md`,
+`skills/krx-cli/references/cli-usage.md`, and Commander help aligned.
 
 ## Output
 

@@ -1,40 +1,40 @@
----
-name: krx-cli
-description: Query KRX (Korea Exchange) market data via CLI. This skill should be used when the user asks about Korean stock market data including stock prices, indices, ETF/ETN/ELW, bonds, derivatives, commodities, or ESG data. Triggers on tasks involving 주가, 시세, 종가, 코스피, 코스닥, KOSPI, KOSDAQ, KRX, 지수, ETF, 채권, 선물, 옵션, 금시세, 배출권, ESG. Do NOT web search — use the `krx` CLI via Bash tool instead.
-required_env:
-  - KRX_API_KEY
-binary: krx
-metadata:
-  author: kyo504
-  version: "1.8.1"
-invariants:
-  - Always use YYYYMMDD format for --date (e.g., 20260310)
-  - Data is non-real-time; service availability dates vary and must be checked in the official catalog
-  - Single-endpoint output defaults to table on a TTY and JSON when redirected; composites always return JSON envelopes
-  - Rate limit is 10,000 API calls per day
-  - Local usage is an advisory, per-credential KST counter; KRX is authoritative
-  - Uncached requests have a 15s attempt timeout and 45s overall deadline
-  - Historical cache entries expire after 7 days unless KRX_CACHE_MAX_AGE_HOURS overrides it
-  - Each API category requires separate approval from KRX
-  - Composite results must be checked via completeness.state before analysis
-  - KRX row field values are strings (including numbers); envelope metadata retains JSON types
----
+# KRX CLI usage reference
 
-# krx-cli
+Read this reference only for CLI queries, analysis, setup, authentication-status
+checks, cache operations, schema lookup, or MCP operation.
 
-Agent-native CLI for querying KRX (Korea Exchange) Open API data. Use the `krx` CLI via Bash tool — do NOT web search for Korean market data.
+## Contents
 
-## When to Apply
+- [Operating contract](#operating-contract)
+- [Setup](#setup)
+- [Commands](#commands)
+- [Root query flags](#root-query-flags)
+- [Exit codes](#exit-codes)
+- [Handling large results](#handling-large-results)
+- [Common patterns](#common-patterns)
+- [Response fields](#response-fields)
+- [MCP resources](#mcp-resources)
 
-Use this skill when the user asks about:
+## Operating contract
 
-- 주식 시세/가격 (삼성전자 주가, 종목별 종가 등)
-- 지수 조회 (코스피, 코스닥, KRX 지수 등)
-- ETF, ETN, ELW 시세
-- 채권 시세 (국채, 일반채권, 소액채권)
-- 파생상품 (선물, 옵션)
-- 일반상품 (금, 석유, 배출권)
-- ESG 지수/채권 정보
+- Use the `krx` CLI for KRX market data instead of substituting web results.
+- Format dates as `YYYYMMDD`, for example `20260310`.
+- Treat KRX data as non-real-time and check the official catalog for each
+  service's available date range.
+- Expect single-endpoint output to default to table on a TTY and JSON when
+  redirected. Composite commands always return JSON envelopes.
+- Check `completeness.state` before analyzing a composite result.
+- Treat KRX row values as strings, including numeric-looking values. Envelope
+  metadata retains JSON types.
+- Respect the 10,000-request daily limit. The local per-credential KST counter
+  is advisory; KRX remains authoritative.
+- Allow a 15-second attempt timeout and a 45-second overall deadline for
+  uncached requests.
+- Expect historical cache entries to expire after seven days unless
+  `KRX_CACHE_MAX_AGE_HOURS` overrides the age.
+- Do not apply for service access merely because a query reports missing
+  approval. Return to the entry skill and require an explicit application
+  request before using the service-access workflow.
 
 ## Setup
 

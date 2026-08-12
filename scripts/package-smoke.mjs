@@ -179,6 +179,22 @@ try {
     await readFile(join(packageRoot, "package.json"), "utf8"),
   );
 
+  const skillRoot = join(packageRoot, "skills", "krx-cli");
+  const [skillEntry, cliReference, accessWorkflow] = await Promise.all([
+    readFile(join(skillRoot, "SKILL.md"), "utf8"),
+    readFile(join(skillRoot, "references", "cli-usage.md"), "utf8"),
+    readFile(join(skillRoot, "workflows", "apply-service-access.md"), "utf8"),
+  ]);
+  if (
+    !skillEntry.includes("name: krx-cli") ||
+    !skillEntry.includes("references/cli-usage.md") ||
+    !skillEntry.includes("workflows/apply-service-access.md") ||
+    !cliReference.includes("# KRX CLI usage reference") ||
+    !accessWorkflow.includes("# Apply for KRX endpoint service access")
+  ) {
+    throw new Error("Packed krx-cli skill is incomplete");
+  }
+
   if (
     packageJson.bin?.krx !== "./dist/cli.js" ||
     packageJson.bin?.["krx-mcp"] !== "./dist/mcp.js"

@@ -294,7 +294,8 @@ krx schema stock.stk_bydd_trd
 krx-cli는 AI 에이전트가 Bash tool로 직접 호출하도록 설계되었습니다. 연동은 2단계입니다:
 
 1. **CLI 로컬 등록** — 현재 체크아웃의 `krx` 바이너리
-2. **스킬 설치** — 에이전트에게 사용법을 알려주는 SKILL.md
+2. **스킬 설치** — 에이전트에게 사용법과 서비스 이용신청 절차를 알려주는
+   `skills/krx-cli/` 패키지
 
 ### Step 1: CLI 로컬 등록
 
@@ -302,7 +303,8 @@ krx-cli는 AI 에이전트가 Bash tool로 직접 호출하도록 설계되었�
 
 ### Step 2: 스킬 설치
 
-[skills.sh](https://skills.sh)를 통해 SKILL.md를 에이전트에 등록합니다.
+[skills.sh](https://skills.sh)를 통해 `skills/krx-cli/` 패키지를 에이전트에
+등록합니다.
 
 ```bash
 # 모든 에이전트에 글로벌 설치 (권장)
@@ -353,7 +355,15 @@ skills.sh는 40개 이상의 에이전트를 지원합니다:
 
 "어떤 API가 승인되어 있어?"
 → krx auth status
+
+"로그인된 KRX 탭에서 아직 신청하지 않은 API를 모두 이용신청해줘"
+→ 사용자에게 공유받은 인증된 브라우저 탭에서 endpoint별 신청 workflow 실행
 ```
+
+서비스 이용신청은 외부 계정 상태를 변경하므로 사용자가 명시적으로 신청을 요청한
+경우에만 실행합니다. 이 branch에는 사용자가 공유한 인증된 탭을 조작할 수 있는
+브라우저 제어 기능이 필요합니다. Codex/ChatGPT에서는 Chrome connector가 이
+기능을 제공할 수 있으며, CAPTCHA나 로그인 입력은 사용자가 직접 처리합니다.
 
 ### 스킬 관리
 
@@ -366,15 +376,24 @@ npx skills remove krx-cli    # 제거
 
 ### 수동 연동 (skills.sh 없이)
 
-SKILL.md를 직접 에이전트 설정 디렉토리에 복사할 수도 있습니다:
+skill 디렉터리 전체를 에이전트 설정 디렉터리에 복사할 수도 있습니다. 참조 및
+workflow 파일이 필요하므로 `SKILL.md`만 단독으로 복사하지 않습니다:
 
 ```bash
 # Claude Code
-mkdir -p ~/.claude/skills && cp SKILL.md ~/.claude/skills/krx-cli.md
+mkdir -p ~/.claude/skills && cp -R skills/krx-cli ~/.claude/skills/
+test -f ~/.claude/skills/krx-cli/SKILL.md
+[ ! -f ~/.claude/skills/krx-cli.md ] || mv -i ~/.claude/skills/krx-cli.md ~/.claude/krx-cli.md.legacy
 
 # Cursor
-mkdir -p ~/.cursor/skills && cp SKILL.md ~/.cursor/skills/krx-cli.md
+mkdir -p ~/.cursor/skills && cp -R skills/krx-cli ~/.cursor/skills/
+test -f ~/.cursor/skills/krx-cli/SKILL.md
+[ ! -f ~/.cursor/skills/krx-cli.md ] || mv -i ~/.cursor/skills/krx-cli.md ~/.cursor/krx-cli.md.legacy
 ```
+
+마지막 명령은 새 디렉터리 설치를 확인한 뒤, 이전 문서가 안내했던 단일 파일
+`krx-cli.md`가 남아 있으면 agent discovery 경로 밖의 `.legacy` 백업으로 옮깁니다.
+두 정의가 동시에 활성화되는 것을 방지하면서 기존 파일은 복구할 수 있게 보존합니다.
 
 ## MCP 서버
 
