@@ -6,6 +6,11 @@ import {
 } from "../../client/endpoints.js";
 import { writeOutput, writeError } from "../../output/formatter.js";
 import { EXIT_CODES } from "../exit-codes.js";
+import {
+  ADJUSTED_STOCK_OUTPUT_SCHEMA,
+  isAdjustedStockEndpoint,
+  type DerivedOutputSchema,
+} from "../../client/stock-adjustment.js";
 
 interface SchemaEntry {
   readonly command: string;
@@ -15,6 +20,7 @@ interface SchemaEntry {
   readonly category: string;
   readonly params: readonly ParamDef[];
   readonly responseFields: readonly ResponseFieldDef[];
+  readonly derivedOutput?: DerivedOutputSchema;
 }
 
 interface ParamDef {
@@ -51,6 +57,9 @@ function getAllSchemas(): readonly SchemaEntry[] {
     category: endpoint.category,
     params: [...COMMON_PARAMS],
     responseFields: endpoint.responseFields,
+    ...(isAdjustedStockEndpoint(endpoint.path)
+      ? { derivedOutput: ADJUSTED_STOCK_OUTPUT_SCHEMA }
+      : {}),
   }));
 }
 

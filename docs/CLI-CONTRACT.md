@@ -17,6 +17,19 @@ commands. They always return a JSON envelope containing `data` and
 `completeness`, regardless of TTY state, because rendering that envelope as a
 table would discard failure information.
 
+Eligible stock adjustment is narrower than the generic date-range contract. A
+KOSPI, KOSDAQ, or KONEX daily-stock query with both range ends and one exact
+`--code` returns adjusted OHLC by default. Raw `TDD_*` fields remain unchanged;
+derived `ADJ_TDD_*` fields, `ADJ_FACTOR`, and envelope-level `adjustment`
+metadata are added before the row pipeline. `krx stock list --no-adjusted`
+requests the legacy raw-only range. Direct dates, full-market queries,
+multi-security queries, and non-daily-stock endpoints remain raw-only.
+
+Adjustment requires complete, uniquely identified, internally consistent input.
+An integrity failure emits a structured failed envelope with `data: []` and
+exits 1. It never returns partial/raw rows as an adjusted success. Adjustment
+excludes cash dividends and is not a total-return series.
+
 Root options are inherited syntactically, but their behavioral scope is
 deliberate:
 
@@ -28,6 +41,7 @@ deliberate:
 | `--from`, `--to`, `--save`, `--dry-run`                        | Endpoint row commands.                                                      |
 | `--no-cache`, `--refresh`                                      | Endpoint row commands, market summary, and watchlist prices.                |
 | `--retries`                                                    | Direct single-endpoint row requests; composites retain the bounded default. |
+| `stock list --no-adjusted`                                     | Eligible exact-code KOSPI/KOSDAQ/KONEX date ranges only.                    |
 
 Passing a root option outside its active scope does not change that command.
 
@@ -46,16 +60,16 @@ krx-cli environment variable.
 
 ## Exit status
 
-| Code | Trigger                                                                                                     |
-| ---: | ----------------------------------------------------------------------------------------------------------- |
-|    0 | The command completed without a reportable failure or required-result miss.                                 |
-|    1 | An upstream, network, timeout, cancellation, invalid-response, or local-state failure prevented completion. |
-|    2 | Arguments or input were invalid or incomplete.                                                              |
-|    3 | The requested market data or local target was absent.                                                       |
-|    4 | No API key is configured, or KRX returned HTTP 401 (an ambiguous credential-or-approval failure).           |
-|    5 | Local quota admission or KRX HTTP 429 rejected the request.                                                 |
-|    6 | KRX explicitly rejected service approval with HTTP 403.                                                     |
-|    7 | A composite command returned usable data while one or more requested components failed.                     |
+| Code | Trigger                                                                                                                |
+| ---: | ---------------------------------------------------------------------------------------------------------------------- |
+|    0 | The command completed without a reportable failure or required-result miss.                                            |
+|    1 | An upstream, network, timeout, cancellation, invalid-response, integrity, or local-state failure prevented completion. |
+|    2 | Arguments or input were invalid or incomplete.                                                                         |
+|    3 | The requested market data or local target was absent.                                                                  |
+|    4 | No API key is configured, or KRX returned HTTP 401 (an ambiguous credential-or-approval failure).                      |
+|    5 | Local quota admission or KRX HTTP 429 rejected the request.                                                            |
+|    6 | KRX explicitly rejected service approval with HTTP 403.                                                                |
+|    7 | A composite command returned usable data while one or more requested components failed.                                |
 
 KRX HTTP 401 responses do not reliably distinguish an invalid credential from
 missing category approval. Code 4 therefore means an authentication-shaped or

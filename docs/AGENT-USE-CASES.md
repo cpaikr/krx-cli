@@ -552,14 +552,17 @@ kospi_top50_20260320.csv 파일을 생성했습니다.
 
 KRX Open API는 2010년부터의 일별 OHLCV(시가/고가/저가/종가/거래량) 데이터를 제공합니다. `date_from`/`date_to`로 과거 데이터를 가져와 에이전트가 직접 전략을 검증하거나, 백테스트 코드를 생성할 수 있습니다.
 
-### 사용 가능한 데이터
+### 백테스트 권장 데이터
 
-| 자산 | 필드                                                                      | 비고                    |
-| ---- | ------------------------------------------------------------------------- | ----------------------- |
-| 주식 | TDD_OPNPRC, TDD_HGPRC, TDD_LWPRC, TDD_CLSPRC, ACC_TRDVOL, FLUC_RT, MKTCAP | 종목별 isuCd 필터       |
-| 지수 | OPNPRC_IDX, HGPRC_IDX, LWPRC_IDX, CLSPRC_IDX, ACC_TRDVOL, FLUC_RT         | IDX_NM으로 지수 선택    |
-| ETF  | TDD_CLSPRC, NAV, ACC_TRDVOL, IDX_IND_NM, FLUC_RT                          | NAV로 괴리율 추적       |
-| 선물 | TDD_CLSPRC, SETL_PRC, ACC_OPNINT_QTY                                      | 정산가, 미결제약정 포함 |
+아래 표는 전체 응답 스키마가 아니라 분석에 권장하는 필드입니다. 주식 원본의
+`FLUC_RT`, `MKTCAP` 같은 다른 응답 필드도 그대로 사용할 수 있습니다.
+
+| 자산 | 필드                                                                     | 비고                                  |
+| ---- | ------------------------------------------------------------------------ | ------------------------------------- |
+| 주식 | ADJ_TDD_OPNPRC, ADJ_TDD_HGPRC, ADJ_TDD_LWPRC, ADJ_TDD_CLSPRC, ACC_TRDVOL | 정확한 isuCd 기간 조회; 현금배당 제외 |
+| 지수 | OPNPRC_IDX, HGPRC_IDX, LWPRC_IDX, CLSPRC_IDX, ACC_TRDVOL, FLUC_RT        | IDX_NM으로 지수 선택                  |
+| ETF  | TDD_CLSPRC, NAV, ACC_TRDVOL, IDX_IND_NM, FLUC_RT                         | NAV로 괴리율 추적                     |
+| 선물 | TDD_CLSPRC, SETL_PRC, ACC_OPNINT_QTY                                     | 정산가, 미결제약정 포함               |
 
 ### 시나리오 A: 대화 내에서 간단한 백테스트
 
@@ -606,7 +609,7 @@ KRX Open API는 2010년부터의 일별 OHLCV(시가/고가/저가/종가/거래
   1. krx_stock (stk_bydd_trd, date_from: 20250920, date_to: 20260320,
      isuCd: KR7005930003)
      → 약 125거래일의 삼성전자 일별 데이터
-  2. TDD_CLSPRC(종가) 기준 5일/20일 이동평균 계산
+  2. ADJ_TDD_CLSPRC(수정 종가) 기준 5일/20일 이동평균 계산
   3. 크로스 시점 탐색 및 수익률 계산
 
 === 골든크로스 백테스트: 삼성전자 ===

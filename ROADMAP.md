@@ -6,7 +6,7 @@ _None._
 
 ## Plans
 
-1. [Deliver trustworthy adjusted historical stock prices](plans/adjusted-stock-prices.md)
+_None._
 
 ## Tasks
 

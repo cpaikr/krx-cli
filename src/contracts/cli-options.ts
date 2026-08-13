@@ -5,6 +5,13 @@ export interface ContractCliOptions {
   readonly reportPath?: string;
 }
 
+export function resolveContractDate(
+  optionDate: string | undefined,
+  environmentDate: string | undefined,
+): string | undefined {
+  return optionDate ?? (environmentDate?.trim() || undefined);
+}
+
 /** Parse direct Node arguments and the literal separator forwarded by pnpm. */
 export function parseContractArguments(
   args: readonly string[],

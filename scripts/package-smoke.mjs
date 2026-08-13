@@ -104,7 +104,7 @@ async function createTarball(packDirectory) {
   return resolve(packDirectory, report[0].filename);
 }
 
-async function listPackedTools(installRoot, sdkRoot) {
+async function inspectPackedMcp(installRoot, sdkRoot) {
   const [{ Client }, { StdioClientTransport }] = await Promise.all([
     import(pathToFileURL(join(sdkRoot, "dist", "esm", "client", "index.js"))),
     import(pathToFileURL(join(sdkRoot, "dist", "esm", "client", "stdio.js"))),
@@ -122,7 +122,16 @@ async function listPackedTools(installRoot, sdkRoot) {
 
   try {
     await withTimeout(client.connect(transport), "MCP startup");
-    return (await withTimeout(client.listTools(), "MCP tools/list")).tools;
+    const tools = (await withTimeout(client.listTools(), "MCP tools/list"))
+      .tools;
+    const schema = await withTimeout(
+      client.callTool({
+        name: "krx_schema",
+        arguments: { endpoint: "stk_bydd_trd" },
+      }),
+      "MCP krx_schema call",
+    );
+    return { schema, tools };
   } finally {
     await client.close();
   }
@@ -207,6 +216,15 @@ try {
   if (!help.stdout.includes("Usage: krx")) {
     throw new Error("Packed krx --help output is missing its usage contract");
   }
+  const stockHelpCommand = installedBinCommand(installRoot, "krx", [
+    "stock",
+    "list",
+    "--help",
+  ]);
+  const stockHelp = await run(stockHelpCommand.command, stockHelpCommand.args);
+  if (!stockHelp.stdout.includes("--no-adjusted")) {
+    throw new Error("Packed stock list help omitted --no-adjusted");
+  }
 
   const schemaCommand = installedBinCommand(installRoot, "krx", [
     "schema",
@@ -216,6 +234,17 @@ try {
   const schemas = JSON.parse(schema.stdout);
   if (!Array.isArray(schemas) || schemas.length === 0) {
     throw new Error("Packed krx schema --all returned no endpoint schemas");
+  }
+  const adjustedSchema = schemas.find(
+    (entry) => entry.command === "stock.stk_bydd_trd",
+  );
+  if (
+    adjustedSchema?.derivedOutput?.provenance !== "krx-cli-derived" ||
+    !adjustedSchema.derivedOutput.fields.some(
+      (field) => field.name === "ADJ_TDD_CLSPRC",
+    )
+  ) {
+    throw new Error("Packed CLI schema omitted adjusted derived provenance");
   }
 
   const invalidCommand = installedBinCommand(installRoot, "krx", [
@@ -237,9 +266,36 @@ try {
     "@modelcontextprotocol",
     "sdk",
   );
-  const tools = await listPackedTools(installRoot, sdkRoot);
+  const { schema: mcpSchemaResult, tools } = await inspectPackedMcp(
+    installRoot,
+    sdkRoot,
+  );
   if (!tools.some((tool) => tool.name === "krx_schema")) {
     throw new Error("Packed krx-mcp tools/list omitted krx_schema");
+  }
+  const stockTool = tools.find((tool) => tool.name === "krx_stock");
+  const nonStockTools = tools.filter(
+    (tool) => tool.name.startsWith("krx_") && tool.name !== "krx_stock",
+  );
+  if (!stockTool?.inputSchema?.properties?.adjusted) {
+    throw new Error("Packed krx_stock schema omitted adjusted input");
+  }
+  if (nonStockTools.some((tool) => tool.inputSchema?.properties?.adjusted)) {
+    throw new Error("Packed non-stock MCP tool exposed adjusted input");
+  }
+  const mcpSchemaText =
+    mcpSchemaResult.content
+      ?.filter((item) => item.type === "text")
+      .map((item) => item.text)
+      .join("") ?? "";
+  if (!mcpSchemaText.includes('"provenance": "krx-cli-derived"')) {
+    throw new Error("Packed krx_schema call omitted derived provenance");
+  }
+  if (
+    !cliReference.includes("adjusted by default") ||
+    !cliReference.includes("not total returns")
+  ) {
+    throw new Error("Packed skill reference omitted adjusted-price contract");
   }
 
   process.stdout.write(

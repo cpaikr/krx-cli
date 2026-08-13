@@ -25,6 +25,7 @@ interface DateRangeOptions {
 export interface DateRangeResult<
   T = Record<string, string>,
 > extends CompositeResult<readonly T[], string> {
+  /** Successful upstream requests, including responses with no rows. */
   readonly fetchedDays: number;
   readonly failedDays: number;
   readonly calendar: KrxCalendarSelection;

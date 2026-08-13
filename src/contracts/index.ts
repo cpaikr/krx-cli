@@ -1,7 +1,8 @@
 import { writeFileAtomicSync } from "../utils/atomic-file.js";
-import { parseContractArguments } from "./cli-options.js";
+import { parseContractArguments, resolveContractDate } from "./cli-options.js";
 import { buildContractPlan, runContractCheck } from "./runner.js";
 import { PUBLIC_CONTRACT } from "../user-contract.js";
+import { loadLocalContractEnvironment } from "./local-env.js";
 
 function usage(): string {
   return `Usage: krx-contract-check [options]
@@ -25,13 +26,17 @@ function redact(message: string, apiKey: string): string {
   return apiKey ? message.replaceAll(apiKey, "[REDACTED]") : message;
 }
 
+loadLocalContractEnvironment();
+
 const options = parseContractArguments(process.argv.slice(2));
 if (options.help) {
   process.stdout.write(`${usage()}\n`);
   process.exit(0);
 }
-const date =
-  options.date ?? process.env[PUBLIC_CONTRACT.environment.contractDate];
+const date = resolveContractDate(
+  options.date,
+  process.env[PUBLIC_CONTRACT.environment.contractDate],
+);
 const plan = buildContractPlan(date);
 
 if (options.dryRun) {

@@ -1,5 +1,9 @@
 # Deliver trustworthy adjusted historical stock prices
 
+Status: complete
+Delivered by [PR #6](https://github.com/sjunepark/krx-cli/pull/6) to
+`codex/adjusted-stock-prices-integration`.
+
 ## Outcome
 
 Eligible single-security KOSPI, KOSDAQ, and KONEX date-range queries calculate
@@ -137,6 +141,5 @@ same row factor to raw open, high, low, and close.
 
 ## Next action
 
-Capture and check in the official KRX oracle fixtures with provenance, then use
-them to finalize rounding and ambiguity rules before writing the adjustment
-engine.
+_None within this plan. Promotion, release, and publication remain outside its
+authority._
