@@ -12,7 +12,6 @@ import { registerCacheCommand } from "./commands/cache.js";
 import { registerMarketCommand } from "./commands/market.js";
 import { registerWatchlistCommand } from "./commands/watchlist.js";
 import { registerVersionCommand, getVersion } from "./commands/version.js";
-import { registerUpdateCommand } from "./commands/update.js";
 import { registerServeCommand } from "./commands/serve.js";
 import { PUBLIC_CONTRACT } from "../user-contract.js";
 import { EXIT_CODES } from "./exit-codes.js";
@@ -111,7 +110,6 @@ export function createProgram(): Command {
   registerMarketCommand(program);
   registerWatchlistCommand(program);
   registerVersionCommand(program);
-  registerUpdateCommand(program);
   registerServeCommand(program);
 
   overrideCommandExits(program);

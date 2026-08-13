@@ -1,4 +1,4 @@
-name: Release
+name: Tagged release certification
 
 on:
   push:
@@ -12,12 +12,9 @@ jobs:
   verify:
     uses: ./.github/workflows/ci.yml
 
-  publish:
+  certify:
     needs: verify
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +25,6 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          registry-url: https://registry.npmjs.org
 
       - run: pnpm install --frozen-lockfile
 
@@ -42,5 +38,12 @@ jobs:
       - name: Smoke-test release artifact
         run: pnpm test:package -- release-artifact/*.tgz
 
-      - name: Publish verified artifact
-        run: npm publish release-artifact/*.tgz --provenance --access public
+      - name: Smoke-test Git installation
+        env:
+          PNPM_HOME: ${{ runner.temp }}/pnpm-home
+        run: |
+          mkdir -p "$PNPM_HOME"
+          export PATH="$PNPM_HOME:$PATH"
+          pnpm --global-dir "${{ runner.temp }}/pnpm-global" add --global --allow-build=krx-cli "git+file://${GITHUB_WORKSPACE}#${GITHUB_SHA}"
+          krx --version
+          krx --help >/dev/null

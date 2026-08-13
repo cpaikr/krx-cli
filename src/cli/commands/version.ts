@@ -28,38 +28,12 @@ function getLocalVersion(): string {
   return "unknown";
 }
 
-async function getLatestVersion(): Promise<string | null> {
-  try {
-    const res = await fetch("https://registry.npmjs.org/krx-cli/latest");
-    if (!res.ok) return null;
-    const data = (await res.json()) as { version: string };
-    return data.version;
-  } catch {
-    return null;
-  }
-}
-
 export function registerVersionCommand(program: Command): void {
   program
     .command("version")
-    .description("Show current version and check for updates")
-    .action(async () => {
-      const current = getLocalVersion();
-      const latest = await getLatestVersion();
-
-      const result: Record<string, string | boolean> = {
-        current,
-      };
-
-      if (latest) {
-        result.latest = latest;
-        result.updateAvailable = current !== latest;
-        if (current !== latest) {
-          result.updateCommand = "npm install -g krx-cli";
-        }
-      }
-
-      writeOutput(JSON.stringify(result, null, 2));
+    .description("Show the installed version")
+    .action(() => {
+      writeOutput(JSON.stringify({ current: getLocalVersion() }, null, 2));
     });
 }
 

@@ -29,7 +29,7 @@
     "calendar:update": "node scripts/krx-calendar.mjs --write",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm audit:prod && pnpm build && pnpm test:package",
-    "prepare": "husky",
+    "prepare": "pnpm build && husky",
     "release": "release-it"
   },
   "keywords": [
@@ -109,7 +109,14 @@
   },
   "release-it": {
     "$schema": "https://unpkg.com/release-it/schema/release-it.json",
+    "hooks": {
+      "after:init": [
+        "test \"$(git rev-parse HEAD)\" = \"$(git rev-parse '@{upstream}')\"",
+        "pnpm verify"
+      ]
+    },
     "git": {
+      "requireBranch": "main",
       "requireUpstream": true,
       "requireCleanWorkingDir": true,
       "tagName": "v${version}",

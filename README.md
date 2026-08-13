@@ -19,22 +19,124 @@ Claude Code, GPT, Cursor 등의 AI 에이전트가 Bash tool 또는 MCP를 통�
 - **안전한 사용**: 입력 검증, rate limit 추적, dry-run 지원
 - **서비스 승인 관리**: API별 승인 상태 자동 확인
 
-## 로컬 설치
+## 설치
 
-현재 이 포크는 npm 레지스트리 릴리스 대신 로컬 체크아웃에서 실행합니다. 저장소
-루트에서 의존성을 설치하고 빌드한 뒤, 현재 디렉터리의 바이너리를 전역 명령으로
-등록합니다.
+이 포크는 npm 레지스트리에 공개하지 않고 비공개 GitHub 저장소의 릴리스
+태그에서 설치합니다. macOS와 Linux에서 같은 방법을 사용합니다.
+
+### 사전 요구 사항
+
+- Node.js 22 이상
+- pnpm 10.28 이상
+- Git
+- `sjunepark/krx-cli` 저장소 접근 권한
+
+### GitHub SSH 인증
+
+이미 GitHub에 등록한 SSH 키가 있다면 다음 명령으로 접속을 확인합니다.
 
 ```bash
-pnpm install
-pnpm build
-pnpm add --global .
+ssh -T git@github.com
+```
 
+SSH 키를 처음 설정한다면 GitHub CLI로 현재 머신의 키를 등록하거나 새로
+만들 수 있습니다.
+
+```bash
+gh auth login --git-protocol ssh --web
+ssh -T git@github.com
+```
+
+조직에서 SSO를 사용하면 SSH 키를 해당 조직에 추가로 승인해야 할 수 있습니다.
+
+### 릴리스 버전 설치
+
+재현 가능한 설치를 위해 브랜치 대신 릴리스 태그를 지정합니다.
+
+```bash
+pnpm add --global --allow-build=krx-cli \
+  "git+ssh://git@github.com/sjunepark/krx-cli.git#<TAG>"
+
+krx --version
 krx --help
 ```
 
-`pnpm add --global .`은 npm 레지스트리의 `krx-cli`를 내려받지 않고 현재 로컬
-패키지를 등록합니다. 소스 코드를 변경한 뒤에는 `pnpm build`를 다시 실행하세요.
+`<TAG>`를 실제 릴리스 태그로 바꾸세요. `--allow-build=krx-cli`는 Git에서
+가져온 이 패키지가 설치 중 `dist/`를 빌드하도록 한 번만 허용합니다.
+
+### 업데이트
+
+새 릴리스 태그를 지정해 설치 명령을 다시 실행합니다. CLI 자체에서는 공개 npm
+패키지와 혼동될 수 있는 자동 업데이트를 제공하지 않습니다.
+
+```bash
+pnpm add --global --allow-build=krx-cli \
+  "git+ssh://git@github.com/sjunepark/krx-cli.git#<NEW_TAG>"
+```
+
+설치된 버전은 `krx --version` 또는 `krx version`으로 확인합니다. 사용할 최신
+버전은 저장소의 GitHub Releases에서 확인합니다.
+
+### 제거
+
+```bash
+pnpm remove --global krx-cli
+```
+
+### HTTPS 인증을 사용하는 경우
+
+SSH를 사용할 수 없는 환경에서는 GitHub CLI를 Git credential helper로 설정합니다.
+
+```bash
+gh auth login --git-protocol https --web
+gh auth setup-git
+
+pnpm add --global --allow-build=krx-cli \
+  "git+https://github.com/sjunepark/krx-cli.git#<TAG>"
+```
+
+개인 액세스 토큰을 Git URL에 직접 넣지 마세요.
+
+### 로컬 개발 버전 설치
+
+```bash
+git clone git@github.com:sjunepark/krx-cli.git
+cd krx-cli
+pnpm install
+pnpm add --global .
+```
+
+`pnpm install`은 의존성을 설치한 뒤 CLI를 빌드합니다. 소스를 변경한 뒤에는
+`pnpm build`를 다시 실행하세요.
+
+### 접근 문제 확인
+
+설치 전에 특정 릴리스 태그에 접근할 수 있는지 확인할 수 있습니다.
+
+```bash
+git ls-remote \
+  git@github.com:sjunepark/krx-cli.git \
+  "refs/tags/<TAG>"
+```
+
+이 명령이 실패하면 저장소 접근 권한, SSH 키, 조직 SSO 승인 상태를 확인하세요.
+
+### 릴리스 만들기
+
+릴리스는 최신 `main`의 깨끗한 체크아웃에서 만듭니다. 릴리스에 포함할 커밋은
+모두 먼저 upstream `main`에 push되어 있어야 합니다.
+
+```bash
+git switch main
+git pull --ff-only
+pnpm release
+```
+
+`pnpm release`는 현재 브랜치와 upstream 상태를 확인하고 전체 검증을 통과한 뒤
+버전 커밋과 태그를 push하고 GitHub Release를 만듭니다. 태그를 직접 push하지
+마세요. 태그가 push되면 `Tagged release certification` workflow가 패키지와 Git
+설치 경로를 다시 smoke test합니다. 이 workflow는 릴리스를 생성하거나 npm에
+게시하지 않습니다.
 
 ## 설정
 

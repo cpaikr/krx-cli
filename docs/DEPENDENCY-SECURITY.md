@@ -1,6 +1,6 @@
 # Dependency security
 
-Both published entrypoints are bundled by esbuild. Production dependencies can
+Both distributed entrypoints are bundled by esbuild. Production dependencies can
 therefore become part of `dist/cli.js` and `dist/mcp.js` even when they are not
 present as separate files in an installed package. The locked production tree
 and rebuilt package artifact are the security boundary.
@@ -35,5 +35,6 @@ pnpm build
 pnpm test:package
 ```
 
-The release workflow packs, installs, and smoke-tests the same tarball passed to
-`npm publish`; a manifest-only dependency update is not remediation.
+The tagged-release certification workflow packs, installs, and smoke-tests a
+tarball from the same tagged source distributed through private Git installs; a
+manifest-only dependency update is not remediation.

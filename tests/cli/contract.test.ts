@@ -18,6 +18,17 @@ function silenceCommandOutput(command: ReturnType<typeof createProgram>): void {
 }
 
 describe("public CLI contract", () => {
+  it("keeps version reporting local and omits registry-based updates", () => {
+    const program = createProgram();
+    const commandNames = program.commands.map((command) => command.name());
+    const version = program.commands.find(
+      (command) => command.name() === "version",
+    );
+
+    expect(commandNames).not.toContain("update");
+    expect(version?.description()).toBe("Show the installed version");
+  });
+
   it("renders output defaults and choices from the executable contract", () => {
     const help = createProgram().helpInformation();
     const unwrappedHelp = help.replace(/\s+/g, " ");
