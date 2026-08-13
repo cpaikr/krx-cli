@@ -40,22 +40,29 @@ export function registerStockCommand(program: Command): void {
     .description("List stock daily trading data")
     .option("--date <date>", "trading date (YYYYMMDD)")
     .option("--market <market>", "market: kospi, kosdaq, konex", "kospi")
-    .action(async (opts: { date?: string; market: string }) => {
-      const date = resolveDate(opts.date, program);
-      validateMarket(opts.market);
-      const endpoint = resolveEndpoint(
-        TRADING_ENDPOINTS,
-        opts.market,
-        "market",
-      );
+    .option(
+      "--no-adjusted",
+      "return raw-only OHLC for an eligible exact-code date range",
+    )
+    .action(
+      async (opts: { date?: string; market: string; adjusted: boolean }) => {
+        const date = resolveDate(opts.date, program);
+        validateMarket(opts.market);
+        const endpoint = resolveEndpoint(
+          TRADING_ENDPOINTS,
+          opts.market,
+          "market",
+        );
 
-      await executeCommand({
-        endpoint,
-        params: { basDd: date },
-        program,
-        noDataMessage: `No data for date ${date}`,
-      });
-    });
+        await executeCommand({
+          endpoint,
+          params: { basDd: date },
+          program,
+          adjusted: opts.adjusted,
+          noDataMessage: `No data for date ${date}`,
+        });
+      },
+    );
 
   stock
     .command("info")

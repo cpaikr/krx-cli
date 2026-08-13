@@ -137,6 +137,7 @@ same row factor to raw open, high, low, and close.
 
 ## Next action
 
-Capture and check in the official KRX oracle fixtures with provenance, then use
-them to finalize rounding and ambiguity rules before writing the adjustment
-engine.
+Deliver the reviewed implementation as one PR against
+`codex/adjusted-stock-prices-integration`, address all actionable feedback, and
+then record terminal goal and roadmap metadata. Release and publication remain
+outside this plan.

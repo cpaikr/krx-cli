@@ -38,6 +38,16 @@ describe("public CLI contract", () => {
     );
   });
 
+  it("documents the stock-range raw opt-out at the scoped command", () => {
+    const program = createProgram();
+    const stock = program.commands.find(
+      (command) => command.name() === "stock",
+    );
+    const list = stock?.commands.find((command) => command.name() === "list");
+    expect(list?.helpInformation()).toContain("--no-adjusted");
+    expect(program.helpInformation()).not.toContain("--no-adjusted");
+  });
+
   it("documents every HTTP MCP environment variable in serve help", () => {
     const program = createProgram();
     const serve = program.commands.find(

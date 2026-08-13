@@ -24,6 +24,9 @@ checks, cache operations, schema lookup, or MCP operation.
 - Expect single-endpoint output to default to table on a TTY and JSON when
   redirected. Composite commands always return JSON envelopes.
 - Check `completeness.state` before analyzing a composite result.
+- Exact-code KOSPI/KOSDAQ/KONEX daily-stock ranges are adjusted by default.
+  Use `ADJ_TDD_*` for price-history analysis and keep raw `TDD_*` for audit.
+  These values exclude cash dividends and are not total returns.
 - Treat KRX row values as strings, including numeric-looking values. Envelope
   metadata retains JSON types.
 - Respect the 10,000-request daily limit. The local per-credential KST counter
@@ -84,6 +87,8 @@ krx stock list --date 20260310 --market kospi   # KOSPI stocks
 krx stock list --date 20260310 --market kosdaq   # KOSDAQ stocks
 krx stock list --date 20260310 --market konex    # KONEX stocks
 krx stock info --market kospi                     # Stock base info
+krx stock list --market kospi --from 20260301 --to 20260310 --code 005930 # adjusted default
+krx stock list --market kospi --from 20260301 --to 20260310 --code 005930 --no-adjusted # raw only
 ```
 
 ### ETP (ETF/ETN/ELW)
@@ -227,11 +232,14 @@ prices.
 --verbose, -v            Verbose logging to stderr
 ```
 
+`--no-adjusted` is a scoped `stock list` option. It changes only eligible
+exact-code stock ranges; direct dates and full-market queries are already raw.
+
 ## Exit Codes
 
 ```
 0 = No reportable failure or required-result miss
-1 = Upstream/network/timeout/cancellation/invalid-response/local-state failure
+1 = Upstream/network/timeout/cancellation/invalid-response/integrity/local-state failure
 2 = Invalid or incomplete arguments/input
 3 = Requested market data or local target was absent
 4 = Missing API key or ambiguous KRX HTTP 401 credential/approval failure
@@ -301,6 +309,7 @@ krx stock list --date 20260310 --market kospi --sort FLUC_RT --limit 5 --fields 
 
 ```bash
 krx index list --market kospi --from 20260301 --to 20260310 --fields IDX_NM,BAS_DD,CLSPRC_IDX
+krx stock list --market kospi --from 20260301 --to 20260310 --code KR7005930003 --fields BAS_DD,TDD_CLSPRC,ADJ_TDD_CLSPRC,ADJ_FACTOR
 ```
 
 ### Quick market overview
@@ -368,6 +377,12 @@ Use `krx schema <command>` to get full field definitions for any endpoint. All v
 | ACC_TRDVAL    | 거래대금            |
 | MKTCAP        | 시가총액            |
 | LIST_SHRS     | 상장주식수          |
+
+Eligible exact-code ranges also derive string fields `ADJ_TDD_OPNPRC`,
+`ADJ_TDD_HGPRC`, `ADJ_TDD_LWPRC`, `ADJ_TDD_CLSPRC`, and exact rational
+`ADJ_FACTOR`. The envelope's `adjustment` metadata records the actual as-of
+date and transitions. Inspect `derivedOutput` in schema discovery; these fields
+are produced by krx-cli, not supplied by the raw endpoint.
 
 ### ETF
 
@@ -450,6 +465,9 @@ krx schema index.kospi_dd_trd    # Shows params + responseFields
 krx schema stock.stk_bydd_trd   # Stock endpoint fields
 krx schema --all                  # All 31 endpoints
 ```
+
+Eligible daily-stock schemas expose raw `responseFields` separately from
+`derivedOutput` provenance.
 
 ## MCP Resources
 

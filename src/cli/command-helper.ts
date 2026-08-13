@@ -22,6 +22,11 @@ import { applyCompositeExitPolicy } from "./composite.js";
 import { completenessForOutput } from "../client/completeness.js";
 import { missingApiKeyMessage } from "../user-contract.js";
 import { assertFilterExpression } from "../utils/filter.js";
+import {
+  adjustStockDateRange,
+  isAdjustedStockEndpoint,
+  type AdjustedDateRangeResult,
+} from "../client/stock-adjustment.js";
 
 export function resolveDate(
   dateOpt: string | undefined,
@@ -61,6 +66,7 @@ interface ExecuteCommandOptions {
   readonly params: Record<string, string>;
   readonly program: Command;
   readonly noDataMessage?: string;
+  readonly adjusted?: boolean;
 }
 
 export async function executeCommand(
@@ -90,6 +96,15 @@ export async function executeCommand(
   const finalParams = params;
 
   const codeFilter = parentOpts.code as string | undefined;
+  const fromDate = parentOpts.from as string | undefined;
+  const toDate = parentOpts.to as string | undefined;
+  const shouldAdjust = Boolean(
+    fromDate &&
+    toDate &&
+    codeFilter &&
+    options.adjusted !== false &&
+    isAdjustedStockEndpoint(endpoint),
+  );
 
   if (parentOpts.dryRun) {
     writeOutput(
@@ -99,6 +114,7 @@ export async function executeCommand(
           endpoint,
           params: finalParams,
           clientFilter: codeFilter ? { ISU_CD: codeFilter } : undefined,
+          adjusted: shouldAdjust,
           headers: { AUTH_KEY: "***" },
         },
         null,
@@ -107,9 +123,6 @@ export async function executeCommand(
     );
     return;
   }
-
-  const fromDate = parentOpts.from as string | undefined;
-  const toDate = parentOpts.to as string | undefined;
 
   if ((fromDate && !toDate) || (!fromDate && toDate)) {
     writeError("Both --from and --to must be provided together");
@@ -139,7 +152,10 @@ export async function executeCommand(
   }
 
   const isDateRange = fromDate && toDate;
-  let rangeEnvelope: DateRangeResult<Record<string, string>> | undefined;
+  let rangeEnvelope:
+    | DateRangeResult<Record<string, string>>
+    | AdjustedDateRangeResult
+    | undefined;
 
   let data = await withCliCancellation(async (signal) => {
     if (isDateRange) {
@@ -156,7 +172,7 @@ export async function executeCommand(
         signal,
       });
 
-      if (!rangeResult.success) {
+      if (!rangeResult.success && !shouldAdjust) {
         handleKrxError({
           success: false,
           data: [],
@@ -197,6 +213,14 @@ export async function executeCommand(
         codeFilter,
       ),
     );
+  }
+
+  if (rangeEnvelope && shouldAdjust) {
+    rangeEnvelope = adjustStockDateRange({
+      ...rangeEnvelope,
+      data: data as Record<string, string>[],
+    });
+    data = rangeEnvelope.data as unknown as Record<string, unknown>[];
   }
 
   if (!rangeEnvelope && data.length === 0) {
@@ -260,10 +284,12 @@ export async function executeCommand(
   }
 
   if (rangeEnvelope) {
-    applyCompositeExitPolicy(
-      outputCompleteness ?? rangeEnvelope.completeness,
-      "Date-range result",
-    );
+    const finalCompleteness = outputCompleteness ?? rangeEnvelope.completeness;
+    if (finalCompleteness.state === "failed") {
+      process.exitCode = EXIT_CODES.GENERAL_ERROR;
+    } else {
+      applyCompositeExitPolicy(finalCompleteness, "Date-range result");
+    }
   }
 }
 

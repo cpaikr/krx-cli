@@ -24,6 +24,7 @@ export type KrxErrorType =
   | "network"
   | "upstream"
   | "invalid_response"
+  | "integrity"
   | "local_state";
 
 export interface KrxRequestOptions {
@@ -58,6 +59,7 @@ const FAILURE_PRIORITY: readonly KrxErrorType[] = [
   "network",
   "upstream",
   "invalid_response",
+  "integrity",
 ];
 
 export function selectKrxFailure<T>(
