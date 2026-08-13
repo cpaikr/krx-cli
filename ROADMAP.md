@@ -2,11 +2,11 @@
 
 ## Current
 
-_None._
+[Deliver trustworthy adjusted historical stock prices](plans/adjusted-stock-prices.md)
 
 ## Plans
 
-1. [Deliver trustworthy adjusted historical stock prices](plans/adjusted-stock-prices.md)
+_None._
 
 ## Tasks
 
