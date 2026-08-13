@@ -133,7 +133,16 @@ krx market summary --date 20260310    # 특정 날짜
 ```bash
 krx index list --market kospi --from 20260301 --to 20260310
 krx stock list --market kospi --from 20260301 --to 20260305 --code KR7005930003
+krx stock list --market kospi --from 20260301 --to 20260305 --code KR7005930003 --no-adjusted
 ```
+
+KOSPI, KOSDAQ, KONEX 일별 주식 엔드포인트의 기간 조회에 정확한 종목코드를
+지정하면 수정 OHLC가 기본입니다. 원본 `TDD_*`는 그대로 유지되고
+`ADJ_TDD_*`와 정확한 `ADJ_FACTOR`가 추가됩니다. `adjustment` 메타데이터에서
+기준일, 계산 방식, 전환 경계를 확인하세요. 수정값은 현금배당 재투자를 포함하지
+않으므로 총수익률이 아닙니다. 입력이 불완전하거나 검증되지 않으면 원본 행으로
+대체하지 않고 데이터 없는 integrity 실패를 반환합니다. `--no-adjusted`는 이
+정확한 종목 기간 조회만 원본 전용 결과로 되돌립니다.
 
 ### 정렬 및 제한
 
@@ -246,6 +255,9 @@ krx schema --all
 krx schema stock.stk_bydd_trd
 ```
 
+주식 일별 스키마는 KRX 원본 `responseFields`와 krx-cli가 계산하는
+`derivedOutput`을 provenance로 구분합니다.
+
 ## 루트 조회 옵션
 
 이 옵션들은 루트에서 파싱되지만 명령별 적용 범위가 다릅니다. 행 필터와 파일 저장은
@@ -270,6 +282,9 @@ krx schema stock.stk_bydd_trd
 | `--retries <n>`         | 재시도 가능한 실패의 최대 재시도 횟수 (기본: 3) | -                              |
 | `--dry-run`             | API 호출 없이 요청 내용 출력                    | -                              |
 | `-v, --verbose`         | 상세 로그 (stderr)                              | -                              |
+
+`krx stock list --no-adjusted`는 정확한 종목코드가 있는 기간 조회의 수정주가
+기본값만 끕니다. 단일일/전체시장 조회는 항상 기존 원본 계약입니다.
 
 단일 엔드포인트 행 출력은 TTY에서는 `table`, 파이프 또는 리다이렉션에서는
 `json`이 기본입니다. 기간 조회와 다른 복합 명령은 완전성 정보를 보존하기 위해
@@ -458,20 +473,20 @@ HTTP 전송은 네트워크 서비스입니다. 공개 배포는 TLS와 인증 �
 
 ### 제공 Tool
 
-| Tool                 | 설명                                         |
-| -------------------- | -------------------------------------------- |
-| `krx_index`          | 지수 일별시세 (KOSPI/KOSDAQ/KRX/채권/파생)   |
-| `krx_stock`          | 주식 일별매매정보 + 종목 기본정보            |
-| `krx_etp`            | ETF/ETN/ELW 일별매매정보                     |
-| `krx_bond`           | 채권 일별매매정보 (국채/일반/소액)           |
-| `krx_derivative`     | 선물/옵션 일별매매정보                       |
-| `krx_commodity`      | 금/석유/배출권 일별매매정보                  |
-| `krx_esg`            | ESG 지수/채권/ETP 정보                       |
-| `krx_search`         | 종목명 검색 (KOSPI + KOSDAQ)                 |
-| `krx_market_summary` | 시장 요약 (지수/상승·하락/Top movers/거래량) |
-| `krx_watchlist`      | 관심종목 관리 (추가/제거/조회/시세)          |
-| `krx_schema`         | 엔드포인트 응답 필드 스키마 조회             |
-| `krx_rate_limit`     | 일일 API 호출 현황 조회                      |
+| Tool                 | 설명                                                                 |
+| -------------------- | -------------------------------------------------------------------- |
+| `krx_index`          | 지수 일별시세 (KOSPI/KOSDAQ/KRX/채권/파생)                           |
+| `krx_stock`          | 주식 일별매매정보 + 종목 기본정보; 정확한 종목 기간은 수정 OHLC 기본 |
+| `krx_etp`            | ETF/ETN/ELW 일별매매정보                                             |
+| `krx_bond`           | 채권 일별매매정보 (국채/일반/소액)                                   |
+| `krx_derivative`     | 선물/옵션 일별매매정보                                               |
+| `krx_commodity`      | 금/석유/배출권 일별매매정보                                          |
+| `krx_esg`            | ESG 지수/채권/ETP 정보                                               |
+| `krx_search`         | 종목명 검색 (KOSPI + KOSDAQ)                                         |
+| `krx_market_summary` | 시장 요약 (지수/상승·하락/Top movers/거래량)                         |
+| `krx_watchlist`      | 관심종목 관리 (추가/제거/조회/시세)                                  |
+| `krx_schema`         | 엔드포인트 응답 필드 스키마 조회                                     |
+| `krx_rate_limit`     | 일일 API 호출 현황 조회                                              |
 
 ### 제공 Resource
 
@@ -497,6 +512,9 @@ MCP 클라이언트에서 자연어로 요청하면 됩니다:
 
 "삼성전자 주가 알려줘"
 → krx_stock tool 호출 (endpoint: "stk_bydd_trd", fields: ["ISU_NM", "TDD_CLSPRC", "FLUC_RT"])
+
+"삼성전자 1년 수정주가 보여줘"
+→ krx_stock tool 호출 (endpoint: "stk_bydd_trd", date_from/date_to, isuCd; adjusted 기본 true)
 
 "오늘 API 몇 번 호출했어?"
 → krx_rate_limit tool 호출

@@ -1,6 +1,10 @@
 import { z } from "zod/v4";
 import { ENDPOINTS } from "../../client/endpoints.js";
 import type { ToolDefinition } from "./index.js";
+import {
+  ADJUSTED_STOCK_OUTPUT_SCHEMA,
+  isAdjustedStockEndpoint,
+} from "../../client/stock-adjustment.js";
 
 function getEndpointShortName(path: string): string {
   return path.split("/").pop() ?? path;
@@ -31,6 +35,9 @@ export function createSchemaTool(): ToolDefinition {
           descriptionKo: e.descriptionKo,
           category: e.category,
           fieldCount: e.responseFields.length,
+          derivedFieldCount: isAdjustedStockEndpoint(e.path)
+            ? ADJUSTED_STOCK_OUTPUT_SCHEMA.fields.length
+            : 0,
         }));
         return {
           content: [
@@ -61,6 +68,9 @@ export function createSchemaTool(): ToolDefinition {
         descriptionKo: endpoint.descriptionKo,
         category: endpoint.category,
         responseFields: endpoint.responseFields,
+        ...(isAdjustedStockEndpoint(endpoint.path)
+          ? { derivedOutput: ADJUSTED_STOCK_OUTPUT_SCHEMA }
+          : {}),
       };
 
       return {

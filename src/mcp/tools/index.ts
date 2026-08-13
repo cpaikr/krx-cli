@@ -20,6 +20,10 @@ import { matchesIsuCode } from "../../utils/isin.js";
 import { completenessForOutput } from "../../client/completeness.js";
 import { missingApiKeyMessage } from "../../user-contract.js";
 import { assertFilterExpression } from "../../utils/filter.js";
+import {
+  adjustStockDateRange,
+  isAdjustedStockEndpoint,
+} from "../../client/stock-adjustment.js";
 
 type ZodRawShape = Record<string, z.ZodType>;
 
@@ -53,6 +57,10 @@ function buildDescription(
     .slice(0, 6)
     .map((f) => `${f.name}(${f.description})`)
     .join(", ");
+  const adjustmentNote =
+    categoryId === "stock"
+      ? "\n- Eligible stock daily ranges with one exact isuCd return adjusted OHLC by default, preserve raw OHLC, and exclude cash-dividend total returns. Set adjusted=false for raw-only output."
+      : "";
 
   return `Query KRX ${category?.name ?? categoryId} market data (${category?.nameKo ?? ""}).
 
@@ -66,15 +74,18 @@ Notes:
 - Data is T-1 (previous trading day)
 - All response values are strings
 - Rate limit: 10,000 calls/day
-- Date ranges return a composite envelope. Inspect completeness.state and its requested, succeeded, failed, and skipped partitions before using data.
+- Date ranges return a composite envelope. Inspect completeness.state and its requested, succeeded, failed, and skipped partitions before using data.${adjustmentNote}
 - IMPORTANT: When querying a specific stock, ALWAYS pass 'isuCd' to filter. Without it, all stocks in the market are returned.
 - Full market listings can exceed the result size limit. Use 'fields' to select only needed columns, or 'limit'+'offset' for pagination. If the response contains '_truncated', follow its instructions to retrieve remaining data.`;
 }
 
-function buildInputSchema(endpoints: readonly EndpointDef[]): ZodRawShape {
+function buildInputSchema(
+  categoryId: CategoryId,
+  endpoints: readonly EndpointDef[],
+): ZodRawShape {
   const shortNames = endpoints.map((e) => getEndpointShortName(e.path));
 
-  return {
+  const schema: ZodRawShape = {
     endpoint: z
       .enum(shortNames as [string, ...string[]])
       .describe("Endpoint short name"),
@@ -130,6 +141,15 @@ function buildInputSchema(endpoints: readonly EndpointDef[]): ZodRawShape {
       .optional()
       .describe("Filter response to these field names only"),
   };
+  if (categoryId === "stock") {
+    schema.adjusted = z
+      .boolean()
+      .optional()
+      .describe(
+        "Adjusted OHLC for eligible exact-code ranges (default: true). Set false for raw-only OHLC.",
+      );
+  }
+  return schema;
 }
 
 function filterFields(
@@ -157,7 +177,7 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
   return {
     name: `krx_${categoryId}`,
     description: buildDescription(categoryId, endpoints),
-    inputSchema: buildInputSchema(endpoints),
+    inputSchema: buildInputSchema(categoryId, endpoints),
     handler: async (args, signal) => {
       const apiKey = getApiKey();
       if (!apiKey) {
@@ -194,6 +214,12 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
       }
 
       const isDateRange = dateFrom && dateTo;
+      const shouldAdjust = Boolean(
+        isDateRange &&
+        isuCd &&
+        args.adjusted !== false &&
+        isAdjustedStockEndpoint(endpoint.path),
+      );
 
       if (isDateRange) {
         try {
@@ -214,7 +240,7 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
           signal,
         });
 
-        if (!rangeResult.success) {
+        if (!rangeResult.success && !shouldAdjust) {
           return compositeToolResult(rangeResult);
         }
 
@@ -226,6 +252,15 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
             matchesIsuCode(row["ISU_CD"] ?? "", row["ISU_SRT_CD"] ?? "", isuCd),
           );
         }
+
+        const outputRange = shouldAdjust
+          ? adjustStockDateRange({ ...rangeResult, data })
+          : { ...rangeResult, data };
+        if (!outputRange.success) {
+          return compositeToolResult(outputRange);
+        }
+
+        data = outputRange.data;
 
         const sortField = args.sort as string | undefined;
         const sortDirection = (args.sort_direction as "asc" | "desc") ?? "desc";
@@ -246,10 +281,10 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
         }
 
         return compositeToolResult({
-          ...rangeResult,
+          ...outputRange,
           data: data as Record<string, unknown>[],
           completeness: completenessForOutput(
-            rangeResult.completeness,
+            outputRange.completeness,
             data.length > 0,
           ),
         });

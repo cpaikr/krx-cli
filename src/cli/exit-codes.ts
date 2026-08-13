@@ -7,7 +7,7 @@ export const EXIT_CODE_CONTRACT = {
   GENERAL_ERROR: {
     code: 1,
     trigger:
-      "An upstream, network, timeout, cancellation, invalid-response, or local-state failure prevented completion.",
+      "An upstream, network, timeout, cancellation, invalid-response, integrity, or local-state failure prevented completion.",
   },
   USAGE_ERROR: {
     code: 2,
