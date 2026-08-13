@@ -1,6 +1,6 @@
 # Goal: Trustworthy adjusted historical stock prices
 
-Status: active
+Status: complete
 Planning scope: ROADMAP.md
 
 ## Original contract
@@ -44,13 +44,12 @@ _None._
 
 ### Current in-scope result
 
-PR delivery and feedback resolution for the completed implementation slice.
+_None. Every included result is complete and delivered._
 
 ### Next in-scope action
 
-Commit the reviewed slice, create the single reviewable PR, address all
-actionable feedback, merge it into the delivery base, and record terminal goal
-metadata.
+_None within this contract. Promotion, release, and publication remain excluded
+and require separate authority._
 
 ### Evidence and blockers
 
@@ -84,3 +83,11 @@ metadata.
 - Post-feedback gate: `pnpm verify` passed with 42 test files and 370 tests, no
   production vulnerabilities, a successful build, and installed-package smoke
   covering 31 schemas and 12 MCP tools.
+- Delivery: [PR #6](https://github.com/sjunepark/krx-cli/pull/6) completed the
+  `$create-pr` and `$address-pr-feedback` lifecycle and merged into
+  `codex/adjusted-stock-prices-integration` as `84f3a75`, preserving feature
+  commit `4e90c06` and feedback commit `e2ffdca`. All ten review threads were
+  resolved, CodeRabbit and Codex completed their reviews, and remote checks
+  passed.
+- Terminal boundary: no multi-security adjustment, cash-dividend total return,
+  promotion to `main`, release, or publication was performed.

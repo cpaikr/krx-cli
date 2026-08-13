@@ -2,7 +2,7 @@
 
 ## Current
 
-[Deliver trustworthy adjusted historical stock prices](plans/adjusted-stock-prices.md)
+_None._
 
 ## Plans
 
