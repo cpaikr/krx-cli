@@ -6,3 +6,5 @@ dist/
 coverage/
 tests/e2e/reports/
 artifacts/
+
+.env.local
