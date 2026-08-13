@@ -461,7 +461,19 @@ export function adjustStockDateRange(
     },
   });
 
-  if (!result.success || result.completeness.state !== "complete") {
+  if (!result.success) {
+    return { ...result, data: [] };
+  }
+
+  if (
+    result.completeness.state === "empty" &&
+    result.completeness.succeeded.length === 0 &&
+    result.data.length === 0
+  ) {
+    return { ...result, data: [] };
+  }
+
+  if (result.completeness.state !== "complete") {
     return failRange("Adjusted prices require a complete upstream date range");
   }
 

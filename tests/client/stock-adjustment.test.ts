@@ -233,6 +233,38 @@ describe("adjustStockDateRange", () => {
     });
   });
 
+  it("preserves a successful range with no trading dates", () => {
+    const input = envelope([]);
+    const result = adjustStockDateRange({
+      ...input,
+      completeness: { ...input.completeness, state: "empty" },
+    });
+    expect(result).toMatchObject({
+      success: true,
+      data: [],
+      completeness: { state: "empty", succeeded: [] },
+    });
+    expect(result.adjustment).toBeUndefined();
+  });
+
+  it("preserves a typed upstream failure while clearing data", () => {
+    const input = envelope([row("20240101")]);
+    const result = adjustStockDateRange({
+      ...input,
+      success: false,
+      error: "approval required",
+      errorType: "approval",
+      completeness: { ...input.completeness, state: "failed" },
+    });
+    expect(result).toMatchObject({
+      success: false,
+      data: [],
+      error: "approval required",
+      errorType: "approval",
+      completeness: { state: "failed" },
+    });
+  });
+
   it("rejects a missing target row on a successful market date", () => {
     const input = envelope([row("20240101")]);
     const result = adjustStockDateRange({

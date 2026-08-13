@@ -12,7 +12,7 @@ import {
   filterOutputFields,
 } from "../output/formatter.js";
 import { EXIT_CODES } from "./exit-codes.js";
-import { handleKrxError } from "./error-handler.js";
+import { exitCodeForKrxError, handleKrxError } from "./error-handler.js";
 import { applyPipeline } from "../utils/data-pipeline.js";
 import { matchesIsuCode } from "../utils/isin.js";
 import { validateDate } from "../validator/index.js";
@@ -286,7 +286,7 @@ export async function executeCommand(
   if (rangeEnvelope) {
     const finalCompleteness = outputCompleteness ?? rangeEnvelope.completeness;
     if (finalCompleteness.state === "failed") {
-      process.exitCode = EXIT_CODES.GENERAL_ERROR;
+      process.exitCode = exitCodeForKrxError(rangeEnvelope);
     } else {
       applyCompositeExitPolicy(finalCompleteness, "Date-range result");
     }

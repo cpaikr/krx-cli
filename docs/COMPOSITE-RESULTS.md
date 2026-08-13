@@ -61,5 +61,6 @@ watchlist when its prerequisite stock search is partial or empty.
 
 MCP composite results use the same envelope. If row data exceeds the MCP size
 budget, `_truncated` is added beside `data` while `completeness` remains intact.
-The `adjustment` metadata also remains intact. Its `path` identifies the truncated row collection. Truncation describes
+The `adjustment` metadata also remains intact. The `path` field inside
+`_truncated` identifies the truncated row collection. Truncation describes
 transport size only and never changes completeness.

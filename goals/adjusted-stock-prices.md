@@ -74,3 +74,13 @@ metadata.
   their isolated contexts could not recover the platform goal; the recovered
   root context completed the bounded implementation, system, design, and diet
   review.
+- PR feedback: CodeRabbit and Codex reviews completed on PR #6. Follow-up fixes
+  preserve legitimate empty ranges and typed upstream failures through CLI and
+  MCP, clarify truncation/backtesting documentation, strengthen negative schema
+  coverage, and add official `FLUC_RT` values to every oracle row. The stable
+  name guard remains fail-closed because daily rows lack immutable ISIN evidence
+  across a rename; `ISU_SRT_CD` was not added because the official daily-stock
+  response registry does not supply that base-information-only field.
+- Post-feedback gate: `pnpm verify` passed with 42 test files and 370 tests, no
+  production vulnerabilities, a successful build, and installed-package smoke
+  covering 31 schemas and 12 MCP tools.

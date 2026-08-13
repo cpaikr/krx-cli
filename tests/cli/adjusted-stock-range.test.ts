@@ -14,6 +14,7 @@ vi.mock("../../src/output/formatter.js", async (importOriginal) => {
 });
 
 import { executeCommand } from "../../src/cli/command-helper.js";
+import { EXIT_CODES } from "../../src/cli/exit-codes.js";
 import { fetchDateRange } from "../../src/client/range-fetch.js";
 import { writeOutput } from "../../src/output/formatter.js";
 
@@ -129,5 +130,71 @@ describe("CLI adjusted stock ranges", () => {
     const body = outputEnvelope();
     expect(body.adjustment).toBeUndefined();
     expect(body.data).toEqual(rawRows);
+  });
+
+  it("preserves the empty-range contract when no trading date exists", async () => {
+    mockedFetchDateRange.mockResolvedValue({
+      ...completeRange(),
+      data: [],
+      completeness: {
+        ...completeRange().completeness,
+        state: "empty",
+        requested: [],
+        succeeded: [],
+        skipped: ["20180428", "20180429"],
+      },
+      fetchedDays: 0,
+    });
+
+    await executeCommand({
+      endpoint: "/svc/apis/sto/stk_bydd_trd",
+      params: { basDd: "20180427" },
+      program: programOptions(),
+    });
+
+    expect(outputEnvelope()).toMatchObject({
+      success: true,
+      data: [],
+      completeness: { state: "empty", succeeded: [] },
+    });
+    expect(process.exitCode).toBe(EXIT_CODES.NO_DATA);
+  });
+
+  it("preserves a typed upstream failure and its public exit status", async () => {
+    mockedFetchDateRange.mockResolvedValue({
+      ...completeRange(),
+      success: false,
+      data: [],
+      error: "authentication failed",
+      errorType: "authentication",
+      completeness: {
+        ...completeRange().completeness,
+        state: "failed",
+        succeeded: [],
+        failed: [
+          {
+            id: "20180427",
+            error: "authentication failed",
+            errorType: "authentication",
+          },
+        ],
+      },
+      fetchedDays: 0,
+      failedDays: 1,
+    });
+
+    await executeCommand({
+      endpoint: "/svc/apis/sto/stk_bydd_trd",
+      params: { basDd: "20180427" },
+      program: programOptions(),
+    });
+
+    expect(outputEnvelope()).toMatchObject({
+      success: false,
+      data: [],
+      error: "authentication failed",
+      errorType: "authentication",
+    });
+    expect(process.exitCode).toBe(EXIT_CODES.AUTH_FAILURE);
   });
 });

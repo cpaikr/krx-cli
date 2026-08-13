@@ -237,7 +237,7 @@ exact-code stock ranges; direct dates and full-market queries are already raw.
 
 ## Exit Codes
 
-```
+```text
 0 = No reportable failure or required-result miss
 1 = Upstream/network/timeout/cancellation/invalid-response/integrity/local-state failure
 2 = Invalid or incomplete arguments/input

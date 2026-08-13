@@ -145,6 +145,77 @@ describe("krx_stock adjusted ranges", () => {
     });
   });
 
+  it("preserves a successful empty range when no trading date exists", async () => {
+    mockedFetchDateRange.mockResolvedValue({
+      ...completeRange(),
+      data: [],
+      completeness: {
+        ...completeRange().completeness,
+        state: "empty",
+        requested: [],
+        succeeded: [],
+        skipped: ["20180428", "20180429"],
+      },
+      fetchedDays: 0,
+    });
+    const stock = createCategoryTools().find(
+      (tool) => tool.name === "krx_stock",
+    );
+    const result = await stock?.handler({
+      endpoint: "stk_bydd_trd",
+      date_from: "20180428",
+      date_to: "20180429",
+      isuCd: "005930",
+    });
+    expect(result?.isError).toBeUndefined();
+    expect(parseResult(result!)).toMatchObject({
+      success: true,
+      data: [],
+      completeness: { state: "empty", succeeded: [] },
+    });
+  });
+
+  it("preserves typed upstream failures for adjusted ranges", async () => {
+    mockedFetchDateRange.mockResolvedValue({
+      ...completeRange(),
+      success: false,
+      data: [],
+      error: "authentication failed",
+      errorType: "authentication",
+      completeness: {
+        ...completeRange().completeness,
+        state: "failed",
+        succeeded: [],
+        failed: [
+          {
+            id: "20180427",
+            error: "authentication failed",
+            errorType: "authentication",
+          },
+        ],
+      },
+      fetchedDays: 0,
+      failedDays: 1,
+    });
+    const stock = createCategoryTools().find(
+      (tool) => tool.name === "krx_stock",
+    );
+    const result = await stock?.handler({
+      endpoint: "stk_bydd_trd",
+      date_from: "20180427",
+      date_to: "20180504",
+      isuCd: "005930",
+    });
+    expect(result?.isError).toBe(true);
+    expect(parseResult(result!)).toMatchObject({
+      success: false,
+      data: [],
+      error: "authentication failed",
+      errorType: "authentication",
+      completeness: { state: "failed" },
+    });
+  });
+
   it("scopes the adjusted input to the stock tool", () => {
     const tools = createCategoryTools();
     expect(

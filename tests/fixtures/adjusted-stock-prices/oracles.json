@@ -49,6 +49,7 @@
           "TDD_LWPRC": "2622000",
           "TDD_CLSPRC": "2650000",
           "CMPPREVDD_PRC": "43000",
+          "FLUC_RT": "1.65",
           "ACC_TRDVOL": "606216",
           "MKTCAP": "340224209100000",
           "LIST_SHRS": "128386494"
@@ -63,6 +64,7 @@
           "TDD_LWPRC": "0",
           "TDD_CLSPRC": "2650000",
           "CMPPREVDD_PRC": "0",
+          "FLUC_RT": "0.00",
           "ACC_TRDVOL": "0",
           "MKTCAP": "340224209100000",
           "LIST_SHRS": "128386494"
@@ -77,6 +79,7 @@
           "TDD_LWPRC": "0",
           "TDD_CLSPRC": "2650000",
           "CMPPREVDD_PRC": "0",
+          "FLUC_RT": "0.00",
           "ACC_TRDVOL": "0",
           "MKTCAP": "340224209100000",
           "LIST_SHRS": "128386494"
@@ -91,6 +94,7 @@
           "TDD_LWPRC": "0",
           "TDD_CLSPRC": "2650000",
           "CMPPREVDD_PRC": "0",
+          "FLUC_RT": "0.00",
           "ACC_TRDVOL": "0",
           "MKTCAP": "340224209100000",
           "LIST_SHRS": "128386494"
@@ -105,6 +109,7 @@
           "TDD_LWPRC": "51800",
           "TDD_CLSPRC": "51900",
           "CMPPREVDD_PRC": "-1100",
+          "FLUC_RT": "-2.08",
           "ACC_TRDVOL": "39565391",
           "MKTCAP": "333162951930000",
           "LIST_SHRS": "6419324700"
@@ -142,6 +147,7 @@
           "TDD_LWPRC": "0",
           "TDD_CLSPRC": "385",
           "CMPPREVDD_PRC": "0",
+          "FLUC_RT": "0.00",
           "ACC_TRDVOL": "0",
           "MKTCAP": "29922335135",
           "LIST_SHRS": "77720351"
@@ -156,6 +162,7 @@
           "TDD_LWPRC": "1640",
           "TDD_CLSPRC": "1646",
           "CMPPREVDD_PRC": "-279",
+          "FLUC_RT": "-14.49",
           "ACC_TRDVOL": "832645",
           "MKTCAP": "25585539220",
           "LIST_SHRS": "15544070"
@@ -190,6 +197,7 @@
           "TDD_LWPRC": "8950",
           "TDD_CLSPRC": "9110",
           "CMPPREVDD_PRC": "-50",
+          "FLUC_RT": "-0.55",
           "ACC_TRDVOL": "216673",
           "MKTCAP": "145760000000",
           "LIST_SHRS": "16000000"
@@ -204,6 +212,7 @@
           "TDD_LWPRC": "8510",
           "TDD_CLSPRC": "8650",
           "CMPPREVDD_PRC": "70",
+          "FLUC_RT": "0.82",
           "ACC_TRDVOL": "259316",
           "MKTCAP": "138400000000",
           "LIST_SHRS": "16000000"
@@ -238,6 +247,7 @@
           "TDD_LWPRC": "204000",
           "TDD_CLSPRC": "216000",
           "CMPPREVDD_PRC": "12000",
+          "FLUC_RT": "5.88",
           "ACC_TRDVOL": "1974215",
           "MKTCAP": "29796579648000",
           "LIST_SHRS": "137947128"
@@ -252,6 +262,7 @@
           "TDD_LWPRC": "200500",
           "TDD_CLSPRC": "201000",
           "CMPPREVDD_PRC": "-11000",
+          "FLUC_RT": "-5.19",
           "ACC_TRDVOL": "1631108",
           "MKTCAP": "27727372728000",
           "LIST_SHRS": "137947128"
@@ -286,6 +297,7 @@
           "TDD_LWPRC": "11820",
           "TDD_CLSPRC": "11820",
           "CMPPREVDD_PRC": "-120",
+          "FLUC_RT": "-1.01",
           "ACC_TRDVOL": "1520495",
           "MKTCAP": "5150935616100",
           "LIST_SHRS": "435781355"
@@ -300,6 +312,7 @@
           "TDD_LWPRC": "11760",
           "TDD_CLSPRC": "11860",
           "CMPPREVDD_PRC": "60",
+          "FLUC_RT": "0.51",
           "ACC_TRDVOL": "523076",
           "MKTCAP": "5168366870300",
           "LIST_SHRS": "435781355"
@@ -334,6 +347,7 @@
           "TDD_LWPRC": "197700",
           "TDD_CLSPRC": "205000",
           "CMPPREVDD_PRC": "-1000",
+          "FLUC_RT": "-0.49",
           "ACC_TRDVOL": "1325154",
           "MKTCAP": "30012567850000",
           "LIST_SHRS": "146402770"
@@ -348,6 +362,7 @@
           "TDD_LWPRC": "194600",
           "TDD_CLSPRC": "196900",
           "CMPPREVDD_PRC": "-8100",
+          "FLUC_RT": "-3.95",
           "ACC_TRDVOL": "1729666",
           "MKTCAP": "43375203388000",
           "LIST_SHRS": "220290520"
