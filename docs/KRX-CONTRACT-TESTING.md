@@ -25,7 +25,15 @@ Use a key approved for every KRX category and a confirmed trading date. The
 key is read only from `KRX_API_KEY`, sent only as the `AUTH_KEY` request header,
 and never included in plans or reports.
 
+For local development, `contract:check` automatically loads `.env.local` when
+present. Variables already exported by the shell take precedence, and the file
+remains optional for CI and packaged runs. `.env.local` is ignored by Git.
+
 ```bash
+# Uses KRX_API_KEY from .env.local when present
+pnpm contract:check -- --date 20260310
+
+# An explicitly exported key takes precedence
 KRX_API_KEY=... pnpm contract:check -- --date 20260310
 KRX_API_KEY=... pnpm contract:check -- \
   --date 20260310 \

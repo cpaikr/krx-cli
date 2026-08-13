@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseContractArguments } from "../../src/contracts/cli-options.js";
+import {
+  parseContractArguments,
+  resolveContractDate,
+} from "../../src/contracts/cli-options.js";
 
 describe("contract-check CLI arguments", () => {
   it("accepts pnpm's forwarded argument separator", () => {
@@ -24,5 +27,15 @@ describe("contract-check CLI arguments", () => {
     expect(() => parseContractArguments(["--network"])).toThrow(
       "Unknown option: --network",
     );
+  });
+
+  it("treats a blank scheduled date as absent", () => {
+    expect(resolveContractDate(undefined, "")).toBeUndefined();
+    expect(resolveContractDate(undefined, "   ")).toBeUndefined();
+  });
+
+  it("prefers the CLI date and trims an environment date", () => {
+    expect(resolveContractDate("20260310", "20260309")).toBe("20260310");
+    expect(resolveContractDate(undefined, " 20260309 ")).toBe("20260309");
   });
 });
