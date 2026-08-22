@@ -32,6 +32,14 @@ Hosted evidence on 2026-08-22:
   Windows root with a POSIX separator. The checked remediation uses native
   relative-path semantics and tests nested, exact-root, sibling-escape, and
   cross-drive Win32 paths.
+- [Run 32561770761](https://github.com/sjunepark/krx-cli/actions/runs/32561770761)
+  passed all four builds and all six non-Windows consumers. Both Windows
+  consumers completed every certification assertion and printed matching
+  `status: passed` reports before temporary cleanup failed: the certifier
+  process had imported and still held open the native DLL. Capability capture
+  now reuses the child runtime probe, whose exit releases the native module
+  before parent-process cleanup. Local clean installs pass this flow under Node
+  22 and 24 with identical portable identity.
 
 The remediation retry must pass four target builds and eight clean-install
 Node consumers, then compare all eight reports, before this report can be

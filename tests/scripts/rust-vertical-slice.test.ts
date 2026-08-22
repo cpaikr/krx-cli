@@ -208,6 +208,23 @@ describe("Rust vertical-slice gate", () => {
     });
   });
 
+  it("releases the installed native binding before temporary cleanup", () => {
+    const certify = readFileSync(
+      join(root, "probes/rust-vertical-slice/node/scripts/certify.mjs"),
+      "utf8",
+    );
+    const runtime = readFileSync(
+      join(root, "probes/rust-vertical-slice/node/tests/runtime.mjs"),
+      "utf8",
+    );
+    expect(certify).toContain("const runtimeResult = run(");
+    expect(certify).toContain("JSON.parse(runtimeResult.stdout)");
+    expect(certify).not.toContain("pathToFileURL");
+    expect(runtime).toContain(
+      'JSON.stringify({ capability: wire, status: "passed" })',
+    );
+  });
+
   it("rejects a hosted matrix that does not install the pinned toolchain", () => {
     const path = replacedText(
       ".github/workflows/rust-vertical-slice.yml",

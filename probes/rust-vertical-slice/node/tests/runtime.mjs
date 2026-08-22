@@ -204,4 +204,6 @@ try {
 
 await new Promise((resolve) => server.close(resolve));
 delete process.env.KRX_PROBE_BASE_URL;
-process.stdout.write("node runtime probe passed\n");
+process.stdout.write(
+  `${JSON.stringify({ capability: wire, status: "passed" })}\n`,
+);

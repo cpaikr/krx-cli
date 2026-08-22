@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import process from "node:process";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import { installedBinCommand } from "../../../../scripts/package-smoke-command.mjs";
 import { resolveNpmCommand } from "./npm-command.mjs";
@@ -139,15 +139,14 @@ try {
   assert.notEqual(privateImport.status, 0);
   assert.match(privateImport.stderr, /ERR_PACKAGE_PATH_NOT_EXPORTED/);
 
-  run(
+  const runtimeResult = run(
     process.execPath,
     [resolve(probe, "node/tests/runtime.mjs"), packageRoot],
     repository,
   );
-  const probeModule = await import(
-    pathToFileURL(resolve(packageRoot, "dist/probe.js")).href
-  );
-  const capability = probeModule.probeWireContract();
+  const runtime = JSON.parse(runtimeResult.stdout);
+  assert.equal(runtime.status, "passed");
+  const capability = runtime.capability;
 
   const consumer = (
     await readFile(

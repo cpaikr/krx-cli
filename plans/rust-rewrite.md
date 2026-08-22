@@ -50,7 +50,7 @@ publication decision.
   error types, and strict operation-aware cache schemas. Nine maintained state
   schemas and classified fixtures cover credential, approval, cache, quota,
   and watchlist migration. The full deterministic gate passes 48 test files
-  and 458 tests, including 69 targeted authority, product, and vertical-slice
+  and 459 tests, including 70 targeted authority, product, and vertical-slice
   gate tests.
 - The disposable workspace compiles the frozen Rust consumer and proves one
   OpenAPI-derived operation through reqwest/Rustls, a native Clap executable,
@@ -65,8 +65,12 @@ publication decision.
   Windows assembly, pack, and upload, plus six non-Windows consumers. Its two
   Windows consumers installed the artifact before exposing a slash-specific
   declaration-containment assertion. The checked fix uses native relative-path
-  semantics and an executable Win32 edge matrix; hosted certification remains
-  pending until the next retry passes.
+  semantics and an executable Win32 edge matrix. The next retry passed all
+  builds and six non-Windows consumers; both Windows consumers completed every
+  assertion and emitted matching passed reports before temporary cleanup failed
+  on their still-loaded native DLL. Capability capture now comes from the
+  child runtime probe so its process releases the module before cleanup; hosted
+  certification remains pending until the next retry passes.
 - `../ytm` supplies the target structural precedent. The accepted guidance in
   `../mytech` supplies the design rules: OpenAPI wire authority, a handwritten
   Rust conformer, narrow Node-API binding, boundary-owned contracts, pure
@@ -402,7 +406,7 @@ crates/krx-cli   crates/krx-node
 ## Next action
 
 Complete the hosted four-target/Node-22-and-24 certification retry with the
-Windows declaration-containment fix, then deliver one contract-authority PR
+Windows native-module cleanup fix, then deliver one contract-authority PR
 that makes the validated OpenAPI document the sole maintained KRX wire source;
 freezes executable Rust, Node, CLI, error, and all persisted-state migration
 contracts; and records the disposable candidate proof. Production
