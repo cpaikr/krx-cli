@@ -17,6 +17,7 @@ import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { installedBinCommand } from "../../../../scripts/package-smoke-command.mjs";
+import { resolveNpmCommand } from "./npm-command.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const probe = resolve(here, "../..");
@@ -53,10 +54,18 @@ try {
     resolve(temporary, "package.json"),
     `${JSON.stringify({ name: "krx-probe-consumer", private: true, type: "module" }, null, 2)}\n`,
   );
-  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+  const { command: npm, argumentPrefix: npmArgumentPrefix } =
+    resolveNpmCommand();
   run(
     npm,
-    ["install", "--ignore-scripts", "--no-audit", "--no-fund", tarball],
+    [
+      ...npmArgumentPrefix,
+      "install",
+      "--ignore-scripts",
+      "--no-audit",
+      "--no-fund",
+      tarball,
+    ],
     temporary,
   );
   const packageRoot = resolve(temporary, "node_modules/krx-cli");
@@ -213,8 +222,11 @@ try {
 function run(command, args, cwd) {
   const result = spawnSync(command, args, { cwd, encoding: "utf8" });
   if (result.status !== 0) {
+    const diagnostics = [result.error?.message, result.stderr, result.stdout]
+      .filter(Boolean)
+      .join("\n");
     throw new Error(
-      `${command} ${args.join(" ")} failed\n${result.stderr}\n${result.stdout}`,
+      `${command} ${args.join(" ")} failed with status ${String(result.status)}\n${diagnostics}`,
     );
   }
   return result;

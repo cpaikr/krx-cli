@@ -39,8 +39,8 @@ Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Next in-scope action
 
-Push the completed disposable candidate proof, require the hosted four-target
-and Node 22/24 certification matrix, then deliver the contract-authority PR
+Push the Windows packaging remediation and require a green hosted four-target
+and Node 22/24 certification retry, then deliver the contract-authority PR
 through review and merge. Production Rust remains blocked until that PR is
 complete.
 
@@ -73,8 +73,8 @@ complete.
   malformed public, state, error, target, and migration artifacts. Its checked
   projections include an exhaustive 425-entry CLI option matrix and generated
   Node and Rust operation/error types for all 31 operations.
-- `pnpm verify` passes 48 test files and 456 tests on the candidate-proof
-  checkpoint, including 67 targeted authority, product-contract, and
+- `pnpm verify` passes 48 test files and 457 tests on the candidate-proof
+  checkpoint, including 68 targeted authority, product-contract, and
   vertical-slice gate tests,
   production audit, the 13-scenario installed-package judge with all three
   named mutants rejected, and packed-artifact smoke for 31 schemas and 12
@@ -107,7 +107,15 @@ complete.
   portable payload, metadata, and capability identities. The workflow builds
   macOS ARM64, Linux GNU x64/ARM64, and Windows x64 once per target, fans each
   exact tarball out to both Node majors, and compares all eight reports; hosted
-  certification remains pending until push.
+  certification remains pending until the remediation retry passes.
+- Hosted run
+  [32560050687](https://github.com/sjunepark/krx-cli/actions/runs/32560050687)
+  passed every build, test, Rustls, keyring, assembly, pack, and upload step on
+  macOS ARM64 and Linux GNU x64/ARM64. Windows passed through assembly but Node
+  24 could not directly spawn `npm.cmd`, yielding a null child-process status.
+  The remediation invokes npm's JavaScript CLI with `node.exe`, adds a hosted
+  path regression, preserves failure diagnostics, and updates the workflow to
+  the current documented checkout, setup-node, and download-artifact majors.
 - A six-mutant vertical-slice gate ties exact Rust dependencies, both workflow
   matrices, package exports, Node majors, and target identities to the frozen
   contracts and rejects cross-target portable-payload divergence. The canonical

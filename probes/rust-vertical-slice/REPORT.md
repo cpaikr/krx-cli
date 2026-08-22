@@ -1,6 +1,6 @@
 # Rust vertical-slice certification report
 
-Status: hosted certification pending
+Status: hosted certification retry pending
 
 Local evidence on 2026-08-22:
 
@@ -15,6 +15,18 @@ Local evidence on 2026-08-22:
   and direct native npm-bin execution. Both consumers report the same portable
   payload digest, package metadata, and native capability projection.
 
-The GitHub workflow must pass four target builds and eight clean-install Node
-consumers, then compare all eight reports, before this report can be promoted
-to certified. No target is certified solely by this local checkpoint.
+Hosted evidence on 2026-08-22:
+
+- [Run 32560050687](https://github.com/sjunepark/krx-cli/actions/runs/32560050687)
+  passed every build, test, live Rustls, native keyring, assembly, pack, and
+  upload step on macOS ARM64 and Linux GNU x64/ARM64.
+- Windows x64 passed the same checks through package assembly. Its pack step
+  exposed that Node 24 cannot spawn `npm.cmd` directly: the child returned a
+  null status without stderr. The checked remediation invokes npm's JavaScript
+  CLI with `node.exe`, reports child-process errors, and has a platform-path
+  regression test.
+
+The remediation retry must pass four target builds and eight clean-install
+Node consumers, then compare all eight reports, before this report can be
+promoted to certified. No target is certified solely by a partial hosted run
+or this local checkpoint.

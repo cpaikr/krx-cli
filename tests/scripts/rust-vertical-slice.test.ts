@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
@@ -109,6 +110,58 @@ describe("Rust vertical-slice gate", () => {
     const result = run("--package", path);
     expect(result.status).toBe(1);
     expect(result.stderr).toMatch(/package exports must match/u);
+  });
+
+  it("launches npm's JavaScript CLI through Node for both Windows package stages", () => {
+    const directory = mkdtempSync(join(tmpdir(), "krx-probe-npm-cli-"));
+    const npmCli = join(directory, "npm-cli.mjs");
+    writeFileSync(
+      npmCli,
+      "process.stdout.write(JSON.stringify(process.argv.slice(2)));\n",
+    );
+    const moduleUrl = pathToFileURL(
+      join(root, "probes/rust-vertical-slice/node/scripts/npm-command.mjs"),
+    ).href;
+    const program = `
+      import { spawnSync } from "node:child_process";
+      import { resolveNpmCommand } from ${JSON.stringify(moduleUrl)};
+      const command = resolveNpmCommand({
+        platform: "win32",
+        execPath: process.execPath,
+        npmCliPath: ${JSON.stringify(npmCli)},
+      });
+      const result = spawnSync(
+        command.command,
+        [...command.argumentPrefix, "probe-argument"],
+        { encoding: "utf8" },
+      );
+      process.stdout.write(JSON.stringify({ command, result }));
+    `;
+    const result = spawnSync(
+      process.execPath,
+      ["--input-type=module", "--eval", program],
+      { cwd: root, encoding: "utf8" },
+    );
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      command: {
+        command: process.execPath,
+        argumentPrefix: [npmCli],
+      },
+      result: {
+        status: 0,
+        stdout: '["probe-argument"]',
+      },
+    });
+    for (const caller of ["pack.mjs", "certify.mjs"]) {
+      const source = readFileSync(
+        join(root, "probes/rust-vertical-slice/node/scripts", caller),
+        "utf8",
+      );
+      expect(source).toContain('from "./npm-command.mjs"');
+      expect(source).toContain("resolveNpmCommand()");
+      expect(source).not.toContain('"npm.cmd"');
+    }
   });
 
   it("rejects a hosted matrix that does not install the pinned toolchain", () => {

@@ -50,7 +50,7 @@ publication decision.
   error types, and strict operation-aware cache schemas. Nine maintained state
   schemas and classified fixtures cover credential, approval, cache, quota,
   and watchlist migration. The full deterministic gate passes 48 test files
-  and 456 tests, including 67 targeted authority, product, and vertical-slice
+  and 457 tests, including 68 targeted authority, product, and vertical-slice
   gate tests.
 - The disposable workspace compiles the frozen Rust consumer and proves one
   OpenAPI-derived operation through reqwest/Rustls, a native Clap executable,
@@ -59,7 +59,11 @@ publication decision.
   builds all four manifest targets once apiece, consumes each unchanged on both
   Node majors, aggregates the twelve required matrix jobs, and compares the
   portable payload, package metadata, and native capabilities reported by all
-  eight consumers; hosted results remain pending until the branch is pushed.
+  eight consumers. The first hosted run passed all macOS and Linux work and
+  every Windows step through package assembly, then exposed Node 24's inability
+  to spawn `npm.cmd` directly. The checked remediation launches npm's
+  JavaScript CLI through `node.exe`; hosted results remain pending until its
+  retry passes.
 - `../ytm` supplies the target structural precedent. The accepted guidance in
   `../mytech` supplies the design rules: OpenAPI wire authority, a handwritten
   Rust conformer, narrow Node-API binding, boundary-owned contracts, pure
@@ -394,7 +398,7 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Complete hosted four-target/Node-22-and-24 certification, then deliver one
+Complete the hosted four-target/Node-22-and-24 certification retry, then deliver one
 contract-authority PR that makes the validated OpenAPI document the sole
 maintained KRX wire source; freezes executable Rust, Node, CLI, error, and all
 persisted-state migration contracts; and records the disposable candidate

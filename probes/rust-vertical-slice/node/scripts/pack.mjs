@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import { parseNpmPackReport } from "../../../../scripts/package-smoke-command.mjs";
+import { resolveNpmCommand } from "./npm-command.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repository = resolve(here, "../../../..");
@@ -34,20 +35,27 @@ const packageJson = JSON.parse(
   await readFile(resolve(packageRoot, "package.json")),
 );
 await mkdir(artifacts, { recursive: true });
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-const result = spawnSync(
-  npm,
-  [
-    "pack",
-    "--json",
-    "--ignore-scripts",
-    "--silent",
-    "--pack-destination",
-    artifacts,
-  ],
-  { cwd: packageRoot, encoding: "utf8" },
-);
-if (result.status !== 0) throw new Error(`npm pack failed\n${result.stderr}`);
+const packArguments = [
+  "pack",
+  "--json",
+  "--ignore-scripts",
+  "--silent",
+  "--pack-destination",
+  artifacts,
+];
+const { command, argumentPrefix } = resolveNpmCommand();
+const result = spawnSync(command, [...argumentPrefix, ...packArguments], {
+  cwd: packageRoot,
+  encoding: "utf8",
+});
+if (result.status !== 0) {
+  const diagnostics = [result.error?.message, result.stderr, result.stdout]
+    .filter(Boolean)
+    .join("\n");
+  throw new Error(
+    `npm pack failed with status ${String(result.status)}\n${diagnostics}`,
+  );
+}
 const report = parseNpmPackReport(result.stdout);
 if (report.length !== 1 || !report[0].filename)
   throw new Error("npm pack returned an invalid report");
