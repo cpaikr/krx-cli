@@ -1,6 +1,6 @@
 # Rust vertical-slice certification report
 
-Status: hosted certification retry pending
+Status: certified
 
 Local evidence on 2026-08-22:
 
@@ -48,8 +48,15 @@ Hosted evidence on 2026-08-22:
   and declaration files differed only by CRLF checkout conversion. Checked
   attributes now pin the three portable source groups to LF, and the workflow
   watches that policy directly.
+- [Run 32563560693](https://github.com/sjunepark/krx-cli/actions/runs/32563560693)
+  passed all four target builds, all eight exact-archive clean-install
+  consumers under Node 22 and 24, and the final cross-target aggregator. Every
+  consumer reported the same package metadata and native capability identity;
+  the portable JavaScript and declaration digest is
+  `7f5dc0f96e7c38fd458ebc203f599d5ff561712a3d88111cb28fb723d3c90180`.
+  An independent download and local replay of the checked report comparator
+  passed against all eight hosted reports.
 
-The remediation retry must pass four target builds and eight clean-install
-Node consumers, then compare all eight reports, before this report can be
-promoted to certified. No target is certified solely by a partial hosted run
-or this local checkpoint.
+This disposable candidate is certified only for the frozen architecture and
+contract boundary it exercises. It is not production implementation and does
+not certify behavior outside the representative vertical slice.

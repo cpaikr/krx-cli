@@ -39,10 +39,9 @@ Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Next in-scope action
 
-Pin portable package sources to LF and require a green hosted four-target and
-Node 22/24 certification retry, then deliver the
-contract-authority PR through review and merge. Production Rust remains blocked
-until that PR is complete.
+Deliver the certified contract-authority branch through its create-PR,
+feedback, re-review, and merge lifecycle. Production Rust remains blocked until
+that PR is complete.
 
 ### Evidence and blockers
 
@@ -140,6 +139,13 @@ until that PR is complete.
   and declaration file to CRLF. Exact artifact comparison proves the payloads
   are otherwise byte-identical. Checked attributes now pin every portable
   source to LF, and the workflow watches that policy as a certification input.
+- Hosted certification
+  [32563560693](https://github.com/sjunepark/krx-cli/actions/runs/32563560693)
+  passed all four target builds, all eight exact-archive clean-install
+  consumers under Node 22 and 24, and the final package-identity aggregator.
+  All eight reports share portable digest `7f5dc0f96e7c38fd458ebc203f599d5ff561712a3d88111cb28fb723d3c90180`,
+  package metadata, and native capability identity. An independent download
+  and local comparator replay passed against those reports.
 - A six-mutant vertical-slice gate ties exact Rust dependencies, both workflow
   matrices, package exports, Node majors, and target identities to the frozen
   contracts and rejects cross-target portable-payload divergence. The canonical

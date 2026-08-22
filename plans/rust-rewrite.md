@@ -73,8 +73,11 @@ publication decision.
   next retry passed all four builds and all eight consumers, including Windows
   cleanup, before the aggregator exposed CRLF-only divergence in every Windows
   portable file. Checked attributes now pin the package sources to LF and are
-  themselves a workflow input; hosted certification remains pending until the
-  next retry passes.
+  themselves a workflow input. Hosted run 32563560693 then passed all four
+  builds, all eight exact-archive consumers under Node 22 and 24, and the final
+  cross-target identity aggregator. An independent replay over the downloaded
+  reports confirmed one portable digest, package metadata, and capability
+  identity across all eight consumers.
 - `../ytm` supplies the target structural precedent. The accepted guidance in
   `../mytech` supplies the design rules: OpenAPI wire authority, a handwritten
   Rust conformer, narrow Node-API binding, boundary-owned contracts, pure
@@ -409,10 +412,8 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Complete the hosted four-target/Node-22-and-24 certification retry with the
-portable source line-ending fix, then deliver one contract-authority PR
-that makes the validated OpenAPI document the sole maintained KRX wire source;
-freezes executable Rust, Node, CLI, error, and all persisted-state migration
-contracts; and records the disposable candidate proof. Production
-`crates/krx-*` implementation begins only after that PR completes review and
-merges.
+Deliver one contract-authority PR that makes the validated OpenAPI document the
+sole maintained KRX wire source; freezes executable Rust, Node, CLI, error, and
+all persisted-state migration contracts; and records the certified disposable
+candidate proof. Complete feedback, re-review, and merge before production
+`crates/krx-*` implementation begins.
