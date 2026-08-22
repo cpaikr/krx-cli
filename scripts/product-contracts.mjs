@@ -10,6 +10,10 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
 const root = resolve(import.meta.dirname, "..");
+const prettierConfig =
+  (await prettier.resolveConfig(import.meta.filename, {
+    editorconfig: true,
+  })) ?? {};
 
 function argument(name) {
   const index = process.argv.indexOf(name);
@@ -137,6 +141,14 @@ function canonicalJson(value) {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
     .join(",")}}`;
+}
+
+async function formattedJson(value, filepath) {
+  return prettier.format(JSON.stringify(value, null, 2), {
+    ...prettierConfig,
+    filepath,
+    parser: "json",
+  });
 }
 
 function dereference(document, value) {
@@ -1304,8 +1316,9 @@ equal(
   "approval schema categories must derive from the semantic profile",
 );
 
-function generatedCacheSchema(
+async function generatedCacheSchema(
   templateName,
+  outputPath,
   selector,
   rowsProperty,
   selectValue,
@@ -1338,16 +1351,18 @@ function generatedCacheSchema(
       },
     },
   }));
-  return `${JSON.stringify(template, null, 2)}\n`;
+  return formattedJson(template, outputPath);
 }
-const generatedCacheV1 = generatedCacheSchema(
+const generatedCacheV1 = await generatedCacheSchema(
   "cache-v1.schema.json",
+  paths.cacheV1Schema,
   "endpoint",
   "data",
   (operation) => operation.path,
 );
-const generatedCacheV2 = generatedCacheSchema(
+const generatedCacheV2 = await generatedCacheSchema(
   "cache-v2.schema.json",
+  paths.cacheV2Schema,
   "operationId",
   "rows",
   (operation) => operation.operationId,
@@ -1972,7 +1987,7 @@ const sourceDigests = {
       .join("\n"),
   ),
 };
-const product = `${JSON.stringify(
+const product = await formattedJson(
   {
     schemaVersion: 1,
     id: profile.id,
@@ -2012,10 +2027,12 @@ const product = `${JSON.stringify(
       resultExitPolicies: errors.resultExitPolicies,
     },
   },
-  null,
-  2,
-)}\n`;
-const candidateInventorySource = `${JSON.stringify(candidateInventory, null, 2)}\n`;
+  paths.product,
+);
+const candidateInventorySource = await formattedJson(
+  candidateInventory,
+  paths.candidateInventory,
+);
 const activePathsByScope = Object.fromEntries(
   Object.entries(overlay.optionPolicy.scopeCommands).map(
     ([scope, commandPaths]) => [
@@ -2027,7 +2044,7 @@ const activePathsByScope = Object.fromEntries(
 const candidateLeafPaths = candidateInventory
   .filter((entry) => !entry.commands || entry.commands.length === 0)
   .map((entry) => entry.path);
-const cliOptionMatrix = `${JSON.stringify(
+const cliOptionMatrix = await formattedJson(
   {
     schemaVersion: 1,
     generatedFrom: {
@@ -2045,9 +2062,8 @@ const cliOptionMatrix = `${JSON.stringify(
       })),
     ),
   },
-  null,
-  2,
-)}\n`;
+  paths.cliOptionMatrix,
+);
 
 async function emit(path, expected) {
   if (write) {

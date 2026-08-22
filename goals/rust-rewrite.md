@@ -73,8 +73,8 @@ the private target manifest before delivering the contract-authority PR.
   malformed public, state, error, target, and migration artifacts. Its checked
   projections include an exhaustive 425-entry CLI option matrix and generated
   Node and Rust operation/error types for all 31 operations.
-- `pnpm verify` passes 47 test files and 442 tests on the public-contract
-  checkpoint, including 53 targeted authority and product-contract tests,
+- `pnpm verify` passes 47 test files and 443 tests on the public-contract
+  checkpoint, including 54 targeted authority and product-contract tests,
   production audit, the 13-scenario installed-package judge with all three
   named mutants rejected, and packed-artifact smoke for 31 schemas and 12
   legacy MCP tools. Independent review findings on error redaction, mapping
@@ -83,6 +83,9 @@ the private target manifest before delivering the contract-authority PR.
   version collisions, invalid approval sources, and exact-byte no-write
   preservation, empty-present credential handling, and credential source
   validation ordering are closed.
+- Checked JSON generation now uses the repository Prettier configuration with
+  an explicit JSON parser, remains byte-stable across generation and commit
+  hooks, and writes all five JSON projections to extensionless custom paths.
 - Reproduced hosted failures from CI run `31672062655`: Windows checkout
   newlines broke two LF-sensitive assertions, and npm 10 lifecycle output
   preceded `npm pack --json`. The fixes normalize only test input newlines and
