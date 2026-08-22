@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "operationId": "stock_stk_bydd_trd",
+  "schemaSha256": "730f6139f3d929b7f95de7a10c6e1dfcadf7a262d2af4f717356bea3b001526b",
+  "fetchedAt": "2026-01-03T00:00:00.000Z",
+  "params": [
+    ["basDd", "20260101"],
+    ["basDd", "20260102"]
+  ],
+  "rows": [
+    {
+      "BAS_DD": "20260102",
+      "ISU_CD": "KR7005930003",
+      "ISU_NM": "삼성전자",
+      "MKT_NM": "KOSPI",
+      "SECT_TP_NM": "보통주",
+      "TDD_CLSPRC": "70000",
+      "CMPPREVDD_PRC": "1000",
+      "FLUC_RT": "1.45",
+      "TDD_OPNPRC": "69000",
+      "TDD_HGPRC": "70500",
+      "TDD_LWPRC": "68800",
+      "ACC_TRDVOL": "1000000",
+      "ACC_TRDVAL": "70000000000",
+      "MKTCAP": "417000000000000",
+      "LIST_SHRS": "5969782550"
+    }
+  ]
+}

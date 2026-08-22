@@ -84,6 +84,12 @@ async fn consume_public_sdk(client: &Client) -> Result<(), krx_sdk::KrxError> {
             krx_sdk::WatchlistMarket::Kospi,
         )?)
         .await?;
+    let _konex = WatchlistEntry::new(
+        "KR7244690001",
+        "244690",
+        "올리패스",
+        krx_sdk::WatchlistMarket::Konex,
+    )?;
     let _removed: bool = watchlist.remove("005930").await?;
     Ok(())
 }

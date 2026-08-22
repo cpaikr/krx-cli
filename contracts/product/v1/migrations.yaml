@@ -201,6 +201,7 @@ transitions:
       - resolved-credential-is-present-and-nonempty
       - quota-state-reread-under-existing-lock
       - state-valid-and-count-not-over-10000
+      - every-quota-date-is-a-valid-YYYYMMDD-calendar-date
     actions:
       - map-root-entry-to-exact-credential-fingerprint
       - current-KST-date-increment-existing-count
@@ -220,7 +221,7 @@ transitions:
       steal: rename-stale-directory-then-remove
       symlinkPolicy: reject
     failurePolicy:
-      corrupt-unknown-or-over-limit: fail-closed-preserve-bytes
+      corrupt-unknown-impossible-date-or-over-limit: fail-closed-preserve-bytes
       crash-after-reservation: may-overcount-never-decrement
       offline: never-trigger
     coexistence:

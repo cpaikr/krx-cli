@@ -51,16 +51,17 @@ const row = Object.fromEntries(
   wire.representativeFields.map((field) => [field, `value-${field}`]),
 );
 let responseDelay = 0;
+let responsePayload = { [wire.successEnvelope]: [row] };
 const server = createServer(async (request, response) => {
   assert.equal(request.method, wire.method);
   assert.equal(request.url, wire.path);
   assert.equal(
     request.headers[wire.authHeader.toLowerCase()],
-    "consumer-fixture-secret",
+    "fixture-key",
   );
   for await (const _ of request) void _;
   await new Promise((resolve) => setTimeout(resolve, responseDelay));
-  const body = JSON.stringify({ [wire.successEnvelope]: [row] });
+  const body = JSON.stringify(responsePayload);
   response.writeHead(200, {
     "content-type": "application/json",
     "content-length": Buffer.byteLength(body),
@@ -71,7 +72,7 @@ await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const address = server.address();
 process.env.KRX_PROBE_BASE_URL = `http://127.0.0.1:${address.port}/`;
 
-const client = new KrxClient({ apiKey: "consumer-fixture-secret" });
+const client = new KrxClient({ apiKey: "fixture-key" });
 const resolvedController = new AbortController();
 let added = 0;
 let removed = 0;
@@ -104,6 +105,36 @@ assert.ok(Number.isFinite(fetchedAt));
 assert.ok(Math.abs(Date.now() - fetchedAt) < 60_000);
 assert.equal(added, 1);
 assert.equal(removed, 1);
+
+responsePayload = {
+  [wire.providerCodeField]: `prefix-fixture-key-${"한".repeat(300)}`,
+  [wire.providerMessageField]: "opaque provider detail",
+};
+try {
+  await client.query({
+    operation: "stock_stk_bydd_trd",
+    date: "20260821",
+    cache: { mode: "bypass" },
+  });
+  assert.fail("provider envelope should fail");
+} catch (error) {
+  assert.ok(error instanceof KrxError);
+  assert.equal(error.code, "provider_error");
+  assert.ok(error.providerCode.includes("[REDACTED]"));
+  assert.ok([...error.providerCode].length <= 240);
+  const rendered = [
+    error.message,
+    error.stack,
+    error.providerCode,
+    error.operationId,
+    error.cause,
+    error.details,
+    error.rawBody,
+    error.dependencyMessage,
+  ].join("\n");
+  assert.ok(!rendered.includes("fixture-key"));
+}
+responsePayload = { [wire.successEnvelope]: [row] };
 
 const rejectedController = new AbortController();
 let rejectedAdded = 0;

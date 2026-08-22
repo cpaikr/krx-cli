@@ -178,6 +178,9 @@ try {
   const bin = installedBinCommand(temporary, "krx", ["--help"]);
   const cli = run(bin.command, bin.args, temporary);
   assert.match(cli.stdout, /Native CLI probe/);
+  const versionBin = installedBinCommand(temporary, "krx", ["--version"]);
+  const version = run(versionBin.command, versionBin.args, temporary);
+  assert.equal(version.stdout.trim(), `krx ${packageJson.version}`);
   if (process.platform !== "win32") {
     const installed = resolve(temporary, "node_modules/.bin/krx");
     const destination = await realpath(installed);

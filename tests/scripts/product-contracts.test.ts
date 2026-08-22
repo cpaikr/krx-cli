@@ -451,7 +451,7 @@ describe("product contract gate", () => {
     );
   });
 
-  it("rejects a fixture identity that does not match exact secret bytes", () => {
+  it("rejects checked-in overrides for derived fixture identities", () => {
     const fixtures = mutatedYaml(
       "contracts/product/v1/fixtures/manifest.yaml",
       "fingerprint",
@@ -459,10 +459,7 @@ describe("product contract gate", () => {
         document.credentialFingerprint = "0".repeat(64);
       },
     );
-    expectRejected(
-      ["--fixtures", fixtures],
-      /fingerprint must use exact UTF-8/u,
-    );
+    expectRejected(["--fixtures", fixtures], /fixture manifest/u);
   });
 
   it("rejects a mislabeled credential migration conflict", () => {

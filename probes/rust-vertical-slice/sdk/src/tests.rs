@@ -183,7 +183,7 @@ fn request(cancellation: Cancellation) -> DirectRequest {
 
 fn client(server: &MockServer, attempt_timeout: Duration) -> Client {
     Client::builder()
-        .api_key(ApiKey::parse("probe-secret").expect("API key"))
+        .api_key(ApiKey::parse("fixture-key").expect("API key"))
         .probe_base_url(&server.base_url)
         .expect("mock base URL")
         .probe_attempt_timeout(attempt_timeout)
@@ -225,7 +225,7 @@ async fn representative_query_uses_the_generated_wire_contract() {
     let request = server.requests.lock().expect("request log")[0].clone();
     assert!(request.starts_with(&format!("{METHOD} {PROVIDER_PATH} HTTP/1.1\r\n")));
     assert!(request.to_ascii_lowercase().contains(&format!(
-        "{}: probe-secret\r\n",
+        "{}: fixture-key\r\n",
         AUTH_HEADER.to_ascii_lowercase()
     )));
     assert!(request.to_ascii_lowercase().contains(&format!(
@@ -292,6 +292,69 @@ async fn strict_decoder_classifies_json_envelope_provider_and_row_failures() {
         .await
         .expect_err("unknown row field");
     assert_eq!(unknown.code(), KrxErrorCode::InvalidRow);
+}
+
+#[tokio::test]
+async fn provider_codes_are_credential_redacted_and_unicode_bounded() {
+    let raw = format!("prefix-fixture-key-{}-suffix", "한".repeat(300));
+    let provider = query_once(
+        200,
+        json!({
+            PROVIDER_CODE_FIELD: raw,
+            PROVIDER_MESSAGE_FIELD: "opaque",
+        })
+        .to_string(),
+    )
+    .await
+    .expect_err("provider error");
+    let code = provider.provider_code().expect("sanitized provider code");
+    assert!(!code.contains("fixture-key"));
+    assert!(code.contains("[REDACTED]"));
+    assert_eq!(code.chars().count(), 240);
+    assert!(!provider.to_string().contains("fixture-key"));
+    assert!(!format!("{provider:?}").contains("fixture-key"));
+}
+
+#[test]
+fn probe_transport_rejects_nonfixture_credentials_and_nonloopback_origins() {
+    Client::builder()
+        .api_key(ApiKey::parse("real-credential").expect("API key"))
+        .build()
+        .expect("official transport accepts the configured credential");
+
+    for result in [
+        Client::builder()
+            .api_key(ApiKey::parse("fixture-key").expect("API key"))
+            .probe_base_url("https://example.com/"),
+        Client::builder()
+            .api_key(ApiKey::parse("fixture-key").expect("API key"))
+            .probe_base_url("http://127.0.0.1:1234/?redirect=1"),
+    ] {
+        let error = result.err().expect("unsafe probe origin");
+        assert_eq!(error.code(), KrxErrorCode::InvalidArgument);
+    }
+
+    for builder in [
+        Client::builder()
+            .api_key(ApiKey::parse("real-credential").expect("API key"))
+            .probe_base_url("http://127.0.0.1:1234/")
+            .expect("valid loopback URL"),
+        Client::builder()
+            .api_key(ApiKey::parse("fixture-key").expect("API key"))
+            .probe_base_url("http://127.0.0.1:1234/")
+            .expect("valid loopback URL")
+            .api_key(ApiKey::parse("real-credential").expect("API key")),
+    ] {
+        let error = builder.build().err().expect("nonfixture probe credential");
+        assert_eq!(error.code(), KrxErrorCode::InvalidArgument);
+    }
+
+    Client::builder()
+        .probe_base_url("http://127.0.0.1:1234/")
+        .expect("valid loopback URL")
+        .api_key(ApiKey::parse("fixture-key").expect("API key"))
+        .build()
+        .expect("builder order must not affect safe probe transport");
 }
 
 #[tokio::test]
@@ -428,10 +491,12 @@ fn secrets_are_redacted_and_errors_do_not_expose_sources() {
 struct FakeCredentialBackend {
     secret: Mutex<Option<String>>,
     read_override: Mutex<Option<Result<Option<String>, KrxError>>>,
+    reads: AtomicUsize,
 }
 
 impl CredentialBackend for FakeCredentialBackend {
     fn get(&self) -> Result<Option<String>, KrxError> {
+        self.reads.fetch_add(1, Ordering::SeqCst);
         if let Some(result) = self.read_override.lock().expect("read override").take() {
             return result;
         }
@@ -469,9 +534,83 @@ async fn credential_store_verifies_round_trips_and_preserves_backend_errors() {
     *backend.read_override.lock().expect("read override") = Some(Err(credential_store_error(
         "headless credential store unavailable",
     )));
-    let error = store.status().await.expect_err("headless backend error");
+    let error = store
+        .status_with_environment(Err(VarError::NotPresent))
+        .await
+        .expect_err("headless backend error");
     assert_eq!(error.code(), KrxErrorCode::CredentialStoreUnavailable);
     assert!(!error.message().contains("persisted-secret"));
+}
+
+#[tokio::test]
+async fn credential_status_validates_present_environment_before_keychain() {
+    for value in ["", "   ", "embedded space"] {
+        let backend = Arc::new(FakeCredentialBackend::default());
+        let store = CredentialStore {
+            explicit: false,
+            backend: backend.clone(),
+        };
+        let error = store
+            .status_with_environment(Ok(value.to_owned()))
+            .await
+            .expect_err("invalid present environment credential");
+        assert_eq!(error.code(), KrxErrorCode::InvalidArgument);
+        assert_eq!(backend.reads.load(Ordering::SeqCst), 0);
+    }
+
+    let environment_backend = Arc::new(FakeCredentialBackend::default());
+    let environment_store = CredentialStore {
+        explicit: false,
+        backend: environment_backend.clone(),
+    };
+    let environment = environment_store
+        .status_with_environment(Ok("valid-token".to_owned()))
+        .await
+        .expect("valid environment credential");
+    assert_eq!(environment.source, CredentialSource::Environment);
+    assert!(!environment.persisted);
+    assert_eq!(environment_backend.reads.load(Ordering::SeqCst), 0);
+
+    let keychain_backend = Arc::new(FakeCredentialBackend::default());
+    *keychain_backend.secret.lock().expect("fake secret") = Some("stored".to_owned());
+    let keychain_store = CredentialStore {
+        explicit: false,
+        backend: keychain_backend.clone(),
+    };
+    let keychain = keychain_store
+        .status_with_environment(Err(VarError::NotPresent))
+        .await
+        .expect("missing environment falls through");
+    assert_eq!(keychain.source, CredentialSource::Keychain);
+    assert!(keychain.persisted);
+    assert_eq!(keychain_backend.reads.load(Ordering::SeqCst), 1);
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn credential_status_rejects_non_unicode_environment_without_keychain() {
+    use std::os::unix::ffi::OsStringExt;
+
+    let backend = Arc::new(FakeCredentialBackend::default());
+    let store = CredentialStore {
+        explicit: false,
+        backend: backend.clone(),
+    };
+    let error = store
+        .status_with_environment(Err(VarError::NotUnicode(std::ffi::OsString::from_vec(
+            vec![0xff],
+        ))))
+        .await
+        .expect_err("non-Unicode environment credential");
+    assert_eq!(error.code(), KrxErrorCode::InvalidArgument);
+    assert_eq!(backend.reads.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn watchlist_preserves_the_frozen_konex_market() {
+    let entry = WatchlistEntry::new("KR7244690001", "244690", "올리패스", WatchlistMarket::Konex)
+        .expect("KONEX watchlist entry");
+    assert_eq!(entry.market, WatchlistMarket::Konex);
 }
 
 #[tokio::test]

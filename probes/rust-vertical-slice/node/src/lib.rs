@@ -66,6 +66,8 @@ pub struct NativeWireContract {
     pub auth_header: String,
     pub request_date_field: String,
     pub success_envelope: String,
+    pub provider_code_field: String,
+    pub provider_message_field: String,
     pub representative_fields: Vec<String>,
 }
 
@@ -78,6 +80,8 @@ pub fn probe_wire_contract() -> NativeWireContract {
         auth_header: contract.auth_header.to_owned(),
         request_date_field: contract.request_date_field.to_owned(),
         success_envelope: contract.success_envelope.to_owned(),
+        provider_code_field: contract.provider_code_field.to_owned(),
+        provider_message_field: contract.provider_message_field.to_owned(),
         representative_fields: contract
             .representative_fields
             .iter()

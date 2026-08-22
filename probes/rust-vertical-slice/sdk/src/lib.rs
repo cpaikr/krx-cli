@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
+use std::env::VarError;
 use std::fmt;
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
@@ -546,9 +548,27 @@ impl ClientBuilder {
 
     #[cfg(any(test, feature = "probe-hooks"))]
     pub fn probe_base_url(mut self, base_url: &str) -> Result<Self, KrxError> {
-        self.base_url = Url::parse(base_url).map_err(|_| {
+        let parsed = Url::parse(base_url).map_err(|_| {
             KrxError::new(KrxErrorCode::InvalidArgument, "probe base URL is invalid")
         })?;
+        let loopback = parsed
+            .host_str()
+            .and_then(|host| host.parse::<IpAddr>().ok())
+            .is_some_and(|address| address.is_loopback());
+        if parsed.scheme() != "http"
+            || !loopback
+            || !parsed.username().is_empty()
+            || parsed.password().is_some()
+            || parsed.query().is_some()
+            || parsed.fragment().is_some()
+            || parsed.path() != "/"
+        {
+            return Err(KrxError::new(
+                KrxErrorCode::InvalidArgument,
+                "probe transport requires an isolated loopback fixture",
+            ));
+        }
+        self.base_url = parsed;
         Ok(self)
     }
 
@@ -559,6 +579,18 @@ impl ClientBuilder {
     }
 
     pub fn build(self) -> Result<Client, KrxError> {
+        let official_url = Url::parse(OFFICIAL_SERVER).expect("canonical server URL is validated");
+        let alternate_transport = self.base_url != official_url;
+        let fixture_credential = self
+            .api_key
+            .as_ref()
+            .is_some_and(|api_key| api_key.expose() == "fixture-key");
+        if alternate_transport && !fixture_credential {
+            return Err(KrxError::new(
+                KrxErrorCode::InvalidArgument,
+                "probe transport requires an isolated loopback fixture",
+            ));
+        }
         let http = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .no_proxy()
@@ -720,7 +752,7 @@ impl Client {
                 }
             }
         };
-        decode_representative(&bytes, request.operation)
+        decode_representative(&bytes, request.operation, api_key.expose())
     }
 
     pub async fn range(&self, _request: RangeRequest) -> Result<RangeResult, KrxError> {
@@ -780,7 +812,11 @@ fn probe_only_error() -> KrxError {
     )
 }
 
-fn decode_representative(bytes: &[u8], operation: OperationId) -> Result<QueryResult, KrxError> {
+fn decode_representative(
+    bytes: &[u8],
+    operation: OperationId,
+    credential: &str,
+) -> Result<QueryResult, KrxError> {
     let value: Value = serde_json::from_slice(bytes).map_err(|_| {
         KrxError::new(INVALID_JSON, "provider returned malformed JSON").for_operation(operation)
     })?;
@@ -792,7 +828,7 @@ fn decode_representative(bytes: &[u8], operation: OperationId) -> Result<QueryRe
         let provider_code = object
             .get(PROVIDER_CODE_FIELD)
             .and_then(Value::as_str)
-            .map(str::to_owned);
+            .map(|code| sanitize_provider_code(code, credential));
         return Err(
             KrxError::new(PROVIDER_ERROR, "provider rejected the request")
                 .with_provider_code(provider_code)
@@ -859,6 +895,13 @@ fn decode_representative(bytes: &[u8], operation: OperationId) -> Result<QueryRe
     })
 }
 
+fn sanitize_provider_code(code: &str, credential: &str) -> String {
+    code.replace(credential, "[REDACTED]")
+        .chars()
+        .take(240)
+        .collect()
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CredentialSource {
     Explicit,
@@ -899,11 +942,29 @@ impl CredentialStore {
                 persisted: false,
             });
         }
-        if std::env::var_os("KRX_API_KEY").is_some() {
-            return Ok(CredentialStatus {
-                source: CredentialSource::Environment,
-                persisted: false,
-            });
+        self.status_with_environment(std::env::var("KRX_API_KEY"))
+            .await
+    }
+
+    async fn status_with_environment(
+        &self,
+        environment: Result<String, VarError>,
+    ) -> Result<CredentialStatus, KrxError> {
+        match environment {
+            Ok(value) => {
+                ApiKey::parse(&value)?;
+                return Ok(CredentialStatus {
+                    source: CredentialSource::Environment,
+                    persisted: false,
+                });
+            }
+            Err(VarError::NotPresent) => {}
+            Err(VarError::NotUnicode(_)) => {
+                return Err(KrxError::new(
+                    KrxErrorCode::InvalidArgument,
+                    "API key must be a non-empty token",
+                ));
+            }
         }
         let backend = Arc::clone(&self.backend);
         let present = tokio::task::spawn_blocking(move || backend.get())
@@ -1086,6 +1147,7 @@ impl CacheStore {
 pub enum WatchlistMarket {
     Kospi,
     Kosdaq,
+    Konex,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

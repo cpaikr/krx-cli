@@ -2,9 +2,6 @@ formatVersion: 1
 asOfKstDate: "20260103"
 asOfInstant: "2026-01-03T12:00:00.000Z"
 fixtureSecret: fixture-key
-credentialFingerprint: 66e7c82b49bb291dd09c8e020448311c4a7bb96aeb5c5db769f66812b13a50b5
-cacheV2Key: d6fa3ca04408a5e5b04f2233d37d18120f9324b9ad8ad5f961abf85317bbd9fe
-cacheV1Key: f7a6dcad228ef7ba
 
 schemaCases:
   - id: legacy-config-valid
@@ -78,6 +75,10 @@ schemaCases:
     schema: ../../../generated/state/cache-v1.schema.json
     fixture: cache-v1-partial-invalid.json
     valid: false
+  - id: cache-v1-extra-param
+    schema: ../../../generated/state/cache-v1.schema.json
+    fixture: cache-v1-extra-param-invalid.json
+    valid: false
   - id: cache-v2-valid
     schema: ../../../generated/state/cache-v2.schema.json
     fixture: cache-v2-full.json
@@ -88,6 +89,18 @@ schemaCases:
     fixture: cache-v2-current-invalid.json
     valid: false
     semantic: cache-v2
+  - id: cache-v2-extra-param
+    schema: ../../../generated/state/cache-v2.schema.json
+    fixture: cache-v2-extra-param-invalid.json
+    valid: false
+  - id: cache-v2-missing-param
+    schema: ../../../generated/state/cache-v2.schema.json
+    fixture: cache-v2-missing-param-invalid.json
+    valid: false
+  - id: cache-v2-duplicate-param-name
+    schema: ../../../generated/state/cache-v2.schema.json
+    fixture: cache-v2-duplicate-param-invalid.json
+    valid: false
   - id: quota-root-valid
     schema: ../state/quota-root-v0.schema.json
     fixture: quota-root-v0.json
@@ -96,6 +109,14 @@ schemaCases:
     schema: ../state/quota-v1.schema.json
     fixture: quota-v1.json
     valid: true
+  - id: quota-root-impossible-date
+    schema: ../state/quota-root-v0.schema.json
+    fixture: quota-root-impossible-date-invalid.json
+    valid: false
+  - id: quota-v1-impossible-date
+    schema: ../state/quota-v1.schema.json
+    fixture: quota-v1-impossible-date-invalid.json
+    valid: false
   - id: quota-over-limit
     schema: ../state/quota-root-v0.schema.json
     fixture: quota-over-limit-invalid.json
@@ -205,11 +226,21 @@ transitionCases:
     source: cache-v1-full.json
     expected: cache-v2-full.json
     result: migrated
+  - id: cache-invalid-params-preserved
+    transition: cache-v1-to-v2
+    source: cache-v1-extra-param-invalid.json
+    expected: cache-v1-extra-param-invalid.json
+    result: legacy-state-invalid-no-writes
   - id: quota-root-to-shared-v1
     transition: quota-root-v0-to-v1
     source: quota-root-v0.json
     expected: quota-v1.json
     result: reserved
+  - id: quota-invalid-date-preserved
+    transition: quota-root-v0-to-v1
+    source: quota-root-impossible-date-invalid.json
+    expected: quota-root-impossible-date-invalid.json
+    result: legacy-state-invalid-no-writes
   - id: watchlist-strict-v0-to-v1
     transition: watchlist-v0-to-v1
     source: watchlist-v0.json

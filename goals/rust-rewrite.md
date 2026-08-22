@@ -45,6 +45,23 @@ that PR is complete.
 
 ### Evidence and blockers
 
+- Contract delivery PR
+  [#8](https://github.com/sjunepark/krx-cli/pull/8) completed its initial
+  13-job four-target matrix at `c085b94`; all native builds, eight Node
+  consumers, and the cross-target identity aggregator passed. Review feedback
+  exposed six contract/probe defects plus an unsafe probe-origin hook. The
+  checked remediation derives exact cache parameters from OpenAPI, rejects
+  impossible quota dates without migration writes, sanitizes bounded provider
+  codes at the Rust boundary, validates present environment credentials,
+  freezes KONEX, binds native and npm versions, restricts probe traffic to a
+  public dummy credential on numeric loopback, and pins workflow actions to
+  reviewed immutable revisions. An independent complete-diff re-review is
+  clean. Targeted mutation gates, all-feature Rust tests and Clippy, full
+  `pnpm verify` (48 files, 462 tests), and rebuilt clean installs under Node 22
+  and 24 pass locally; both consumers certify portable digest
+  `7f5dc0f96e7c38fd458ebc203f599d5ff561712a3d88111cb28fb723d3c90180`.
+  Follow-up hosted certification and bot re-review remain pending until this
+  remediation is pushed.
 - Initialization boundary: necessary to satisfy the goal's Resume invariant and PR-delivery lifecycle.
 - Delivery integration branch: `codex/rust-rewrite-integration`, created from local `main` at `1f3dbd2`; it preserves the two queued rewrite-planning commits without pushing the production branch.
 - Contract-slice classification: one contract-authority PR must replace the

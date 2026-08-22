@@ -4,5 +4,11 @@
     "isuSrtCd": "005930",
     "name": "삼성전자",
     "market": "KOSPI"
+  },
+  {
+    "isuCd": "KR7244690001",
+    "isuSrtCd": "244690",
+    "name": "올리패스",
+    "market": "KONEX"
   }
 ]

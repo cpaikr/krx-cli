@@ -12,7 +12,7 @@ use serde_json::{Map, Value, json};
 #[derive(Debug, Parser)]
 #[command(
     name = "krx",
-    version,
+    version = env!("CARGO_PKG_VERSION"),
     about = "Native CLI probe for the KRX Open API",
     disable_help_subcommand = true
 )]

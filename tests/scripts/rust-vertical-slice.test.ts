@@ -243,6 +243,28 @@ describe("Rust vertical-slice gate", () => {
     expect(result.stderr).toMatch(/install the pinned Rust toolchain/u);
   });
 
+  it("rejects a native CLI version that drifts from the root package", () => {
+    const path = replacedText(
+      "probes/rust-vertical-slice/cli/Cargo.toml",
+      'version = "1.8.1"',
+      'version = "0.0.0"',
+    );
+    const result = run("--cli-cargo", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/native CLI version must match/u);
+  });
+
+  it("rejects mutable action tags in the native certification workflow", () => {
+    const path = replacedText(
+      ".github/workflows/rust-vertical-slice.yml",
+      "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+      "actions/checkout@v6",
+    );
+    const result = run("--workflow", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/reviewed immutable revision/u);
+  });
+
   it("rejects cross-target portable payload divergence", () => {
     const directory = mkdtempSync(join(tmpdir(), "krx-probe-reports-"));
     const targets = [

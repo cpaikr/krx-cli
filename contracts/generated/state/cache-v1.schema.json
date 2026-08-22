@@ -95,6 +95,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -181,6 +205,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -267,6 +315,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -353,6 +425,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -454,6 +550,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -525,6 +645,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -626,6 +770,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -727,6 +895,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -828,6 +1020,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -954,6 +1170,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -1075,6 +1315,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -1161,6 +1425,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -1247,6 +1535,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -1333,6 +1645,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -1454,6 +1790,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -1575,6 +1935,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -1681,6 +2065,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -1792,6 +2200,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -1893,6 +2325,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -1994,6 +2450,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2095,6 +2575,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2196,6 +2700,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2297,6 +2825,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2398,6 +2950,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2499,6 +3075,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2600,6 +3200,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2656,6 +3280,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2737,6 +3385,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2818,6 +3490,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2904,6 +3600,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,
@@ -2970,6 +3690,30 @@
       },
       "then": {
         "properties": {
+          "params": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "basDd"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$",
+                    "description": "Trading date in YYYYMMDD format"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ],
+            "items": false,
+            "minItems": 1,
+            "maxItems": 1
+          },
           "data": {
             "type": "array",
             "minItems": 1,

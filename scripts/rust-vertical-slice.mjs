@@ -35,6 +35,15 @@ const paths = {
   workflow: argument("--workflow", ".github/workflows/rust-vertical-slice.yml"),
   cargoLock: argument("--cargo-lock", "probes/rust-vertical-slice/Cargo.lock"),
   cargo: argument("--cargo", "probes/rust-vertical-slice/Cargo.toml"),
+  cliCargo: argument(
+    "--cli-cargo",
+    "probes/rust-vertical-slice/cli/Cargo.toml",
+  ),
+  rootPackage: argument("--root-package", "package.json"),
+  certifier: argument(
+    "--certifier",
+    "probes/rust-vertical-slice/node/scripts/certify.mjs",
+  ),
   toolchain: argument(
     "--toolchain",
     "probes/rust-vertical-slice/rust-toolchain.toml",
@@ -56,6 +65,9 @@ const [
   workflow,
   cargoLock,
   cargo,
+  cliCargo,
+  rootPackage,
+  certifier,
   toolchain,
   packageJson,
   runtimeCases,
@@ -66,6 +78,9 @@ const [
   readYaml(paths.workflow),
   readFile(paths.cargoLock, "utf8"),
   readFile(paths.cargo, "utf8"),
+  readFile(paths.cliCargo, "utf8"),
+  readJson(paths.rootPackage),
+  readFile(paths.certifier, "utf8"),
   readFile(paths.toolchain, "utf8"),
   readJson(paths.package),
   readJson(paths.runtimeCases),
@@ -94,6 +109,24 @@ equal(
 );
 
 const buildTargets = workflow.jobs?.build?.strategy?.matrix?.include;
+const actionRefs = {
+  "actions/checkout": "d23441a48e516b6c34aea4fa41551a30e30af803",
+  "actions/setup-node": "820762786026740c76f36085b0efc47a31fe5020",
+  "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+  "actions/download-artifact": "634f93cb2916e3fdff6788551b99b062d0335ce0",
+  "pnpm/action-setup": "b906affcce14559ad1aafd4ab0e942779e9f58b1",
+};
+for (const job of Object.values(workflow.jobs ?? {})) {
+  for (const step of job.steps ?? []) {
+    if (typeof step.uses !== "string") continue;
+    const [action, revision] = step.uses.split("@");
+    equal(
+      revision,
+      actionRefs[action],
+      `workflow action ${action} must use its reviewed immutable revision`,
+    );
+  }
+}
 const requiredWorkflowPaths = [
   ".gitattributes",
   ".github/workflows/rust-vertical-slice.yml",
@@ -204,7 +237,8 @@ invariant(
 invariant(
   workflow.jobs?.consume?.steps?.some(
     (step) =>
-      step.uses === "actions/upload-artifact@v4" &&
+      step.uses ===
+        `actions/upload-artifact@${actionRefs["actions/upload-artifact"]}` &&
       String(step.with?.name).startsWith("rust-probe-report-"),
   ),
   "each consumer must upload its cross-target certification report",
@@ -213,6 +247,18 @@ invariant(
 invariant(
   toolchain.includes('channel = "1.92.0"'),
   "probe Rust toolchain must remain pinned to 1.92.0",
+);
+const cliVersion = cliCargo.match(/^version = "([^"]+)"$/mu)?.[1];
+equal(
+  cliVersion,
+  rootPackage.version,
+  "native CLI version must match the assembled root package version",
+);
+invariant(
+  certifier.includes(
+    "assert.equal(version.stdout.trim(), `krx ${packageJson.version}`)",
+  ),
+  "clean-install certification must assert the native CLI package version",
 );
 const requiredVersions = {
   clap: "4.6.6",

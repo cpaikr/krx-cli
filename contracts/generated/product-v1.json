@@ -23,13 +23,13 @@
     "cliOverlaySha256": "48e86a4c5a0eb90aadaa8e3238b923b9b8f09715623d10de8194d597d64e4621",
     "cliCasesSha256": "a4814a40c7642f1bad41cbe01f169e8912c32488969502d421022cee078ff49d",
     "nodeSdkSha256": "4d68124a5aaa6928617dece4b0991baa7b6c62058327d7baa09ad9d84b485f0b",
-    "rustSdkConsumerSha256": "895c23de3f47f75976247ce0c08a4e4eedfcfe83928a46c26f520b647be72cb2",
+    "rustSdkConsumerSha256": "dd604268a9423f2de0881b519066b50ef87b0d99ae49f3fb8ac1938b2f958f8f",
     "nodePackageSha256": "9fa9ed2c45c3f5955ede2f98aad3e45528ece3c2dea3bfb24d576514cc02a6ff",
     "nativeTargetsSha256": "d43792c5480f6538e9b8e0eab461df9448d15ad3e3c64f7a0904781590145281",
-    "migrationsSha256": "bf49d8e9fe71cd9b4fefdb542bdcdacac30b03c1604975fdeb9bde34a080cde6",
-    "fixturesSha256": "826c6f039fe406617e9efc9836a6677680f82bca3ac5928be850b643fdaef1b7",
+    "migrationsSha256": "5bfe0f6215f6db79f5d4728ca4d33aaff12697948259684515808756e8f3fe50",
+    "fixturesSha256": "f9c6671e319f7a3553ee379f95eee9b3b93d011ff0808baf813fe38ccb98bec9",
     "runtimeCasesSha256": "38a2318587712163c8a058695c009178865ef413a108c84e75579efae2e8e0d4",
-    "stateSchemasSha256": "b1e1419301fd5a7f84a4a1b08e4b30b349b28e8489fc3f99c61265f5a4d64742"
+    "stateSchemasSha256": "95c09d07476c2e7057a25c0f2ea4cc55adb7f599b1cefbc40ffb4e68a3d89fb7"
   },
   "operations": [
     {

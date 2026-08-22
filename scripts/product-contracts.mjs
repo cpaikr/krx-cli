@@ -235,6 +235,7 @@ const runtimeCasesSource = await readFile(paths.runtimeCases, "utf8");
 const runtimeCases = JSON.parse(runtimeCasesSource);
 
 const operations = [];
+const requestFieldsByOperation = new Map();
 for (const [providerPath, pathItemValue] of Object.entries(
   object(document.paths, "openapi.paths"),
 )) {
@@ -252,6 +253,36 @@ for (const [providerPath, pathItemValue] of Object.entries(
     document,
     operation.requestBody?.content?.["application/json"]?.schema,
   );
+  const requestProperties = object(
+    requestSchema.properties,
+    `${operationId}.request.properties`,
+  );
+  const requestRequired = new Set(requestSchema.required ?? []);
+  const requestFields = Object.entries(requestProperties)
+    .map(([name, fieldValue]) => {
+      const field = object(fieldValue, `${operationId}.request.${name}`);
+      return {
+        name,
+        type: field.type,
+        required: requestRequired.has(name),
+        description: field.description,
+        schema: cloneJson(field),
+      };
+    })
+    .sort((left, right) =>
+      Buffer.from(left.name).compare(Buffer.from(right.name)),
+    );
+  equal(
+    new Set(requestSchema.required ?? []).size,
+    requestSchema.required?.length ?? 0,
+    `${operationId} request required names must be unique`,
+  );
+  equal(
+    requestFields.filter(({ required }) => required).length,
+    requestFields.length,
+    `${operationId} cache identity requires every request field`,
+  );
+  requestFieldsByOperation.set(operationId, requestFields);
   const responseSchema = dereference(document, response);
   invariant(
     Array.isArray(response.oneOf) && response.oneOf.length === 2,
@@ -277,7 +308,11 @@ for (const [providerPath, pathItemValue] of Object.entries(
     description: operation.summary,
     descriptionKo: operation.description,
     legacyCommand: operation["x-krx-cli-command"],
-    requestFields: [{ name: "basDd", type: "string", required: true }],
+    requestFields: requestFields.map(({ name, type, required }) => ({
+      name,
+      type,
+      required,
+    })),
     responseFields,
     contractId: sha256(
       canonicalJson({ operationId, requestSchema, responseSchema }),
@@ -1157,6 +1192,26 @@ equal(
   "offline must not resolve credentials",
 );
 equal(
+  migrations.stores.cacheV1.keyPreimage,
+  "<endpoint>:<JSON(sortedParams)>",
+  "legacy cache key preimage must stay exact",
+);
+equal(
+  migrations.stores.cacheV1.keyDigest,
+  "sha256-first-16-lowercase-hex",
+  "legacy cache key digest must stay exact",
+);
+equal(
+  migrations.stores.cacheV2.keyPreimage,
+  "krx-cache-v2\\n<operationId>\\n<JSON(sortedParams)>",
+  "cache v2 key preimage must stay exact",
+);
+equal(
+  migrations.stores.cacheV2.keyDigest,
+  "sha256-lowercase-hex",
+  "cache v2 key digest must stay exact",
+);
+equal(
   migrations.offline.touchesQuota,
   false,
   "offline must not touch quota state",
@@ -1381,31 +1436,48 @@ async function generatedCacheSchema(
   const template = cloneJson(stateSchemas[templateName]);
   template.$id = template.$id.replace(".schema.json", "-generated.schema.json");
   template.properties[selector].enum = operations.map(selectValue);
-  template.allOf = operations.map((operation) => ({
-    if: {
-      required: [selector],
-      properties: { [selector]: { const: selectValue(operation) } },
-    },
-    then: {
-      properties: {
-        [rowsProperty]: {
-          type: "array",
-          minItems: 1,
-          items: {
-            type: "object",
-            required: operation.responseFields.map(({ name }) => name),
-            properties: Object.fromEntries(
-              operation.responseFields.map(({ name, description }) => [
-                name,
-                { type: "string", description },
-              ]),
-            ),
-            additionalProperties: false,
+  template.allOf = operations.map((operation) => {
+    const requestFields = requestFieldsByOperation.get(operation.operationId);
+    invariant(requestFields, `${operation.operationId} request fields missing`);
+    return {
+      if: {
+        required: [selector],
+        properties: { [selector]: { const: selectValue(operation) } },
+      },
+      then: {
+        properties: {
+          params: {
+            type: "array",
+            prefixItems: requestFields.map(({ name, schema }) => ({
+              type: "array",
+              prefixItems: [{ const: name }, schema],
+              items: false,
+              minItems: 2,
+              maxItems: 2,
+            })),
+            items: false,
+            minItems: requestFields.length,
+            maxItems: requestFields.length,
+          },
+          [rowsProperty]: {
+            type: "array",
+            minItems: 1,
+            items: {
+              type: "object",
+              required: operation.responseFields.map(({ name }) => name),
+              properties: Object.fromEntries(
+                operation.responseFields.map(({ name, description }) => [
+                  name,
+                  { type: "string", description },
+                ]),
+              ),
+              additionalProperties: false,
+            },
           },
         },
       },
-    },
-  }));
+    };
+  });
   return formattedJson(template, outputPath);
 }
 const generatedCacheV1 = await generatedCacheSchema(
@@ -1495,6 +1567,10 @@ for (const reference of Object.values(migrationSchemaReferences).flatMap(
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
+ajv.addFormat("krx-compact-date", {
+  type: "string",
+  validate: validCalendarDate,
+});
 for (const keyword of [
   "x-krx-openapi-row-discriminator",
   "x-krx-schema-digest",
@@ -1533,9 +1609,6 @@ equalKeys(
     "asOfKstDate",
     "asOfInstant",
     "fixtureSecret",
-    "credentialFingerprint",
-    "cacheV2Key",
-    "cacheV1Key",
     "schemaCases",
     "transitionCases",
     "proceduralCases",
@@ -1543,11 +1616,7 @@ equalKeys(
   "fixture manifest",
 );
 equal(fixtureManifest.formatVersion, 1, "fixture manifest version must be 1");
-equal(
-  sha256(fixtureManifest.fixtureSecret),
-  fixtureManifest.credentialFingerprint,
-  "credential fixture fingerprint must use exact UTF-8 secret bytes",
-);
+const credentialFingerprint = sha256(fixtureManifest.fixtureSecret);
 
 const fixturesDirectory = dirname(paths.fixtures);
 const fixtureCache = new Map();
@@ -1601,7 +1670,23 @@ function approvalSemantic(value) {
 function cacheSemantic(value, version) {
   const params = value.params;
   if (!paramsSorted(params)) return false;
-  const date = Object.fromEntries(params).basDd;
+  const operation =
+    version === 1
+      ? operations.find((candidate) => candidate.path === value.endpoint)
+      : operations.find(
+          (candidate) => candidate.operationId === value.operationId,
+        );
+  if (!operation) return false;
+  const expectedNames = requestFieldsByOperation
+    .get(operation.operationId)
+    .map(({ name }) => name);
+  if (
+    params.length !== expectedNames.length ||
+    params.some(([name], index) => name !== expectedNames[index])
+  ) {
+    return false;
+  }
+  const date = params.find(([name]) => name === "basDd")?.[1];
   if (!validCalendarDate(date) || date >= fixtureManifest.asOfKstDate)
     return false;
   const fetchedAt = new Date(value.fetchedAt);
@@ -1612,13 +1697,6 @@ function cacheSemantic(value, version) {
   ) {
     return false;
   }
-  const operation =
-    version === 1
-      ? operations.find((candidate) => candidate.path === value.endpoint)
-      : operations.find(
-          (candidate) => candidate.operationId === value.operationId,
-        );
-  if (!operation) return false;
   const rows = version === 1 ? value.data : value.rows;
   if (rows.some((row) => row.BAS_DD !== date)) return false;
   if (version === 2 && value.schemaSha256 !== operation.contractId)
@@ -1710,25 +1788,6 @@ for (const [index, schemaCase] of fixtureManifest.schemaCases.entries()) {
     `${schemaCase.id} validity must stay classified`,
   );
 }
-
-const cacheV1Fixture = JSON.parse(await fixture("cache-v1-full.json"));
-const cacheV2Fixture = JSON.parse(await fixture("cache-v2-full.json"));
-const cacheV1Key = sha256(
-  `${cacheV1Fixture.endpoint}:${JSON.stringify(cacheV1Fixture.params)}`,
-).slice(0, 16);
-equal(
-  cacheV1Key,
-  fixtureManifest.cacheV1Key,
-  "legacy cache fixture key must stay exact",
-);
-const cacheV2Key = sha256(
-  `krx-cache-v2\n${cacheV2Fixture.operationId}\n${JSON.stringify(cacheV2Fixture.params)}`,
-);
-equal(
-  cacheV2Key,
-  fixtureManifest.cacheV2Key,
-  "cache v2 fixture key must stay exact",
-);
 
 const transitionCaseIds = new Set();
 for (const transitionCase of fixtureManifest.transitionCases) {
@@ -1962,47 +2021,82 @@ for (const transitionCase of fixtureManifest.transitionCases.filter(
     );
   }
 }
-const cacheTransition = {
-  version: 2,
-  operationId: "stock_stk_bydd_trd",
-  schemaSha256: operations.find(
-    ({ operationId }) => operationId === "stock_stk_bydd_trd",
-  ).contractId,
-  fetchedAt: cacheV1Fixture.fetchedAt,
-  params: cacheV1Fixture.params,
-  rows: cacheV1Fixture.data,
-};
-equal(
-  cacheTransition,
-  cacheV2Fixture,
-  "cache fixture transition must be exact",
-);
-validateState(
-  generatedCacheSchemaObjects[paths.cacheV2Schema],
-  cacheTransition,
-  "cache transition output must validate",
-);
-const quotaRootFixture = JSON.parse(await fixture("quota-root-v0.json"));
-const quotaV1Fixture = JSON.parse(await fixture("quota-v1.json"));
-const quotaTransition = {
-  version: 1,
-  credentials: {
-    [fixtureManifest.credentialFingerprint]: {
-      date: quotaRootFixture.date,
-      count: quotaRootFixture.count + 1,
-    },
-  },
-};
-equal(
-  quotaTransition,
-  quotaV1Fixture,
-  "quota fixture transition must reserve exactly one call",
-);
-validateState(
-  stateSchemas["quota-v1.schema.json"],
-  quotaTransition,
-  "quota transition output must validate",
-);
+for (const transitionCase of fixtureManifest.transitionCases.filter(
+  ({ transition }) => transition === "cache-v1-to-v2",
+)) {
+  const sourceBytes = await fixture(transitionCase.source);
+  const expectedBytes = await fixture(transitionCase.expected);
+  const source = JSON.parse(sourceBytes);
+  const operation = operations.find(({ path }) => path === source.endpoint);
+  const validSource =
+    stateValid(generatedCacheSchemaObjects[paths.cacheV1Schema], source) &&
+    cacheSemantic(source, 1) &&
+    operation !== undefined;
+  const actual = validSource
+    ? {
+        version: 2,
+        operationId: operation.operationId,
+        schemaSha256: operation.contractId,
+        fetchedAt: source.fetchedAt,
+        params: source.params,
+        rows: source.data,
+      }
+    : source;
+  const result = validSource ? "migrated" : "legacy-state-invalid-no-writes";
+  equal(transitionCase.result, result, `${transitionCase.id} result`);
+  equal(actual, JSON.parse(expectedBytes), `${transitionCase.id} cache result`);
+  if (validSource) {
+    validateState(
+      generatedCacheSchemaObjects[paths.cacheV2Schema],
+      actual,
+      `${transitionCase.id} cache output must validate`,
+    );
+  } else {
+    equal(
+      sourceBytes,
+      expectedBytes,
+      `${transitionCase.id} must preserve exact source bytes`,
+    );
+  }
+}
+for (const transitionCase of fixtureManifest.transitionCases.filter(
+  ({ transition }) => transition === "quota-root-v0-to-v1",
+)) {
+  const sourceBytes = await fixture(transitionCase.source);
+  const expectedBytes = await fixture(transitionCase.expected);
+  const source = JSON.parse(sourceBytes);
+  const validSource = stateValid(
+    stateSchemas["quota-root-v0.schema.json"],
+    source,
+  );
+  const actual = validSource
+    ? {
+        version: 1,
+        credentials: {
+          [credentialFingerprint]: {
+            date: source.date,
+            count: source.count + 1,
+          },
+        },
+      }
+    : source;
+  const result = validSource ? "reserved" : "legacy-state-invalid-no-writes";
+  equal(transitionCase.result, result, `${transitionCase.id} result`);
+  equal(actual, JSON.parse(expectedBytes), `${transitionCase.id} quota result`);
+  if (validSource) {
+    validateState(
+      stateSchemas["quota-v1.schema.json"],
+      actual,
+      `${transitionCase.id} quota output must validate`,
+    );
+  } else {
+    equal(
+      sourceBytes,
+      expectedBytes,
+      `${transitionCase.id} must preserve exact source bytes`,
+    );
+  }
+}
 const watchlistV0Fixture = JSON.parse(await fixture("watchlist-v0.json"));
 const watchlistV1Fixture = JSON.parse(await fixture("watchlist-v1.json"));
 const watchlistTransition = { version: 1, entries: watchlistV0Fixture };
