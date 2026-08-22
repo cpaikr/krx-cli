@@ -31,17 +31,18 @@ _None._
 
 ### Completed included results
 
-_None._
+- Green frozen legacy baseline and mutation-tested compatibility judge.
 
 ### Current in-scope result
 
-Green frozen legacy baseline and mutation-tested compatibility judge.
+Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Next in-scope action
 
-Deliver the repaired baseline and installed-package judge through its review PR,
-obtain supported-host CI evidence, run the scheduled calendar path, and preserve
-the green merge commit as the recoverable pre-rewrite ref.
+Reconcile the current 31-operation provider and product contracts into one
+validated OpenAPI authority and bounded language-neutral profiles, then freeze
+the Rust SDK, Node SDK, CLI compatibility and intentional-change ledgers, error
+taxonomy, and credential/cache migration contracts around that authority.
 
 ### Evidence and blockers
 
@@ -60,13 +61,32 @@ the green merge commit as the recoverable pre-rewrite ref.
   range behavior, composites, diagnostics, local state, and exits. It rejects
   independent no-data-exit, schema-description, and adjustment-metadata mutants
   only in their named scenarios.
-- Local deterministic evidence is green on Node 24 and npm 10.9.8; the complete
-  `pnpm verify` gate passed before review, and the tightened judge separately
-  passes under npm 10.9.8. Remote Windows and Linux matrix evidence remains
-  pending PR delivery.
+- Baseline delivery PR
+  [#7](https://github.com/sjunepark/krx-cli/pull/7) completed the create-review,
+  feedback, re-review, and merge lifecycle. CodeRabbit and Codex reviewed the
+  implementation, all ten review threads were addressed and resolved, and the
+  final bounded implementation re-review was clean.
+- `pnpm verify` passes 45 test files and 384 tests on the reviewed head,
+  including the production audit, installed-package judge, three named
+  mutation proofs, and packed-artifact smoke. npm 10.9.8 compatibility and
+  package-smoke runs pass separately.
+- Hosted CI run
+  [32549447464](https://github.com/sjunepark/krx-cli/actions/runs/32549447464)
+  passes the complete deterministic gate on Ubuntu and Windows under Node 22
+  and 24.
+- Hosted deterministic contract-drift run
+  [32549339039](https://github.com/sjunepark/krx-cli/actions/runs/32549339039)
+  passes for all 31 registered endpoints with no exclusions. Live-mode run
+  [32549366727](https://github.com/sjunepark/krx-cli/actions/runs/32549366727)
+  passes the current official KRX calendar step and then stops at the missing
+  repository credential boundary.
+- Merge commit `3732598e461ec5d78bd1121dbbe86d56aa658376` is the
+  recoverable green pre-rewrite ref on `codex/rust-rewrite-integration`.
 - External blocker for credentialed drift validation: the origin repository has
   no Actions `KRX_API_KEY` secret. Deterministic calendar and dry-run contract
   validation remain separate and do not require that credential; provisioning
   the live secret requires external authority.
-- PR boundary classification: included, because delivery and review of this
-  slice directly complete the named green frozen legacy baseline result.
+- Current boundary classification: contract-authority and public-contract
+  freeze work is included; Rust production implementation remains the next
+  semantic result and will not begin until this contract slice completes its
+  review PR.
