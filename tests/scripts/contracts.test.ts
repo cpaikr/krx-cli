@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Contract mutants deliberately edit untyped YAML trees into invalid states. */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -280,5 +280,50 @@ describe("canonical contract gate", () => {
     const result = run("--source-root", sourceRoot, "--skip-artifacts");
     expect(result.status).toBe(1);
     expect(result.stderr).toMatch(/handwritten shared wire fact/u);
+  });
+
+  it("ignores generated Cargo target output while scanning maintained Rust", () => {
+    const sourceRoot = mkdtempSync(join(tmpdir(), "krx-contract-rust-target-"));
+    const generated = join(
+      sourceRoot,
+      "target",
+      "debug",
+      "build",
+      "probe",
+      "out",
+    );
+    mkdirSync(generated, { recursive: true });
+    writeFileSync(
+      join(generated, "wire_contract.rs"),
+      'pub const GENERATED_PATH: &str = "/svc/apis/sto/stk_bydd_trd";\n',
+      "utf8",
+    );
+    writeFileSync(
+      join(sourceRoot, "maintained.rs"),
+      "pub struct Safe;\n",
+      "utf8",
+    );
+    const result = run(
+      "--source-root",
+      sourceRoot,
+      "--generated-source-root",
+      join(sourceRoot, "target"),
+      "--skip-artifacts",
+    );
+    expect(result.status, result.stderr).toBe(0);
+  });
+
+  it("does not let a maintained target directory bypass wire scanning", () => {
+    const sourceRoot = mkdtempSync(join(tmpdir(), "krx-maintained-target-"));
+    const maintained = join(sourceRoot, "target");
+    mkdirSync(maintained, { recursive: true });
+    writeFileSync(
+      join(maintained, "mirror.rs"),
+      'pub const ENDPOINT: &str = "/svc/apis/sto/stk_bydd_trd";\n',
+      "utf8",
+    );
+    const result = run("--source-root", sourceRoot, "--skip-artifacts");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/handwritten provider endpoint literal/u);
   });
 });

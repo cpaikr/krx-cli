@@ -21,6 +21,22 @@
       "expectError": "cancelled/request_cancelled"
     },
     {
+      "id": "async-event-loop",
+      "expect": "event loop advances while native query is pending"
+    },
+    {
+      "id": "abort-listener-cleanup",
+      "expect": "AbortSignal listener is removed after resolve and reject"
+    },
+    {
+      "id": "sync-panic-contained",
+      "expectError": "internal/internal_failure"
+    },
+    {
+      "id": "async-panic-contained",
+      "expectError": "internal/internal_failure"
+    },
+    {
       "id": "adjusted-range-requires-exact-eligible-security",
       "expectError": "invalid_request/conflicting_options"
     },
@@ -49,6 +65,14 @@
     {
       "id": "unsupported-native-target",
       "expectError": "local_state/unsupported_platform"
+    },
+    {
+      "id": "declaration-package-locality",
+      "expect": "every declaration import resolves inside dist"
+    },
+    {
+      "id": "private-native-binding",
+      "expect": "native binding has no public package subpath"
     }
   ]
 }

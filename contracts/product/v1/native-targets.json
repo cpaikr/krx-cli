@@ -6,7 +6,9 @@
     "visibility": "private-github-release-asset",
     "installBuild": false,
     "registryAccess": false,
-    "publicBindingSubpath": false
+    "publicBindingSubpath": false,
+    "nodeMajors": [22, 24],
+    "assetNameTemplate": "krx-cli-{version}-{target}.tgz"
   },
   "targets": [
     {
@@ -14,6 +16,7 @@
       "rustTarget": "aarch64-apple-darwin",
       "nodePlatform": "darwin",
       "nodeArch": "arm64",
+      "nodeLibc": null,
       "nodeBinding": "native/krx.darwin-arm64.node",
       "executable": "bin/krx"
     },
@@ -22,6 +25,7 @@
       "rustTarget": "x86_64-unknown-linux-gnu",
       "nodePlatform": "linux",
       "nodeArch": "x64",
+      "nodeLibc": "glibc",
       "nodeBinding": "native/krx.linux-x64-gnu.node",
       "executable": "bin/krx"
     },
@@ -30,6 +34,7 @@
       "rustTarget": "aarch64-unknown-linux-gnu",
       "nodePlatform": "linux",
       "nodeArch": "arm64",
+      "nodeLibc": "glibc",
       "nodeBinding": "native/krx.linux-arm64-gnu.node",
       "executable": "bin/krx"
     },
@@ -38,6 +43,7 @@
       "rustTarget": "x86_64-pc-windows-msvc",
       "nodePlatform": "win32",
       "nodeArch": "x64",
+      "nodeLibc": null,
       "nodeBinding": "native/krx.win32-x64-msvc.node",
       "executable": "bin/krx.exe"
     }

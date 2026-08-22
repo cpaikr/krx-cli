@@ -52,6 +52,7 @@ defaults:
   approvalTtlSeconds: 900
 
 provenance:
+  observationScope: every-present-observation
   sources:
     - network
     - cache

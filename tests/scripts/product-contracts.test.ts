@@ -175,6 +175,20 @@ describe("product contract gate", () => {
     expectRejected(["--profile", profile], /must not exceed 3/u);
   });
 
+  it("rejects ambiguous composite provenance scope", () => {
+    const profile = mutatedYaml(
+      "contracts/product/v1/profile.yaml",
+      "provenance-scope",
+      (document) => {
+        document.provenance.observationScope = "direct-only";
+      },
+    );
+    expectRejected(
+      ["--profile", profile],
+      /every present direct or component observation/u,
+    );
+  });
+
   it("rejects an error code assigned to multiple kinds", () => {
     const errors = mutatedYaml(
       "contracts/product/v1/errors.yaml",
@@ -241,6 +255,22 @@ describe("product contract gate", () => {
     expectRejected(
       ["--errors", errors],
       /must cover every non-overlapping provider outcome/u,
+    );
+  });
+
+  it("rejects an HTTP retryability override for a stable error code", () => {
+    const errors = mutatedYaml(
+      "contracts/product/v1/errors.yaml",
+      "retryability-override",
+      (document) => {
+        document.httpMappings.find((mapping: Record<string, unknown>) =>
+          Array.isArray(mapping.match),
+        ).retryable = false;
+      },
+    );
+    expectRejected(
+      ["--errors", errors],
+      /retryability must match its stable error code/u,
     );
   });
 
@@ -315,6 +345,20 @@ describe("product contract gate", () => {
     );
   });
 
+  it("rejects declarations that escape the installed package", () => {
+    const nodePackage = mutatedJson(
+      "contracts/product/v1/node-package-surface.json",
+      "declaration-layout",
+      (document) => {
+        document.declarations.packageImportPrefix = "../../generated/";
+      },
+    );
+    expectRejected(
+      ["--node-package", nodePackage],
+      /self-contained package-local graph/u,
+    );
+  });
+
   it("rejects an unsupported native target claim", () => {
     const nativeTargets = mutatedJson(
       "contracts/product/v1/native-targets.json",
@@ -333,6 +377,20 @@ describe("product contract gate", () => {
     expectRejected(
       ["--native-targets", nativeTargets],
       /native target set and archive paths must stay exact/u,
+    );
+  });
+
+  it("rejects an uncertified Node major in the native manifest", () => {
+    const nativeTargets = mutatedJson(
+      "contracts/product/v1/native-targets.json",
+      "native-node-major",
+      (document) => {
+        document.distribution.nodeMajors.push(26);
+      },
+    );
+    expectRejected(
+      ["--native-targets", nativeTargets],
+      /native distribution boundary must stay exact/u,
     );
   });
 

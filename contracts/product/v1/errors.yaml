@@ -62,6 +62,7 @@ kinds:
     cliExit: 1
     codes:
       http_error: false
+      provider_unavailable: true
       provider_error: false
   invalid_response:
     cliExit: 1
@@ -96,6 +97,10 @@ kinds:
       watchlist_state_invalid: false
       watchlist_io_failed: false
       unsupported_platform: false
+  internal:
+    cliExit: 1
+    codes:
+      internal_failure: false
 
 httpMappings:
   - match: 401
@@ -123,7 +128,7 @@ httpMappings:
       - 504
     afterRetries: true
     kind: upstream
-    code: http_error
+    code: provider_unavailable
     retryable: true
   - match: otherNonSuccess
     kind: upstream
@@ -147,6 +152,7 @@ responseMappings:
 
 compositePriority:
   - cancelled
+  - internal
   - timeout
   - rate_limit
   - authentication

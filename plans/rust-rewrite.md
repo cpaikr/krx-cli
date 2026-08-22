@@ -49,9 +49,17 @@ publication decision.
   exhaustive 425-entry CLI option matrix, generated language operation and
   error types, and strict operation-aware cache schemas. Nine maintained state
   schemas and classified fixtures cover credential, approval, cache, quota,
-  and watchlist migration. The full deterministic gate passes 47 test files
-  and 442 tests, including 53 targeted contract tests. Only the disposable
-  four-target candidate proof remains in this pre-implementation PR.
+  and watchlist migration. The full deterministic gate passes 48 test files
+  and 456 tests, including 67 targeted authority, product, and vertical-slice
+  gate tests.
+- The disposable workspace compiles the frozen Rust consumer and proves one
+  OpenAPI-derived operation through reqwest/Rustls, a native Clap executable,
+  and a private napi-rs binding. macOS ARM64 clean-install certification passes
+  the same private tarball under Node 22 and 24. The checked hosted workflow
+  builds all four manifest targets once apiece, consumes each unchanged on both
+  Node majors, aggregates the twelve required matrix jobs, and compares the
+  portable payload, package metadata, and native capabilities reported by all
+  eight consumers; hosted results remain pending until the branch is pushed.
 - `../ytm` supplies the target structural precedent. The accepted guidance in
   `../mytech` supplies the design rules: OpenAPI wire authority, a handwritten
   Rust conformer, narrow Node-API binding, boundary-owned contracts, pure
@@ -129,6 +137,12 @@ crates/krx-cli   crates/krx-node
   no KRX wire facts, transport, cache rules, or domain calculations.
 - Add `ARCHITECTURE.md` only when the candidate implementation makes this
   shape true. Until then this plan is the target-design authority.
+- The candidate toolchain is frozen at Rust 1.92.0. Direct dependency pins are
+  Clap 4.6.6, reqwest 0.13.4, Tokio 1.53.1, tokio-util 0.7.19, napi-rs 3.12.2,
+  napi-derive 3.6.3, napi-build 2.4.1, keyring-rs 4.1.6, serde 1.0.229,
+  serde_json 1.0.151, serde-saphyr 1.1.0, thiserror 2.0.20, url 2.5.8,
+  zeroize 1.9.0, and futures-util 0.3.34. The contract gate rejects drift and
+  the heavyweight fallback credential-database feature graph.
 
 ### Rust SDK and native CLI
 
@@ -380,8 +394,9 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Deliver one contract-authority PR that makes the validated OpenAPI document the
-sole maintained KRX wire source; freezes executable Rust, Node, CLI, error, and
-all persisted-state migration contracts; and records a disposable four-target
-candidate proof. Production `crates/krx-*` implementation begins only after
-that PR completes review and merges.
+Complete hosted four-target/Node-22-and-24 certification, then deliver one
+contract-authority PR that makes the validated OpenAPI document the sole
+maintained KRX wire source; freezes executable Rust, Node, CLI, error, and all
+persisted-state migration contracts; and records the disposable candidate
+proof. Production `crates/krx-*` implementation begins only after that PR
+completes review and merges.

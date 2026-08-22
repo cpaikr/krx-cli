@@ -12,7 +12,8 @@ export type KrxErrorKind =
   | "upstream"
   | "invalid_response"
   | "integrity"
-  | "local_state";
+  | "local_state"
+  | "internal";
 
 export interface KrxErrorCodeByKind {
   readonly invalid_request:
@@ -31,7 +32,7 @@ export interface KrxErrorCodeByKind {
   readonly rate_limit: "local_quota_exhausted" | "provider_rate_limited";
   readonly offline: "cache_miss" | "cache_invalid";
   readonly network: "request_failed";
-  readonly upstream: "http_error" | "provider_error";
+  readonly upstream: "http_error" | "provider_unavailable" | "provider_error";
   readonly invalid_response:
     | "invalid_json"
     | "invalid_envelope"
@@ -59,6 +60,7 @@ export interface KrxErrorCodeByKind {
     | "watchlist_state_invalid"
     | "watchlist_io_failed"
     | "unsupported_platform";
+  readonly internal: "internal_failure";
 }
 
 export type KrxErrorCode<K extends KrxErrorKind = KrxErrorKind> =

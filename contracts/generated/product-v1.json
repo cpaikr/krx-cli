@@ -18,17 +18,17 @@
   },
   "sourceDigests": {
     "openapiSha256": "3fc0684573565bc8a79963e3caf4cdad2d0f35fa9186e6c3bb78512340a8ec2c",
-    "profileSha256": "67993c34d6e71310a3ecbb786ad9e57d696b475ac2173da6c3e8ca43b395f910",
-    "errorsSha256": "bc1d11ef39f308c5f918ef64691cfe051bcde9bf50374f1aaebf608660a50068",
-    "cliOverlaySha256": "22c057bab476e6e19a047d6b3d533f895c12b0a9049ae1ed33d86e75e21988af",
+    "profileSha256": "9034ad8058e5cc19a8e539ebe0faf86d969b5b80b5a152d9a3ca60740b281d04",
+    "errorsSha256": "b86a3c3abaacdf9aa7b4d3be22cc9a1d34a7f53ad942bc697896924c16bb1f22",
+    "cliOverlaySha256": "48e86a4c5a0eb90aadaa8e3238b923b9b8f09715623d10de8194d597d64e4621",
     "cliCasesSha256": "a4814a40c7642f1bad41cbe01f169e8912c32488969502d421022cee078ff49d",
     "nodeSdkSha256": "4d68124a5aaa6928617dece4b0991baa7b6c62058327d7baa09ad9d84b485f0b",
-    "rustSdkConsumerSha256": "32b0af6c20cc80ceabfed54265326e32f6adedf177777d8a6692ad47c4333416",
-    "nodePackageSha256": "b0a81616f221508515af59986795353ab08b86cbc3b3e44c522d4767b5097b49",
-    "nativeTargetsSha256": "05e6da8e01d3cefcaef4bf5a5b46bcc7f5a39aa6b9b8399f6e3f3b3680923242",
+    "rustSdkConsumerSha256": "895c23de3f47f75976247ce0c08a4e4eedfcfe83928a46c26f520b647be72cb2",
+    "nodePackageSha256": "9fa9ed2c45c3f5955ede2f98aad3e45528ece3c2dea3bfb24d576514cc02a6ff",
+    "nativeTargetsSha256": "d43792c5480f6538e9b8e0eab461df9448d15ad3e3c64f7a0904781590145281",
     "migrationsSha256": "bf49d8e9fe71cd9b4fefdb542bdcdacac30b03c1604975fdeb9bde34a080cde6",
     "fixturesSha256": "826c6f039fe406617e9efc9836a6677680f82bca3ac5928be850b643fdaef1b7",
-    "runtimeCasesSha256": "9831fd722718a051eafbc4dafb20f9f3087da656efb85334397317ee06ce59a4",
+    "runtimeCasesSha256": "38a2318587712163c8a058695c009178865ef413a108c84e75579efae2e8e0d4",
     "stateSchemasSha256": "b1e1419301fd5a7f84a4a1b08e4b30b349b28e8489fc3f99c61265f5a4d64742"
   },
   "operations": [
@@ -2347,6 +2347,7 @@
     "approvalTtlSeconds": 900
   },
   "provenance": {
+    "observationScope": "every-present-observation",
     "sources": ["network", "cache"],
     "freshness": ["fresh", "stale"],
     "required": ["source", "fetchedAt", "freshness", "contractId"],
@@ -2424,6 +2425,7 @@
         "cliExit": 1,
         "codes": {
           "http_error": false,
+          "provider_unavailable": true,
           "provider_error": false
         }
       },
@@ -2465,6 +2467,12 @@
           "watchlist_io_failed": false,
           "unsupported_platform": false
         }
+      },
+      "internal": {
+        "cliExit": 1,
+        "codes": {
+          "internal_failure": false
+        }
       }
     },
     "httpMappings": [
@@ -2498,7 +2506,7 @@
         "match": [500, 502, 503, 504],
         "afterRetries": true,
         "kind": "upstream",
-        "code": "http_error",
+        "code": "provider_unavailable",
         "retryable": true
       },
       {
@@ -2530,6 +2538,7 @@
     },
     "compositePriority": [
       "cancelled",
+      "internal",
       "timeout",
       "rate_limit",
       "authentication",

@@ -39,10 +39,10 @@ Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Next in-scope action
 
-Prove the frozen candidate seams in a disposable four-target Rust vertical
-slice without starting the production workspace. Compile the Rust consumer
-fixture, exercise the native Clap and Node-API boundaries, and certify or amend
-the private target manifest before delivering the contract-authority PR.
+Push the completed disposable candidate proof, require the hosted four-target
+and Node 22/24 certification matrix, then deliver the contract-authority PR
+through review and merge. Production Rust remains blocked until that PR is
+complete.
 
 ### Evidence and blockers
 
@@ -56,7 +56,7 @@ the private target manifest before delivering the contract-authority PR.
   authority for all 31 supported operations. Checked TypeScript and
   language-neutral projections replace the former endpoint, field, envelope,
   method, path-prefix, and modification-date mirrors in the legacy runtime.
-- The contract gate rejects 23 independent authority mutations, including
+- The contract gate rejects 24 independent authority mutations, including
   paths, methods, root and operation overrides, request and response shapes,
   provider errors, schema-composition bypasses, stale artifacts, and
   handwritten JavaScript/TypeScript/Rust mirrors. HTTP-200 provider errors are
@@ -73,8 +73,9 @@ the private target manifest before delivering the contract-authority PR.
   malformed public, state, error, target, and migration artifacts. Its checked
   projections include an exhaustive 425-entry CLI option matrix and generated
   Node and Rust operation/error types for all 31 operations.
-- `pnpm verify` passes 47 test files and 443 tests on the public-contract
-  checkpoint, including 54 targeted authority and product-contract tests,
+- `pnpm verify` passes 48 test files and 456 tests on the candidate-proof
+  checkpoint, including 67 targeted authority, product-contract, and
+  vertical-slice gate tests,
   production audit, the 13-scenario installed-package judge with all three
   named mutants rejected, and packed-artifact smoke for 31 schemas and 12
   legacy MCP tools. Independent review findings on error redaction, mapping
@@ -83,6 +84,36 @@ the private target manifest before delivering the contract-authority PR.
   version collisions, invalid approval sources, and exact-byte no-write
   preservation, empty-present credential handling, and credential source
   validation ordering are closed.
+- The disposable Rust 1.92.0 workspace compiles the frozen public SDK consumer
+  directly and derives every representative wire fact at build time from the
+  canonical OpenAPI and generated product projection. Ten deterministic SDK
+  tests cover exact request bytes, strict response decoding, HTTP mapping,
+  redirect refusal, whole-response cancellation and deadlines, bounded
+  chunked bodies, redaction, and an injected credential backend. Opt-in local
+  checks pass the official Rustls handshake and a cleaned-up native keychain
+  round-trip; the hosted workflow runs both on every target.
+- Five native CLI integration tests prove Clap-owned topology and conflicts,
+  semantic rejection before credential or network access, the frozen
+  diagnostic grammar, direct shared-SDK invocation, and a native executable
+  without an authored JavaScript launcher.
+- The private Node facade and napi-rs binding prove event-loop responsiveness,
+  manual AbortSignal cancellation and listener cleanup, sync and async panic
+  containment, stable KrxError projection, secret redaction, ESM named imports,
+  package-local declarations, private binding exports, and unsupported-target
+  classification.
+- One locally assembled `darwin-arm64` tarball passes the clean-install gate
+  unchanged under Node 22 and 24, including TypeScript consumer compilation and
+  npm's direct native `krx` bin link. Both local consumers report identical
+  portable payload, metadata, and capability identities. The workflow builds
+  macOS ARM64, Linux GNU x64/ARM64, and Windows x64 once per target, fans each
+  exact tarball out to both Node majors, and compares all eight reports; hosted
+  certification remains pending until push.
+- A six-mutant vertical-slice gate ties exact Rust dependencies, both workflow
+  matrices, package exports, Node majors, and target identities to the frozen
+  contracts and rejects cross-target portable-payload divergence. The canonical
+  wire scanner ignores only the known generated Cargo output root while
+  continuing to reject maintained Rust wire mirrors, including a maintained
+  directory named `target`.
 - Checked JSON generation now uses the repository Prettier configuration with
   an explicit JSON parser, remains byte-stable across generation and commit
   hooks, and writes all five JSON projections to extensionless custom paths.

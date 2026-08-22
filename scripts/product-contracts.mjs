@@ -430,8 +430,13 @@ invariant(
 
 equalKeys(
   profile.provenance,
-  ["sources", "freshness", "required", "contractId"],
+  ["observationScope", "sources", "freshness", "required", "contractId"],
   "profile.provenance",
+);
+equal(
+  profile.provenance.observationScope,
+  "every-present-observation",
+  "provenance fields apply to every present direct or component observation",
 );
 equal(
   profile.provenance.sources,
@@ -592,6 +597,11 @@ for (const [index, mapping] of errors.httpMappings.entries()) {
     `httpMappings.${index}`,
   );
   assertErrorReference(mapping, `httpMappings.${index}`);
+  equal(
+    mapping.retryable,
+    errors.kinds[mapping.kind].codes[mapping.code],
+    `httpMappings.${index} retryability must match its stable error code`,
+  );
 }
 equal(
   Object.keys(object(errors.responseMappings, "responseMappings")).sort(),
@@ -616,6 +626,7 @@ equalKeys(
     "behaviorChanges",
     "optionPolicy",
     "compatibilityPolicy",
+    "diagnostics",
     "removedPackageSurfaces",
     "removedEnvironment",
   ],
@@ -635,6 +646,14 @@ equal(
   overlay.candidateCases,
   "contracts/product/v1/cli-cases.json",
   "CLI overlay must name its candidate-only cases",
+);
+equal(
+  overlay.diagnostics,
+  {
+    error: "krx: error[{kind}/{code}]: {message}",
+    provenance: "krx: provenance {json}",
+  },
+  "CLI diagnostics must remain machine-identifiable and sanitized",
 );
 invariant(
   Array.isArray(inventory),
@@ -945,6 +964,15 @@ for (const required of [
   ".api_key(",
   ".cache_max_age(",
   "CachePolicy::Bypass",
+  "Cancellation::new()",
+  ".cancel()",
+  ".is_cancelled()",
+  "OperationId::ALL",
+  ".as_str()",
+  "KrxErrorKind",
+  "KrxErrorCode",
+  "std::error::Error + Send + Sync",
+  "Vec<SecurityCode>",
 ]) {
   invariant(
     rustContractSource.includes(required),
@@ -960,6 +988,7 @@ equalKeys(
     "moduleFormat",
     "nodeEngine",
     "exports",
+    "declarations",
     "defaultExport",
     "commonJs",
     "publicNativeBindingSubpath",
@@ -975,8 +1004,8 @@ equal(
 equal(nodePackage.moduleFormat, "esm-only", "Node SDK must be ESM-only");
 equal(
   nodePackage.nodeEngine,
-  ">=22",
-  "Node SDK support floor must stay explicit",
+  ">=22 <23 || >=24 <25",
+  "Node SDK must admit only the certified Node majors",
 );
 equal(
   nodePackage.exports,
@@ -985,6 +1014,20 @@ equal(
     "./package.json": "./package.json",
   },
   "Node public exports must not expose the native binding",
+);
+equal(
+  nodePackage.declarations,
+  {
+    entry: "dist/index.d.ts",
+    generated: [
+      "dist/generated/node-operations.d.ts",
+      "dist/generated/error-types.d.ts",
+    ],
+    sourceImportPrefix: "../../generated/",
+    packageImportPrefix: "./generated/",
+    selfContained: true,
+  },
+  "Node declarations must assemble into a self-contained package-local graph",
 );
 equal(nodePackage.defaultExport, false, "Node SDK must use named exports");
 equal(nodePackage.commonJs, false, "Node SDK must not claim CommonJS support");
@@ -1013,6 +1056,8 @@ equal(
     installBuild: false,
     registryAccess: false,
     publicBindingSubpath: false,
+    nodeMajors: [22, 24],
+    assetNameTemplate: "krx-cli-{version}-{target}.tgz",
   },
   "native distribution boundary must stay exact",
 );
@@ -1024,6 +1069,7 @@ equal(
       rustTarget: "aarch64-apple-darwin",
       nodePlatform: "darwin",
       nodeArch: "arm64",
+      nodeLibc: null,
       nodeBinding: "native/krx.darwin-arm64.node",
       executable: "bin/krx",
     },
@@ -1032,6 +1078,7 @@ equal(
       rustTarget: "x86_64-unknown-linux-gnu",
       nodePlatform: "linux",
       nodeArch: "x64",
+      nodeLibc: "glibc",
       nodeBinding: "native/krx.linux-x64-gnu.node",
       executable: "bin/krx",
     },
@@ -1040,6 +1087,7 @@ equal(
       rustTarget: "aarch64-unknown-linux-gnu",
       nodePlatform: "linux",
       nodeArch: "arm64",
+      nodeLibc: "glibc",
       nodeBinding: "native/krx.linux-arm64-gnu.node",
       executable: "bin/krx",
     },
@@ -1048,6 +1096,7 @@ equal(
       rustTarget: "x86_64-pc-windows-msvc",
       nodePlatform: "win32",
       nodeArch: "x64",
+      nodeLibc: null,
       nodeBinding: "native/krx.win32-x64-msvc.node",
       executable: "bin/krx.exe",
     },
@@ -1190,11 +1239,17 @@ equal(
     "invalid-date",
     "empty-explicit-api-key",
     "abort-signal",
+    "async-event-loop",
+    "abort-listener-cleanup",
+    "sync-panic-contained",
+    "async-panic-contained",
     "adjusted-range-requires-exact-eligible-security",
     "error-instance",
     "secret-redaction",
     "supported-node-majors",
     "unsupported-native-target",
+    "declaration-package-locality",
+    "private-native-binding",
   ],
   "Node runtime consumer cases must stay complete",
 );

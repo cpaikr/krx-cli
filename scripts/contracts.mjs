@@ -38,6 +38,12 @@ const sourceRoots = explicitSourceRoot
   : ["src", "scripts", "probes", "packages", "crates"].map((path) =>
       resolve(root, path),
     );
+const generatedSourceRoots = new Set([
+  resolve(root, "probes/rust-vertical-slice/target"),
+  ...(argument("--generated-source-root")
+    ? [resolve(root, argument("--generated-source-root"))]
+    : []),
+]);
 const write = process.argv.includes("--write");
 const skipArtifacts = process.argv.includes("--skip-artifacts");
 
@@ -93,6 +99,7 @@ async function sourceFiles(directory) {
   for (const entry of entries) {
     const path = resolve(directory, entry.name);
     if (entry.isDirectory()) {
+      if (generatedSourceRoots.has(path)) continue;
       files.push(...(await sourceFiles(path)));
     } else if (entry.isFile() && /\.(?:ts|js|mjs|rs)$/u.test(entry.name)) {
       files.push(path);

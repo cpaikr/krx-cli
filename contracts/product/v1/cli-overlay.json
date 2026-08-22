@@ -122,6 +122,10 @@
     "exitsStable": true,
     "unclassifiedDifference": "reject"
   },
+  "diagnostics": {
+    "error": "krx: error[{kind}/{code}]: {message}",
+    "provenance": "krx: provenance {json}"
+  },
   "removedPackageSurfaces": ["krx-mcp"],
   "removedEnvironment": ["KRX_MCP_TOKEN", "KRX_MCP_ALLOWED_HOSTS"]
 }
