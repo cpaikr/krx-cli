@@ -3,11 +3,44 @@ import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const OFFICIAL_ORIGIN = "https://global.krx.co.kr";
+const OFFICIAL_ORIGIN = "https://open.krx.co.kr";
 const OTP_URL = `${OFFICIAL_ORIGIN}/contents/COM/GenerateOTP.jspx`;
-const DATA_URL = `${OFFICIAL_ORIGIN}/contents/GLB/99/GLB99000001.jspx`;
-const BLD = "GLB/05/0501/0501110000/glb0501110000_01";
+const DATA_URL = `${OFFICIAL_ORIGIN}/contents/OPN/99/OPN99000001.jspx`;
+const PAGE_URL = `${OFFICIAL_ORIGIN}/contents/MKD/01/0110/01100305/MKD01100305.jsp`;
+const BLD = "MKD/01/0110/01100305/mkd01100305_01";
 const REQUEST_TIMEOUT_MS = 15_000;
+const CANONICAL_HOLIDAY_NAMES = new Map([
+  ["20대 대통령 선거", "Presidential Election Day"],
+  ["21대 국회의원선거", "General Election Day"],
+  ["8회 지방선거", "Provincial Election Day"],
+  ["개천절(대체휴일)", "Substitution Holiday"],
+  ["개천절", "National Foundation Day"],
+  ["광복절(대체휴일)", "Substitution Holiday"],
+  ["광복절", "Liberation Day"],
+  ["국회의원 총선거", "General Election Day"],
+  ["근로자의날", "Labor Day"],
+  ["대통령 선거일", "Presidential Election Day"],
+  ["삼일절(대체휴일)", "Substitution Holiday"],
+  ["삼일절", "Independence Movement Day"],
+  ["석가탄신일(대체휴일)", "Substitution Holiday"],
+  ["석가탄신일", "Buddha's Birthday"],
+  ["설날(대체휴일)", "Substitution Holiday"],
+  ["설날", "Seollal (New Year's Day by the lunar)"],
+  ["성탄절", "Christmas Day"],
+  ["신정", "New Year's Day"],
+  ["어린이날(대체휴일)", "Substitution Holiday"],
+  ["어린이날", "Children's Day"],
+  ["연말휴장일", "End of Year Holiday"],
+  ["임시 공휴일", "Temporary Holiday"],
+  ["임시공휴일", "Temporary Holiday"],
+  ["제헌절", "KRX market holiday"],
+  ["지방선거", "Provincial Election Day"],
+  ["추석(대체휴일)", "Substitution Holiday"],
+  ["추석", "Chuseok (Korean Thanksgiving)"],
+  ["한글날(대체휴일)", "Substitution Holiday"],
+  ["한글날", "Hangeul Proclamation Day"],
+  ["현충일", "Memorial Day"],
+]);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const calendarPath = resolve(root, "src/calendar/krx-closures.json");
 
@@ -24,7 +57,10 @@ function currentKstYear() {
 async function post(url, body) {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Referer: PAGE_URL,
+    },
     body: new URLSearchParams(body),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
@@ -39,9 +75,7 @@ async function fetchOfficialYear(year) {
   otpUrl.searchParams.set("name", "form");
   otpUrl.searchParams.set("bld", BLD);
   const otpResponse = await fetch(otpUrl, {
-    headers: {
-      Referer: `${OFFICIAL_ORIGIN}/contents/GLB/05/0501/0501110000/GLB0501110000.jsp`,
-    },
+    headers: { Referer: PAGE_URL },
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!otpResponse.ok) {
@@ -68,7 +102,13 @@ async function fetchOfficialYear(year) {
     if (Object.hasOwn(closures, date)) {
       throw new Error(`Official KRX calendar returned duplicate date ${date}`);
     }
-    closures[date] = String(row.holdy_eng_nm || "KRX market holiday");
+    const officialName = String(row.holdy_nm ?? "").trim();
+    if (!officialName) {
+      throw new Error(
+        `Official KRX calendar returned an empty holiday label for ${date}`,
+      );
+    }
+    closures[date] = CANONICAL_HOLIDAY_NAMES.get(officialName) ?? officialName;
   }
   return Object.fromEntries(
     Object.entries(closures).sort(([a], [b]) => a.localeCompare(b)),

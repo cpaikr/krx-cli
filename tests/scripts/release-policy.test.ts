@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 function readRepositoryFile(path: string): string {
-  return readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
+  return readFileSync(
+    new URL(`../../${path}`, import.meta.url),
+    "utf8",
+  ).replaceAll("\r\n", "\n");
 }
 
 describe("private Git release policy", () => {
