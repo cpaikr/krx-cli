@@ -1,0 +1,30 @@
+{
+  "kospiStocks": [
+    {
+      "BAS_DD": "20260102",
+      "ISU_CD": "KR7005930003",
+      "ISU_SRT_CD": "005930",
+      "ISU_NM": "삼성전자",
+      "TDD_CLSPRC": "72,000",
+      "FLUC_RT": "2.50",
+      "ACC_TRDVOL": "1,000",
+      "ACC_TRDVAL": "72,000,000"
+    },
+    {
+      "BAS_DD": "20260102",
+      "ISU_CD": "KR7000660001",
+      "ISU_SRT_CD": "000660",
+      "ISU_NM": "SK하이닉스",
+      "TDD_CLSPRC": "190,000",
+      "FLUC_RT": "-1.25",
+      "ACC_TRDVOL": "500",
+      "ACC_TRDVAL": "95,000,000"
+    }
+  ],
+  "kospiIndex": [
+    { "BAS_DD": "20260102", "IDX_NM": "코스피", "CLSPRC_IDX": "3000.00" }
+  ],
+  "kosdaqIndex": [
+    { "BAS_DD": "20260102", "IDX_NM": "코스닥", "CLSPRC_IDX": "900.00" }
+  ]
+}
