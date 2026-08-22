@@ -1,10 +1,14 @@
 # KRX trading calendar
 
 `krx-cli` uses the Korea Exchange's official
-[Market Closing (Holiday)](https://global.krx.co.kr/contents/GLB/05/0501/0501110000/GLB0501110000.jsp)
+[Market Holiday](https://open.krx.co.kr/contents/MKD/01/0110/01100305/MKD01100305.jsp)
 calendar. The checked-in snapshot covers 2016 through 2026 and records weekday
 closures only; Saturdays and Sundays are classified directly in Korea Standard
 Time (UTC+9).
+
+The domestic KRX feed publishes Korean holiday labels. The update script maps
+reviewed labels to the existing stable English reasons; an unknown or renamed
+label remains visible as drift instead of being silently normalized.
 
 The calendar applies to default dates and date ranges across CLI, MCP, approval,
 search, market-summary, watchlist, and contract-check paths. Recent-date defaults

@@ -10,11 +10,17 @@ const repositoryRoot = resolve(
 const skillRoot = resolve(repositoryRoot, "skills/krx-cli");
 
 function readRepositoryFile(path: string): string {
-  return readFileSync(resolve(repositoryRoot, path), "utf8");
+  return readFileSync(resolve(repositoryRoot, path), "utf8").replaceAll(
+    "\r\n",
+    "\n",
+  );
 }
 
 function readSkillFile(path: string): string {
-  return readFileSync(resolve(skillRoot, path), "utf8");
+  return readFileSync(resolve(skillRoot, path), "utf8").replaceAll(
+    "\r\n",
+    "\n",
+  );
 }
 
 describe("krx-cli skill package", () => {

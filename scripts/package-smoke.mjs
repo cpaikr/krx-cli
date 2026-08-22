@@ -3,7 +3,10 @@ import { access, mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
-import { installedBinCommand } from "./package-smoke-command.mjs";
+import {
+  installedBinCommand,
+  parseNpmPackReport,
+} from "./package-smoke-command.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const temporaryRoot = await mkdtemp(join(tmpdir(), "krx-cli-package-smoke-"));
@@ -90,12 +93,13 @@ async function createTarball(packDirectory) {
       "pack",
       "--json",
       "--ignore-scripts",
+      "--silent",
       "--pack-destination",
       packDirectory,
     ],
     { cwd: repositoryRoot },
   );
-  const report = JSON.parse(result.stdout);
+  const report = parseNpmPackReport(result.stdout);
 
   if (!Array.isArray(report) || report.length !== 1 || !report[0].filename) {
     throw new Error("npm pack did not report exactly one package artifact");
