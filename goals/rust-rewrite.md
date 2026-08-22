@@ -39,10 +39,34 @@ Green frozen legacy baseline and mutation-tested compatibility judge.
 
 ### Next in-scope action
 
-Reproduce the failing legacy CI and scheduled contract-drift gates, repair them without weakening assertions, then freeze and mutation-certify the installed-package compatibility judge.
+Deliver the repaired baseline and installed-package judge through its review PR,
+obtain supported-host CI evidence, run the scheduled calendar path, and preserve
+the green merge commit as the recoverable pre-rewrite ref.
 
 ### Evidence and blockers
 
 - Initialization boundary: necessary to satisfy the goal's Resume invariant and PR-delivery lifecycle.
 - Delivery integration branch: `codex/rust-rewrite-integration`, created from local `main` at `1f3dbd2`; it preserves the two queued rewrite-planning commits without pushing the production branch.
 - Candidate classification: included under the frozen legacy baseline and compatibility-judge result; proceed with the smallest reviewable baseline slice after this metadata is pushed.
+- Reproduced hosted failures from CI run `31672062655`: Windows checkout
+  newlines broke two LF-sensitive assertions, and npm 10 lifecycle output
+  preceded `npm pack --json`. The fixes normalize only test input newlines and
+  parse the final JSON report without weakening package assertions.
+- Replaced the retired `global.krx.co.kr` holiday feed with the current official
+  `open.krx.co.kr` feed while preserving every reviewed 2016-2026 closure and
+  stable reason. `pnpm calendar:check` is current on 2026-08-22.
+- The installed-package judge passes 13 isolated scenarios covering the
+  recursive CLI inventory, complete 31-endpoint schema, cached row and adjusted
+  range behavior, composites, diagnostics, local state, and exits. It rejects
+  independent no-data-exit, schema-description, and adjustment-metadata mutants
+  only in their named scenarios.
+- Local deterministic evidence is green on Node 24 and npm 10.9.8; the complete
+  `pnpm verify` gate passed before review, and the tightened judge separately
+  passes under npm 10.9.8. Remote Windows and Linux matrix evidence remains
+  pending PR delivery.
+- External blocker for credentialed drift validation: the origin repository has
+  no Actions `KRX_API_KEY` secret. Deterministic calendar and dry-run contract
+  validation remain separate and do not require that credential; provisioning
+  the live secret requires external authority.
+- PR boundary classification: included, because delivery and review of this
+  slice directly complete the named green frozen legacy baseline result.

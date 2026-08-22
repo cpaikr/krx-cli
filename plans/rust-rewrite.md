@@ -367,7 +367,6 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Repair and freeze the legacy baseline: reproduce the failing CI and scheduled
-contract-drift gates, restore them without weakening assertions, then build an
-installed-package black-box compatibility judge and prove it rejects a
-deliberate behavioral mutation.
+Deliver the repaired legacy baseline and installed-package compatibility judge
+through review, collect the supported-host CI and scheduled calendar evidence,
+then preserve the green merge commit as the recoverable pre-rewrite ref.
