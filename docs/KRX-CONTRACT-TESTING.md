@@ -1,8 +1,15 @@
-# Live KRX contract testing
+# KRX contract testing
 
-The opt-in contract checker validates the maintained 31-endpoint registry
-against both live KRX responses and the official KRX service specifications.
-Ordinary `pnpm verify` remains deterministic and credential-free for forks.
+The canonical `contracts/krx/openapi.yaml` document is the sole maintained
+provider-wire authority for all 31 supported operations. `pnpm
+contract:validate` checks that authority against reviewed provider evidence,
+the frozen legacy compatibility oracle, generated projections, and the source
+tree's no-mirror rule. Ordinary `pnpm verify` includes that deterministic,
+credential-free gate.
+
+The opt-in live checker then compares the canonical contract with live KRX
+responses and official KRX service specifications. It reports evidence for
+review; it does not rewrite the contract.
 
 ## Plan before spending quota
 
@@ -51,7 +58,7 @@ For every endpoint, the checker validates:
 - HTTP success and a parseable JSON body;
 - absence of a KRX `respCode`/`respMsg` error envelope;
 - an array-valued `OutBlock_1` with at least one row;
-- every maintained response field and its string type;
+- every maintained response field and its string type on every returned row;
 - added, missing, or type-changed observed fields.
 
 An empty response is a failure, not schema evidence. Repeat the run with a
@@ -75,20 +82,27 @@ at most 31 credentialed calls. Manual dispatch defaults to dry-run and accepts
 an optional confirmed trading date. Configure the repository Actions secret
 `KRX_API_KEY` only for live runs; pull-request CI never receives or requests it.
 
-## Updating the maintained contract
+## Updating the canonical contract
 
 Treat any report as a review request, not an instruction to copy upstream data
 blindly:
 
 1. Open the catalog link in the report and the endpoint's linked development
    specification.
-2. Confirm the endpoint path, required `basDd` request contract, response field
-   names/types, and whether a non-empty live response demonstrates the change.
-3. Update `src/client/endpoints.ts` for service or request changes and
-   `src/client/response-fields.ts` for response schema changes.
-4. Update the endpoint date in `src/contracts/baseline.ts` only after the
-   reviewed registry matches the official contract.
-5. Add deterministic parser/drift fixtures, run `pnpm verify`, then run dry-run
-   before the next credentialed check.
+2. Confirm the endpoint path, required request contract, response field
+   names/types on every non-empty row, provider-error shape, default-response
+   behavior, and official modification date.
+3. Edit `contracts/krx/openapi.yaml`. Update
+   `contracts/krx/reviewed-evidence.json` only when the shared provider evidence
+   itself changed; that file is a review record, not a second authority.
+4. Run `pnpm contract:artifacts` to regenerate the TypeScript registry and
+   language-neutral capability manifest, then run `pnpm contract:validate`.
+5. Add deterministic parser/drift and mutation fixtures, run `pnpm verify`,
+   then run dry-run before the next credentialed check.
+
+Non-200 response bodies remain optional and opaque because KRX and intervening
+HTTP infrastructure do not guarantee JSON for transport-level failures. A
+provider error returned with HTTP 200 is modeled separately by the canonical
+KRX error envelope.
 
 Do not commit generated reports or redistribute response datasets.

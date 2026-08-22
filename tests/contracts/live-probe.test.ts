@@ -138,6 +138,29 @@ describe("credentialed KRX contract probe", () => {
     expect(JSON.stringify(report)).not.toContain(apiKey);
   });
 
+  it("classifies an empty-but-present KRX error field", async () => {
+    const report = await probeEndpoint({
+      endpoint,
+      apiKey: "secret-key",
+      date: "20260310",
+      fetchImpl: vi.fn(async () =>
+        jsonResponse({ respCode: "", OutBlock_1: [{ BAS_DD: "20260310" }] }),
+      ),
+      reserve,
+    });
+
+    expect(report).toMatchObject({
+      status: "krx_error",
+      issues: [
+        {
+          code: "krx_error_envelope",
+          message: "KRX returned an error envelope",
+        },
+      ],
+      quotaReserved: true,
+    });
+  });
+
   it("classifies a non-JSON failed response by its HTTP status", async () => {
     const report = await probeEndpoint({
       endpoint,
@@ -175,5 +198,27 @@ describe("credentialed KRX contract probe", () => {
       },
     });
     expect(JSON.stringify(report)).not.toContain("OutBlock_1");
+  });
+
+  it("rejects a field missing from only one observed row", async () => {
+    const report = await probeEndpoint({
+      endpoint,
+      apiKey: "secret-key",
+      date: "20260310",
+      fetchImpl: vi.fn(async () =>
+        jsonResponse({
+          OutBlock_1: [
+            { BAS_DD: "20260310", IDX_NM: "KOSPI" },
+            { BAS_DD: "20260310" },
+          ],
+        }),
+      ),
+      reserve,
+    });
+
+    expect(report).toMatchObject({
+      status: "schema_drift",
+      response: { missingFromObserved: ["IDX_NM"] },
+    });
   });
 });

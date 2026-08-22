@@ -4,11 +4,15 @@ import {
   resolveEndpoint,
   resolveDate,
 } from "../command-helper.js";
+import {
+  OPENAPI_OPERATION_PATHS,
+  OPENAPI_WIRE,
+} from "../../contracts/generated/openapi-registry.js";
 
 const MARKET_ENDPOINTS: Record<string, string> = {
-  kts: "/svc/apis/bon/kts_bydd_trd",
-  general: "/svc/apis/bon/bnd_bydd_trd",
-  small: "/svc/apis/bon/smb_bydd_trd",
+  kts: OPENAPI_OPERATION_PATHS.bond_kts_bydd_trd,
+  general: OPENAPI_OPERATION_PATHS.bond_bnd_bydd_trd,
+  small: OPENAPI_OPERATION_PATHS.bond_smb_bydd_trd,
 };
 
 export function registerBondCommand(program: Command): void {
@@ -25,7 +29,7 @@ export function registerBondCommand(program: Command): void {
 
       await executeCommand({
         endpoint,
-        params: { basDd: date },
+        params: { [OPENAPI_WIRE.requestDateField]: date },
         program,
         noDataMessage: `No data for date ${date}`,
       });

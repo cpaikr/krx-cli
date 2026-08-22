@@ -1,9 +1,10 @@
 import type { DateRangeResult } from "./range-fetch.js";
+import { OPENAPI_OPERATION_PATHS } from "../contracts/generated/openapi-registry.js";
 
 export const ADJUSTED_STOCK_ENDPOINTS = [
-  "/svc/apis/sto/stk_bydd_trd",
-  "/svc/apis/sto/ksq_bydd_trd",
-  "/svc/apis/sto/knx_bydd_trd",
+  OPENAPI_OPERATION_PATHS.stock_stk_bydd_trd,
+  OPENAPI_OPERATION_PATHS.stock_ksq_bydd_trd,
+  OPENAPI_OPERATION_PATHS.stock_knx_bydd_trd,
 ] as const;
 
 export const ADJUSTED_STOCK_FIELDS = [

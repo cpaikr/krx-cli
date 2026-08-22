@@ -39,16 +39,33 @@ Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Next in-scope action
 
-Reconcile the current 31-operation provider and product contracts into one
-validated OpenAPI authority and bounded language-neutral profiles, then freeze
-the Rust SDK, Node SDK, CLI compatibility and intentional-change ledgers, error
-taxonomy, and credential/cache migration contracts around that authority.
+Freeze the Rust SDK, Node SDK, CLI compatibility and intentional-change
+ledgers, error taxonomy, and credential, cache, approval, quota, and watchlist
+migration contracts around the validated OpenAPI authority. Then prove the
+candidate seams in a disposable four-target Rust vertical slice without
+starting the production workspace.
 
 ### Evidence and blockers
 
 - Initialization boundary: necessary to satisfy the goal's Resume invariant and PR-delivery lifecycle.
 - Delivery integration branch: `codex/rust-rewrite-integration`, created from local `main` at `1f3dbd2`; it preserves the two queued rewrite-planning commits without pushing the production branch.
-- Candidate classification: included under the frozen legacy baseline and compatibility-judge result; proceed with the smallest reviewable baseline slice after this metadata is pushed.
+- Contract-slice classification: one contract-authority PR must replace the
+  active TypeScript drift source, freeze every public and persisted-state
+  boundary, and complete the disposable candidate proof before production Rust
+  implementation begins.
+- `contracts/krx/openapi.yaml` is now the sole maintained provider-wire
+  authority for all 31 supported operations. Checked TypeScript and
+  language-neutral projections replace the former endpoint, field, envelope,
+  method, path-prefix, and modification-date mirrors in the legacy runtime.
+- The contract gate rejects 23 independent authority mutations, including
+  paths, methods, root and operation overrides, request and response shapes,
+  provider errors, schema-composition bypasses, stale artifacts, and
+  handwritten JavaScript/TypeScript/Rust mirrors. HTTP-200 provider errors are
+  classified and sanitized consistently by runtime and live-probe consumers.
+- `pnpm verify` passes 46 test files and 413 tests on the OpenAPI checkpoint,
+  including production audit, installed-package judge, and packed-artifact
+  smoke. Independent code review completed after multiple mutation passes with
+  no remaining actionable findings in this bounded authority slice.
 - Reproduced hosted failures from CI run `31672062655`: Windows checkout
   newlines broke two LF-sensitive assertions, and npm 10 lifecycle output
   preceded `npm pack --json`. The fixes normalize only test input newlines and

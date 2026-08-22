@@ -177,6 +177,89 @@ describe("krxFetch", () => {
     });
   });
 
+  it("redacts and bounds provider error fields", async () => {
+    const apiKey = "sensitive-provider-key";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        response(401, {
+          respCode: `${apiKey}-${"C".repeat(300)}`,
+          respMsg: `${apiKey}-${"M".repeat(300)}`,
+        }),
+      ),
+    );
+
+    const result = await krxFetch({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      params: { basDd: "20240105" },
+      apiKey,
+      cache: false,
+    });
+
+    expect(result.errorCode).toHaveLength(240);
+    expect(result.error).toHaveLength(240);
+    expect(JSON.stringify(result)).not.toContain(apiKey);
+    expect(result).toMatchObject({
+      errorType: "authentication",
+      httpStatus: 401,
+    });
+  });
+
+  it("classifies a sanitized HTTP-200 provider error envelope", async () => {
+    const apiKey = "sensitive-success-envelope-key";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        response(200, {
+          respCode: "PROVIDER_ERROR",
+          respMsg: `${apiKey}: category approval is missing`,
+        }),
+      ),
+    );
+
+    const result = await krxFetch({
+      endpoint: "/svc/apis/esg/esg_index_info",
+      params: { basDd: "20240105" },
+      apiKey,
+      cache: false,
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      errorCode: "PROVIDER_ERROR",
+      errorType: "upstream",
+    });
+    expect(result.error).toContain("[REDACTED]");
+    expect(JSON.stringify(result)).not.toContain(apiKey);
+    expect(mockedSetCached).not.toHaveBeenCalled();
+  });
+
+  it("classifies an empty-but-present provider error field", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        response(200, {
+          respCode: "",
+          OutBlock_1: [{ A: "must-not-be-accepted" }],
+        }),
+      ),
+    );
+
+    const result = await krxFetch({
+      endpoint: "/svc/apis/idx/kospi_dd_trd",
+      params: { basDd: "20240105" },
+      apiKey: "key",
+      cache: false,
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      error: "KRX provider returned an error",
+      errorType: "upstream",
+    });
+    expect(mockedSetCached).not.toHaveBeenCalled();
+  });
+
   it("retries a transient status and reserves each actual attempt", async () => {
     vi.useFakeTimers();
     vi.stubGlobal(

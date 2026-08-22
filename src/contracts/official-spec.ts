@@ -1,4 +1,5 @@
 import type { ContractField, OfficialEndpointSpec } from "./types.js";
+import { OPENAPI_WIRE } from "./generated/openapi-registry.js";
 
 export const KRX_OFFICIAL_ORIGIN = "https://openapi.krx.co.kr";
 export const KRX_SERVICE_CATALOG_URL = `${KRX_OFFICIAL_ORIGIN}/contents/OPP/INFO/service/OPPINFO004.cmd`;
@@ -98,10 +99,13 @@ export function parseServiceDetail(
     );
   }
 
-  const path = samplePath.replace("/svc/sample/apis/", "/svc/apis/");
-  if (!path.startsWith("/svc/apis/")) {
+  const path = samplePath.replace(
+    "/svc/sample/apis/",
+    OPENAPI_WIRE.providerPathPrefix,
+  );
+  if (!path.startsWith(OPENAPI_WIRE.providerPathPrefix)) {
     throw new Error(
-      `Official KRX service path was outside /svc/apis/: ${catalogEntry.detailUrl}`,
+      `Official KRX service path was outside ${OPENAPI_WIRE.providerPathPrefix}: ${catalogEntry.detailUrl}`,
     );
   }
 

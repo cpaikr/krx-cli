@@ -36,9 +36,18 @@ publication decision.
   local files.
 - The current package builds from source during private Git-tag installation.
   There is no public Node SDK contract or prebuilt native distribution.
-- The implementation baseline is `ac223a1`, but its latest CI run and scheduled
-  KRX contract-drift run are failing. A green, frozen baseline is a
-  prerequisite for trusting rewrite parity evidence.
+- The recoverable legacy baseline is merge commit `3732598e461ec5d78bd1121dbbe86d56aa658376`.
+  Its deterministic gate passes on Ubuntu and Windows under Node 22 and 24,
+  the public contract-drift dry run passes for all 31 operations, and the
+  installed-package judge rejects three independent compatibility mutations.
+  Credentialed live drift remains separately blocked because the repository
+  has no Actions `KRX_API_KEY` secret.
+- The current contract branch establishes `contracts/krx/openapi.yaml` as the
+  validated sole provider-wire authority for all 31 operations. Generated
+  runtime and language-neutral projections are digest-checked, 23 deliberate
+  authority mutations are rejected, and the full deterministic gate passes 46
+  test files and 413 tests. Public API, error, migration, and disposable-probe
+  contracts remain in this same pre-implementation PR.
 - `../ytm` supplies the target structural precedent. The accepted guidance in
   `../mytech` supplies the design rules: OpenAPI wire authority, a handwritten
   Rust conformer, narrow Node-API binding, boundary-owned contracts, pure
@@ -367,6 +376,8 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Deliver the repaired legacy baseline and installed-package compatibility judge
-through review, collect the supported-host CI and scheduled calendar evidence,
-then preserve the green merge commit as the recoverable pre-rewrite ref.
+Deliver one contract-authority PR that makes the validated OpenAPI document the
+sole maintained KRX wire source; freezes executable Rust, Node, CLI, error, and
+all persisted-state migration contracts; and records a disposable four-target
+candidate proof. Production `crates/krx-*` implementation begins only after
+that PR completes review and merges.

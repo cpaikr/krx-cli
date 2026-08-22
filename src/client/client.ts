@@ -10,8 +10,9 @@ import {
 } from "./retry.js";
 import { verbose } from "../utils/logger.js";
 import { PUBLIC_CONTRACT } from "../user-contract.js";
+import { OPENAPI_WIRE } from "../contracts/generated/openapi-registry.js";
 
-export const BASE_URL = "https://data-dbg.krx.co.kr";
+export const BASE_URL = OPENAPI_WIRE.serverUrl;
 export const DEFAULT_ATTEMPT_TIMEOUT_MS = 15_000;
 export const DEFAULT_OVERALL_TIMEOUT_MS = 45_000;
 
@@ -89,10 +90,13 @@ export class KrxRequestError extends Error {
   }
 }
 
-interface KrxErrorBody {
-  readonly respMsg?: string;
-  readonly respCode?: string;
-}
+type KrxErrorBody = Partial<
+  Record<
+    | (typeof OPENAPI_WIRE)["errorCodeField"]
+    | (typeof OPENAPI_WIRE)["errorMessageField"],
+    string
+  >
+>;
 
 interface HttpAttempt {
   readonly ok: boolean;
@@ -208,6 +212,37 @@ function redactCredential(message: string, apiKey: string): string {
   return apiKey ? message.replaceAll(apiKey, "[REDACTED]") : message;
 }
 
+function boundedProviderDiagnostic(value: string, apiKey: string): string {
+  return redactCredential(value, apiKey).slice(0, 240);
+}
+
+function providerError(
+  body: unknown,
+  apiKey: string,
+): {
+  readonly present: boolean;
+  readonly code?: string;
+  readonly message?: string;
+} {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return { present: false };
+  }
+  const record = body as KrxErrorBody;
+  const hasCode = Object.hasOwn(record, OPENAPI_WIRE.errorCodeField);
+  const hasMessage = Object.hasOwn(record, OPENAPI_WIRE.errorMessageField);
+  const code = record[OPENAPI_WIRE.errorCodeField];
+  const message = record[OPENAPI_WIRE.errorMessageField];
+  return {
+    present: hasCode || hasMessage,
+    ...(typeof code === "string" && code
+      ? { code: boundedProviderDiagnostic(code, apiKey) }
+      : {}),
+    ...(typeof message === "string" && message
+      ? { message: boundedProviderDiagnostic(message, apiKey) }
+      : {}),
+  };
+}
+
 export async function krxFetch<T = Record<string, string>>(
   options: KrxRequestOptions,
 ): Promise<KrxResponse<T>> {
@@ -259,10 +294,10 @@ export async function krxFetch<T = Record<string, string>>(
         return fetchWithTimeout(
           url,
           {
-            method: "POST",
+            method: OPENAPI_WIRE.method,
             headers: {
-              AUTH_KEY: options.apiKey,
-              "Content-Type": "application/json; charset=utf-8",
+              [OPENAPI_WIRE.authHeaderName]: options.apiKey,
+              "Content-Type": OPENAPI_WIRE.requestContentType,
             },
             body: JSON.stringify(options.params),
           },
@@ -329,21 +364,13 @@ export async function krxFetch<T = Record<string, string>>(
 
   if (!response.ok) {
     let errorMsg = `HTTP ${response.status}: ${response.statusText}`;
-    let errorCode: string | undefined;
-    try {
-      const errorBody = response.body as KrxErrorBody;
-      if (errorBody.respMsg) {
-        errorMsg = redactCredential(errorBody.respMsg, options.apiKey);
-      }
-      errorCode = errorBody.respCode;
-    } catch {
-      // Non-JSON upstream errors retain the status-only diagnostic.
-    }
+    const provider = providerError(response.body, options.apiKey);
+    if (provider.message) errorMsg = provider.message;
     return {
       success: false,
       data: [],
       error: errorMsg,
-      errorCode,
+      ...(provider.code ? { errorCode: provider.code } : {}),
       errorType: responseErrorType(response.status),
       httpStatus: response.status,
     };
@@ -356,14 +383,24 @@ export async function krxFetch<T = Record<string, string>>(
       "INVALID_RESPONSE",
     ) as KrxResponse<T>;
   }
+  const provider = providerError(response.body, options.apiKey);
+  if (provider.present) {
+    return failure(
+      "upstream",
+      provider.message ?? "KRX provider returned an error",
+      provider.code,
+    ) as KrxResponse<T>;
+  }
   const body = response.body as Record<string, unknown>;
   const elapsed = Date.now() - startTime;
-  const outBlock = body["OutBlock_1"];
+  const outBlock = body[OPENAPI_WIRE.successEnvelopeField];
   if (!Array.isArray(outBlock)) {
-    verbose(`response: unexpected format (no OutBlock_1) in ${elapsed}ms`);
+    verbose(
+      `response: unexpected format (no ${OPENAPI_WIRE.successEnvelopeField}) in ${elapsed}ms`,
+    );
     return failure(
       "invalid_response",
-      "Unexpected KRX response: missing OutBlock_1",
+      `Unexpected KRX response: missing ${OPENAPI_WIRE.successEnvelopeField}`,
       "INVALID_RESPONSE",
     ) as KrxResponse<T>;
   }

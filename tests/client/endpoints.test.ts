@@ -15,6 +15,7 @@ describe("ENDPOINTS", () => {
     for (const ep of ENDPOINTS) {
       expect(ep.path).toBeTruthy();
       expect(ep.path).toMatch(/^\/svc\/apis\//);
+      expect(ep.legacyCommand).toMatch(/^[a-z]+\.[a-z0-9_]+$/u);
       expect(ep.description).toBeTruthy();
       expect(ep.descriptionKo).toBeTruthy();
       expect(ep.category).toBeTruthy();
@@ -85,7 +86,7 @@ describe("getEndpointsByCategory", () => {
 describe("getCategoryById", () => {
   it("returns category for valid id", () => {
     const cat = getCategoryById("stock");
-    expect(cat?.code).toBe("sto");
+    expect(cat?.name).toBe("Stock");
     expect(cat?.nameKo).toBe("주식");
   });
 

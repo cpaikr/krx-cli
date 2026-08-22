@@ -3,9 +3,10 @@
 ## Current
 
 [Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK](plans/rust-rewrite.md)
-— active under [the durable goal contract](goals/rust-rewrite.md). The current
-slice repairs and freezes the legacy baseline and certifies the compatibility
-judge before candidate implementation begins.
+— active under [the durable goal contract](goals/rust-rewrite.md). The green
+legacy baseline is frozen at `3732598`; the current slice establishes the sole
+OpenAPI wire authority, freezes public and migration contracts, and certifies
+the disposable candidate seams before production Rust implementation begins.
 
 ## Plans
 

@@ -9,6 +9,7 @@ import {
   createCompleteness,
   type CompositeResult,
 } from "./completeness.js";
+import { OPENAPI_WIRE } from "../contracts/generated/openapi-registry.js";
 
 interface DateRangeOptions {
   readonly endpoint: string;
@@ -113,7 +114,7 @@ export async function fetchDateRange<T = Record<string, string>>(
 
   const tasks = tradingDays.map((day) => async (): Promise<KrxResponse<T>> => {
     const params: Record<string, string> = {
-      basDd: day,
+      [OPENAPI_WIRE.requestDateField]: day,
       ...extraParams,
     };
 

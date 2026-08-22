@@ -27,6 +27,7 @@ import {
   isAdjustedStockEndpoint,
   type AdjustedDateRangeResult,
 } from "../client/stock-adjustment.js";
+import { OPENAPI_WIRE } from "../contracts/generated/openapi-registry.js";
 
 export function resolveDate(
   dateOpt: string | undefined,
@@ -110,12 +111,12 @@ export async function executeCommand(
     writeOutput(
       JSON.stringify(
         {
-          method: "POST",
+          method: OPENAPI_WIRE.method,
           endpoint,
           params: finalParams,
           clientFilter: codeFilter ? { ISU_CD: codeFilter } : undefined,
           adjusted: shouldAdjust,
-          headers: { AUTH_KEY: "***" },
+          headers: { [OPENAPI_WIRE.authHeaderName]: "***" },
         },
         null,
         2,
@@ -160,7 +161,9 @@ export async function executeCommand(
   let data = await withCliCancellation(async (signal) => {
     if (isDateRange) {
       const restParams = Object.fromEntries(
-        Object.entries(finalParams).filter(([k]) => k !== "basDd"),
+        Object.entries(finalParams).filter(
+          ([key]) => key !== OPENAPI_WIRE.requestDateField,
+        ),
       );
       const rangeResult = await fetchDateRange({
         endpoint,
