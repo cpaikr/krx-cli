@@ -2,15 +2,14 @@
 
 ## Current
 
-_None._
+[Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK](plans/rust-rewrite.md)
+— active under [the durable goal contract](goals/rust-rewrite.md). The current
+slice repairs and freezes the legacy baseline and certifies the compatibility
+judge before candidate implementation begins.
 
 ## Plans
 
-1. [Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK](plans/rust-rewrite.md)
-   — queued. Preserve the documented CLI contract while moving KRX protocol,
-   reliability, credentials, caching, and domain policy into a shared Rust SDK;
-   rebuild `krx` as a native Clap CLI, add a public Node SDK, remove MCP, and
-   prepare private native release artifacts.
+_None._
 
 ## Tasks
 

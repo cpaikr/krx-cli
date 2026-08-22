@@ -1,6 +1,6 @@
 # Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK
 
-Status: queued
+Status: active
 
 ## Outcome
 
@@ -367,6 +367,7 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Authorize a long-running goal boundary from this plan. The recommended boundary
-is the complete rewrite through atomic cutover and release-ready private
-artifacts, stopping before creation of the first tag or GitHub Release.
+Repair and freeze the legacy baseline: reproduce the failing CI and scheduled
+contract-drift gates, restore them without weakening assertions, then build an
+installed-package black-box compatibility judge and prove it rejects a
+deliberate behavioral mutation.
