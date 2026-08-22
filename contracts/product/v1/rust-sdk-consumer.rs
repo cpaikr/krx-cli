@@ -53,6 +53,7 @@ async fn consume_public_sdk(client: &Client) -> Result<(), krx_sdk::KrxError> {
     let _prices: WatchlistPricesResult = client
         .watchlist_prices(WatchlistPricesRequest::new(date, security_codes, options)?)
         .await?;
+    let _price_market: Option<&krx_sdk::WatchlistMarket> = _prices.completeness.requested.first();
 
     let _capabilities = client.capabilities();
     let _operation_name: &str = OperationId::ALL[0].as_str();
@@ -130,7 +131,6 @@ fn construct_client() -> Result<Client, krx_sdk::KrxError> {
 fn construct_explicit_client() -> Result<Client, krx_sdk::KrxError> {
     Client::builder()
         .api_key(ApiKey::parse("test-only-placeholder")?)
-        .cache_max_age(Duration::from_secs(168 * 60 * 60))
         .build()
 }
 

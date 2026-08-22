@@ -61,6 +61,11 @@ Market-summary index components are `null` when unavailable. Stock-derived
 statistics and movers are `null` unless both KOSPI and KOSDAQ stock inputs
 succeeded, so missing markets can never be presented as observed zeroes.
 
+Watchlist prices request KOSPI, KOSDAQ, and KONEX daily-trading components.
+Persisted or migrated KONEX entries are therefore either returned when
+observed or represented by an explicit KONEX failure partition; they are never
+silently omitted by querying only the other two markets.
+
 Composite CLI operations always emit the JSON envelope so metadata cannot be
 lost in table, CSV, or NDJSON rendering. Partial results write a warning to
 stderr and exit `7`; empty results exit `3`; complete results exit `0`; failed

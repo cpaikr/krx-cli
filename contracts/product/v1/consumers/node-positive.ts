@@ -3,6 +3,7 @@ import {
   KrxError,
   type KrxFailure,
   type OperationDescription,
+  type WatchlistMarket,
 } from "../node-sdk.js";
 
 const client = new KrxClient();
@@ -45,6 +46,9 @@ const watchlistPrices = await client.watchlistPrices({
   cache: { mode: "offline" },
 });
 void watchlistPrices.data.stocks[0]?.ISU_CD;
+const watchlistMarket: WatchlistMarket | undefined =
+  watchlistPrices.completeness.requested[0];
+void watchlistMarket;
 
 // @ts-expect-error adjusted ranges require one exact security code
 void client.range({

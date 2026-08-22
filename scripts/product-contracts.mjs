@@ -433,6 +433,15 @@ for (const [name, value] of Object.entries(profile.composites)) {
     assertOperationReference(operationId, `${name}.components.${component}`);
   }
 }
+equal(
+  profile.composites.watchlistPrices.components,
+  {
+    KOSPI: "stock_stk_bydd_trd",
+    KOSDAQ: "stock_ksq_bydd_trd",
+    KONEX: "stock_knx_bydd_trd",
+  },
+  "watchlist prices must cover every persisted watchlist market",
+);
 invariant(
   Number.isSafeInteger(profile.composites.marketSummary.topCount) &&
     profile.composites.marketSummary.topCount > 0,
@@ -940,6 +949,44 @@ for (const cliCase of cliCases.cases) {
     `${cliCase.id} needs a polarity`,
   );
 }
+const konexWatchlistPositive = cliCases.cases.find(
+  ({ id }) => id === "watchlist-konex-price-included",
+);
+equal(
+  konexWatchlistPositive,
+  {
+    id: "watchlist-konex-price-included",
+    coversBehavior: "watchlist-konex-prices",
+    polarity: "positive",
+    args: ["watchlist", "show", "--date", "20260102"],
+    setup: "watchlist-with-konex-network-success",
+    expect: {
+      code: 0,
+      requestedComponents: ["KOSPI", "KOSDAQ", "KONEX"],
+      resultIncludesSecurityCode: "244690",
+    },
+  },
+  "KONEX watchlist positive case must prove requested and returned coverage",
+);
+const konexWatchlistFailure = cliCases.cases.find(
+  ({ id }) => id === "watchlist-konex-failure-is-not-silent",
+);
+equal(
+  konexWatchlistFailure,
+  {
+    id: "watchlist-konex-failure-is-not-silent",
+    coversBehavior: "watchlist-konex-prices",
+    polarity: "rejection",
+    args: ["watchlist", "show", "--date", "20260102"],
+    setup: "watchlist-with-konex-konex-upstream-failure",
+    expect: {
+      code: 7,
+      requestedComponents: ["KOSPI", "KOSDAQ", "KONEX"],
+      failedComponents: ["KONEX"],
+    },
+  },
+  "KONEX watchlist failure case must prevent silent omission",
+);
 
 const nodeContractSource = await readFile(paths.nodeContract, "utf8");
 for (const forbidden of [
@@ -965,6 +1012,9 @@ for (const required of [
   "../../generated/error-types.js",
   "readonly credentials: CredentialStore",
   "readonly cache: CacheStore",
+  'export type WatchlistMarket = SearchMarket | "KONEX";',
+  'RowFor<"stock_knx_bydd_trd">',
+  "CompositeResult<\n  WatchlistPrices,\n  WatchlistMarket\n>",
 ]) {
   invariant(
     nodeContractSource.includes(required),
@@ -997,7 +1047,6 @@ for (const required of [
   "WatchlistEntry",
   ".watchlist()",
   ".api_key(",
-  ".cache_max_age(",
   "CachePolicy::Bypass",
   "Cancellation::new()",
   ".cancel()",
@@ -1008,6 +1057,7 @@ for (const required of [
   "KrxErrorCode",
   "std::error::Error + Send + Sync",
   "Vec<SecurityCode>",
+  "Option<&krx_sdk::WatchlistMarket>",
 ]) {
   invariant(
     rustContractSource.includes(required),
@@ -1192,6 +1242,37 @@ equal(
   "offline must not resolve credentials",
 );
 equal(
+  migrations.offline.acquiresRefreshLease,
+  false,
+  "offline must not acquire refresh leases",
+);
+equalKeys(
+  migrations.offline,
+  [
+    "resolvesCredential",
+    "touchesKeychain",
+    "touchesQuota",
+    "touchesNetwork",
+    "acquiresRefreshLease",
+    "validStaleCache",
+    "absentCacheError",
+    "invalidCacheError",
+    "validV1Action",
+    "invalidV1Action",
+  ],
+  "offline policy",
+);
+equal(
+  migrations.offline.validV1Action,
+  "return-without-promotion-or-mutation",
+  "offline version-1 hits must remain read-only",
+);
+equal(
+  migrations.offline.invalidV1Action,
+  "quarantine-if-unchanged-then-return-cache-invalid",
+  "offline invalid version-1 entries need one safe disposition",
+);
+equal(
   migrations.stores.cacheV1.keyPreimage,
   "<endpoint>:<JSON(sortedParams)>",
   "legacy cache key preimage must stay exact",
@@ -1247,6 +1328,23 @@ equal(
     "watchlist-v0-to-v1",
   ],
   "migration transition set must stay complete",
+);
+const cacheTransition = migrations.transitions.find(
+  ({ id }) => id === "cache-v1-to-v2",
+);
+equal(
+  cacheTransition.trigger,
+  "lazy-per-key-after-strict-successful-online-read-or-successful-refresh",
+  "cache promotion must be online-only",
+);
+equal(
+  cacheTransition.lock,
+  "per-key-cache-v2-lease-online-only",
+  "cache migration must share the online refresh lease",
+);
+invariant(
+  !cacheTransition.actions.some((action) => action.startsWith("offline-")),
+  "online cache migration must not own offline behavior",
 );
 equal(
   migrations.cacheRefresh.lease.offline,
@@ -2115,6 +2213,12 @@ invariant(
     new Set(fixtureManifest.proceduralCases).size ===
       fixtureManifest.proceduralCases.length,
   "migration contract needs unique concurrency, crash, link, and coexistence cases",
+);
+invariant(
+  fixtureManifest.proceduralCases.includes(
+    "stale-v1-offline-read-without-promotion",
+  ) && !fixtureManifest.proceduralCases.includes("stale-v1-offline-promotion"),
+  "offline version-1 fixture must prove a read without promotion",
 );
 
 const sourceDigests = {

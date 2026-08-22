@@ -56,6 +56,10 @@ const paths = {
     "--runtime-cases",
     "contracts/product/v1/consumers/node-runtime-cases.json",
   ),
+  sdkSource: argument(
+    "--sdk-source",
+    "probes/rust-vertical-slice/sdk/src/lib.rs",
+  ),
 };
 
 const [
@@ -71,6 +75,7 @@ const [
   toolchain,
   packageJson,
   runtimeCases,
+  sdkSource,
 ] = await Promise.all([
   readFile(paths.attributes, "utf8"),
   readJson(paths.targets),
@@ -84,6 +89,7 @@ const [
   readFile(paths.toolchain, "utf8"),
   readJson(paths.package),
   readJson(paths.runtimeCases),
+  readFile(paths.sdkSource, "utf8"),
 ]);
 
 equal(
@@ -247,6 +253,10 @@ invariant(
 invariant(
   toolchain.includes('channel = "1.92.0"'),
   "probe Rust toolchain must remain pinned to 1.92.0",
+);
+invariant(
+  !/\bpub\s+fn\s+cache_max_age\b/u.test(sdkSource),
+  "Rust public SDK must not expose a redundant client cache-age authority",
 );
 const cliVersion = cliCargo.match(/^version = "([^"]+)"$/mu)?.[1];
 equal(

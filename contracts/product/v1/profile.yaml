@@ -35,6 +35,7 @@ composites:
     components:
       KOSPI: stock_stk_bydd_trd
       KOSDAQ: stock_ksq_bydd_trd
+      KONEX: stock_knx_bydd_trd
   marketSummary:
     components:
       kospiIndex: index_kospi_dd_trd

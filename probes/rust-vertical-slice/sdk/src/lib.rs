@@ -433,7 +433,7 @@ pub struct WatchlistPrices {
     pub stocks: Vec<Row>,
 }
 
-pub type WatchlistPricesResult = CompositeResult<WatchlistPrices, SearchMarket>;
+pub type WatchlistPricesResult = CompositeResult<WatchlistPrices, WatchlistMarket>;
 
 #[derive(Clone, Debug)]
 pub struct KrxError {
@@ -523,7 +523,6 @@ struct ClientInner {
     base_url: Url,
     api_key: Option<ApiKey>,
     attempt_timeout: Duration,
-    cache_max_age: Duration,
     credential_backend: Arc<dyn CredentialBackend>,
 }
 
@@ -531,18 +530,12 @@ pub struct ClientBuilder {
     api_key: Option<ApiKey>,
     base_url: Url,
     attempt_timeout: Duration,
-    cache_max_age: Duration,
     credential_backend: Arc<dyn CredentialBackend>,
 }
 
 impl ClientBuilder {
     pub fn api_key(mut self, api_key: ApiKey) -> Self {
         self.api_key = Some(api_key);
-        self
-    }
-
-    pub fn cache_max_age(mut self, max_age: Duration) -> Self {
-        self.cache_max_age = max_age;
         self
     }
 
@@ -608,7 +601,6 @@ impl ClientBuilder {
                 base_url: self.base_url,
                 api_key: self.api_key,
                 attempt_timeout: self.attempt_timeout,
-                cache_max_age: self.cache_max_age,
                 credential_backend: self.credential_backend,
             }),
         })
@@ -621,7 +613,6 @@ impl Client {
             api_key: None,
             base_url: Url::parse(OFFICIAL_SERVER).expect("canonical server URL is validated"),
             attempt_timeout: Duration::from_secs(15),
-            cache_max_age: Duration::from_secs(168 * 60 * 60),
             credential_backend: Arc::new(NativeCredentialBackend::canonical()),
         }
     }
@@ -792,7 +783,6 @@ impl Client {
     }
 
     pub fn cache(&self) -> CacheStore {
-        let _ = self.inner.cache_max_age;
         CacheStore
     }
 
@@ -1143,7 +1133,7 @@ impl CacheStore {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum WatchlistMarket {
     Kospi,
     Kosdaq,

@@ -56,6 +56,8 @@ offline:
   validStaleCache: allowed
   absentCacheError: offline/cache_miss
   invalidCacheError: offline/cache_invalid
+  validV1Action: return-without-promotion-or-mutation
+  invalidV1Action: quarantine-if-unchanged-then-return-cache-invalid
 
 stores:
   credential:
@@ -156,8 +158,8 @@ transitions:
       - no-parallel-approval-file
 
   - id: cache-v1-to-v2
-    trigger: lazy-per-key-after-strict-successful-read-or-successful-refresh
-    lock: per-key-cache-v2-lease
+    trigger: lazy-per-key-after-strict-successful-online-read-or-successful-refresh
+    lock: per-key-cache-v2-lease-online-only
     preconditions:
       - source-is-regular-owned-file
       - source-entry-operation-params-and-row-shape-validate-strictly
@@ -169,9 +171,7 @@ transitions:
       - prefer-valid-v2-when-v1-and-v2-coexist
       - atomically-write-and-fsync-v2
       - remove-matching-v1-only-after-v2-commit
-      - offline-valid-v1-best-effort-promotes-without-hiding-hit-on-failure
       - online-invalid-quarantines-if-unchanged-then-fetches
-      - offline-invalid-quarantines-if-unchanged-then-returns-cache-invalid
     rejects:
       - empty-rows
       - unknown-version
@@ -318,7 +318,7 @@ acceptance:
       - mixed-invalid-unchanged
     cache:
       - strict-full-row-v1-to-v2
-      - stale-v1-offline-promotion
+      - stale-v1-offline-read-without-promotion
       - partial-row-invalid-quarantine
       - current-and-future-date-rejected
       - v1-v2-coexistence-prefers-v2

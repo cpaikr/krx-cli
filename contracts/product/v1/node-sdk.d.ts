@@ -149,6 +149,7 @@ export interface RangeResult<O extends OperationId> extends CompositeResult<
 }
 
 export type SearchMarket = "KOSPI" | "KOSDAQ";
+export type WatchlistMarket = SearchMarket | "KONEX";
 
 export interface StockSearchRequest {
   readonly query: string;
@@ -222,13 +223,15 @@ export interface WatchlistPricesRequest {
 export interface WatchlistPrices {
   readonly date: string;
   readonly stocks: readonly Readonly<
-    RowFor<"stock_stk_bydd_trd"> | RowFor<"stock_ksq_bydd_trd">
+    | RowFor<"stock_stk_bydd_trd">
+    | RowFor<"stock_ksq_bydd_trd">
+    | RowFor<"stock_knx_bydd_trd">
   >[];
 }
 
 export type WatchlistPricesResult = CompositeResult<
   WatchlistPrices,
-  SearchMarket
+  WatchlistMarket
 >;
 
 export interface ApprovalObservation {
@@ -301,6 +304,7 @@ export interface CacheStore {
 
 export interface KrxClientOptions {
   readonly apiKey?: string;
+  /** Default for omitted query cache policy and prefer policies without maxAgeHours. */
   readonly cacheMaxAgeHours?: number;
 }
 

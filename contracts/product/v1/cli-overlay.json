@@ -61,6 +61,10 @@
     {
       "id": "direct-offline-provenance-stderr",
       "classification": "new-contract"
+    },
+    {
+      "id": "watchlist-konex-prices",
+      "classification": "defect-fix"
     }
   ],
   "optionPolicy": {

@@ -100,6 +100,16 @@ describe("Rust vertical-slice gate", () => {
     expect(result.stderr).toMatch(/must not include db-keystore/u);
   });
 
+  it("rejects a redundant public Rust client cache-age authority", () => {
+    const path = mutatedText(
+      "probes/rust-vertical-slice/sdk/src/lib.rs",
+      "impl ClientBuilder { pub fn cache_max_age(self) -> Self { self } }",
+    );
+    const result = run("--sdk-source", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/redundant client cache-age authority/u);
+  });
+
   it("rejects a public native binding subpath", () => {
     const path = mutatedJson(
       "probes/rust-vertical-slice/node/package/package.json",

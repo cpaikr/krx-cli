@@ -57,11 +57,29 @@ that PR is complete.
   public dummy credential on numeric loopback, and pins workflow actions to
   reviewed immutable revisions. An independent complete-diff re-review is
   clean. Targeted mutation gates, all-feature Rust tests and Clippy, full
-  `pnpm verify` (48 files, 462 tests), and rebuilt clean installs under Node 22
+  `pnpm verify` (48 files, 469 tests), and rebuilt clean installs under Node 22
   and 24 pass locally; both consumers certify portable digest
   `7f5dc0f96e7c38fd458ebc203f599d5ff561712a3d88111cb28fb723d3c90180`.
-  Follow-up hosted certification and bot re-review remain pending until this
-  remediation is pushed.
+  Follow-up push run
+  [32566942073](https://github.com/sjunepark/krx-cli/actions/runs/32566942073)
+  and PR run
+  [32566944078](https://github.com/sjunepark/krx-cli/actions/runs/32566944078)
+  each pass all four native builds, all eight unchanged-archive Node
+  consumers, and the final identity aggregator. All six Codex threads are
+  answered and resolved. Delivery now waits on permission to classify the
+  removed synthetic-fingerprint GitGuardian incident as a false positive and
+  manually retry CodeRabbit after its initial review failed to post and did
+  not automatically rerun on the remediation push.
+- A four-variant SDK design pass converged on one deep concrete `Client` module
+  with a private shared direct-operation engine, crate-private local-state
+  seams, and one true-external KRX HTTP seam. Contract review then closed three
+  implementation blockers before production work: offline v1 hits are now
+  explicitly read-only without refresh-lease acquisition, watchlist pricing
+  covers persisted KONEX entries instead of silently omitting them, and the
+  redundant Rust client-level cache-age authority is removed and negatively
+  gated. Independent follow-up review is clean. The full deterministic gate
+  passes 48 files and 469 tests; 54 focused product/vertical mutants, strict
+  Node consumption, and all-feature Rust tests/Clippy/formatting also pass.
 - Initialization boundary: necessary to satisfy the goal's Resume invariant and PR-delivery lifecycle.
 - Delivery integration branch: `codex/rust-rewrite-integration`, created from local `main` at `1f3dbd2`; it preserves the two queued rewrite-planning commits without pushing the production branch.
 - Contract-slice classification: one contract-authority PR must replace the
@@ -89,8 +107,8 @@ that PR is complete.
   malformed public, state, error, target, and migration artifacts. Its checked
   projections include an exhaustive 425-entry CLI option matrix and generated
   Node and Rust operation/error types for all 31 operations.
-- `pnpm verify` passes 48 test files and 460 tests on the candidate-proof
-  checkpoint, including 71 targeted authority, product-contract, and
+- `pnpm verify` passes 48 test files and 469 tests on the candidate-proof
+  checkpoint, including 80 targeted authority, product-contract, and
   vertical-slice gate tests,
   production audit, the 13-scenario installed-package judge with all three
   named mutants rejected, and packed-artifact smoke for 31 schemas and 12

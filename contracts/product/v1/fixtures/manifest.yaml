@@ -250,7 +250,7 @@ transitionCases:
 proceduralCases:
   - crash-after-keychain-set-rerun
   - mixed-approval-state-preserves-bytes
-  - stale-v1-offline-promotion
+  - stale-v1-offline-read-without-promotion
   - v1-v2-coexistence-prefers-v2
   - interrupted-temp-ignored
   - live-lease-contention

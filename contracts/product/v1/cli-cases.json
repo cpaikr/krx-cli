@@ -160,6 +160,30 @@
       "expect": { "code": 0, "stderr": "" }
     },
     {
+      "id": "watchlist-konex-price-included",
+      "coversBehavior": "watchlist-konex-prices",
+      "polarity": "positive",
+      "args": ["watchlist", "show", "--date", "20260102"],
+      "setup": "watchlist-with-konex-network-success",
+      "expect": {
+        "code": 0,
+        "requestedComponents": ["KOSPI", "KOSDAQ", "KONEX"],
+        "resultIncludesSecurityCode": "244690"
+      }
+    },
+    {
+      "id": "watchlist-konex-failure-is-not-silent",
+      "coversBehavior": "watchlist-konex-prices",
+      "polarity": "rejection",
+      "args": ["watchlist", "show", "--date", "20260102"],
+      "setup": "watchlist-with-konex-konex-upstream-failure",
+      "expect": {
+        "code": 7,
+        "requestedComponents": ["KOSPI", "KOSDAQ", "KONEX"],
+        "failedComponents": ["KONEX"]
+      }
+    },
+    {
       "id": "removed-serve-help-exclusion",
       "coversInventory": "remove-command:[]:serve",
       "polarity": "positive",

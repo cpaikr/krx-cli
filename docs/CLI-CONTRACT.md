@@ -12,7 +12,9 @@ native candidate is resolved as a delta over that boundary by
 generated exhaustive option-scope matrix. The overlay removes MCP and `serve`,
 removes secret-bearing argv input, adds explicit credential migration and
 offline/cache maintenance, and makes formerly ineffective root options fail
-with exit 2. Any difference absent from that ledger blocks cutover.
+with exit 2. It also fixes watchlist price coverage so persisted KONEX entries
+are requested instead of silently omitted. Any difference absent from that
+ledger blocks cutover.
 
 ## Output
 

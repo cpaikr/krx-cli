@@ -50,7 +50,7 @@ publication decision.
   error types, and strict operation-aware cache schemas. Nine maintained state
   schemas and classified fixtures cover credential, approval, cache, quota,
   and watchlist migration. The full deterministic gate passes 48 test files
-  and 460 tests, including 71 targeted authority, product, and vertical-slice
+  and 469 tests, including 80 targeted authority, product, and vertical-slice
   gate tests.
 - The disposable workspace compiles the frozen Rust consumer and proves one
   OpenAPI-derived operation through reqwest/Rustls, a native Clap executable,
@@ -171,6 +171,17 @@ crates/krx-cli   crates/krx-node
   Its asynchronous project-owned request, result, provenance, cancellation,
   credential, cache, and error types must not depend on Clap, Node-API, reqwest
   public types, terminal concerns, or unrestricted raw KRX bodies.
+- Keep one deep concrete `Client` module at the public seam. The frozen client,
+  request/result, composite, capability, credential, cache, watchlist, and
+  error surface remains the complete supported interface; transport and
+  local-state adapters are crate-private and never become caller extension
+  points.
+- Route direct calls, ranges, approval probes, and composites through one
+  private direct-operation engine. Keep pure validation, preparation,
+  decoding, calendar, adjustment, and completeness logic in-process; place
+  private substitutable seams only around filesystem, clocks/timers,
+  environment, and keychain, plus one true-external KRX HTTP seam whose
+  production adapter is reqwest/Rustls and whose test adapter is scripted.
 - Build `crates/krx-cli` with Clap derive. Model the command tree with `Parser`
   and `Subcommand`, reusable option groups with `Args`, and closed command-line
   values with `ValueEnum`. Parser-level constraints reject invalid or
@@ -244,9 +255,10 @@ crates/krx-cli   crates/krx-node
   other network-forcing options.
 - Provide explicit bounded cache inspection and pruning. Do not add an
   always-running daemon or a database for the observed small local cache.
-- Read version-1 entries only through strict validation and rewrite them to the
-  new format after a successful use or refresh. Do not bulk-convert unknown or
-  corrupt files.
+- Read version-1 entries only through strict validation. Rewrite them to the new
+  format after a successful online use or refresh; offline hits return the
+  validated version-1 entry without mutation or refresh-lease acquisition. Do
+  not bulk-convert unknown or corrupt files.
 
 ### Runtime and private distribution
 
@@ -310,6 +322,11 @@ crates/krx-cli   crates/krx-node
 
 ### 2. Implement the Rust SDK
 
+- Deliver the complete frozen `crates/krx-sdk` surface in one SDK PR, organized
+  as reviewable commits rather than public placeholder methods. Begin with the
+  all-31-operation catalog, project-owned types/errors, and pure strict request
+  preparation/response decoding; then add transport/retry/cancellation/quota,
+  domain composites/adjustment, and local state/cache/credential migration.
 - Implement pure request preparation and response decoding against OpenAPI,
   followed by bounded transport, typed failures, explicit application retries,
   cancellation, and exact shared quota admission.

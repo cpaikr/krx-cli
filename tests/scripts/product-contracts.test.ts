@@ -164,6 +164,20 @@ describe("product contract gate", () => {
     );
   });
 
+  it("rejects silently omitting a persisted watchlist market from prices", () => {
+    const profile = mutatedYaml(
+      "contracts/product/v1/profile.yaml",
+      "watchlist-market",
+      (document) => {
+        delete document.composites.watchlistPrices.components.KONEX;
+      },
+    );
+    expectRejected(
+      ["--profile", profile],
+      /watchlist prices must cover every persisted watchlist market/u,
+    );
+  });
+
   it("rejects an unbounded retry default", () => {
     const profile = mutatedYaml(
       "contracts/product/v1/profile.yaml",
@@ -173,6 +187,24 @@ describe("product contract gate", () => {
       },
     );
     expectRejected(["--profile", profile], /must not exceed 3/u);
+  });
+
+  it("rejects weakening the executable KONEX watchlist expectation", () => {
+    const cases = mutatedJson(
+      "contracts/product/v1/cli-cases.json",
+      "watchlist-konex-expectation",
+      (document) => {
+        const positive = document.cases.find(
+          (entry: Record<string, unknown>) =>
+            entry.id === "watchlist-konex-price-included",
+        );
+        delete positive.expect.resultIncludesSecurityCode;
+      },
+    );
+    expectRejected(
+      ["--cli-cases", cases],
+      /KONEX watchlist positive case must prove requested and returned coverage/u,
+    );
   });
 
   it("rejects ambiguous composite provenance scope", () => {
@@ -419,6 +451,69 @@ describe("product contract gate", () => {
     expectRejected(
       ["--migrations", migrations],
       /offline must not use network/u,
+    );
+  });
+
+  it("rejects an offline refresh lease", () => {
+    const migrations = mutatedYaml(
+      "contracts/product/v1/migrations.yaml",
+      "offline-refresh-lease",
+      (document) => {
+        document.offline.acquiresRefreshLease = true;
+      },
+    );
+    expectRejected(
+      ["--migrations", migrations],
+      /offline must not acquire refresh leases/u,
+    );
+  });
+
+  it("rejects offline version-1 cache promotion", () => {
+    const migrations = mutatedYaml(
+      "contracts/product/v1/migrations.yaml",
+      "offline-cache-promotion",
+      (document) => {
+        document.offline.validV1Action = "best-effort-promote";
+      },
+    );
+    expectRejected(
+      ["--migrations", migrations],
+      /offline version-1 hits must remain read-only/u,
+    );
+  });
+
+  it("rejects cache promotion from an offline-capable trigger", () => {
+    const migrations = mutatedYaml(
+      "contracts/product/v1/migrations.yaml",
+      "cache-promotion-trigger",
+      (document) => {
+        const transition = document.transitions.find(
+          (entry: Record<string, unknown>) => entry.id === "cache-v1-to-v2",
+        );
+        transition.trigger =
+          "lazy-per-key-after-strict-successful-read-or-successful-refresh";
+      },
+    );
+    expectRejected(
+      ["--migrations", migrations],
+      /cache promotion must be online-only/u,
+    );
+  });
+
+  it("rejects cache promotion outside the online refresh lease", () => {
+    const migrations = mutatedYaml(
+      "contracts/product/v1/migrations.yaml",
+      "cache-promotion-lock",
+      (document) => {
+        const transition = document.transitions.find(
+          (entry: Record<string, unknown>) => entry.id === "cache-v1-to-v2",
+        );
+        transition.lock = "per-key-cache-v2-lease";
+      },
+    );
+    expectRejected(
+      ["--migrations", migrations],
+      /cache migration must share the online refresh lease/u,
     );
   });
 
