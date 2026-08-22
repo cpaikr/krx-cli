@@ -164,6 +164,50 @@ describe("Rust vertical-slice gate", () => {
     }
   });
 
+  it("recognizes declaration containment with Windows path separators", () => {
+    const moduleUrl = pathToFileURL(
+      join(
+        root,
+        "probes/rust-vertical-slice/node/scripts/path-containment.mjs",
+      ),
+    ).href;
+    const program = `
+      import { win32 } from "node:path";
+      import { isPathInside } from ${JSON.stringify(moduleUrl)};
+      const declarationRoot = "D:\\\\a\\\\krx-cli\\\\node_modules\\\\krx-cli\\\\dist";
+      process.stdout.write(JSON.stringify({
+        nested: isPathInside(
+          declarationRoot,
+          win32.join(declarationRoot, "generated", "node-operations.d.ts"),
+          win32,
+        ),
+        root: isPathInside(declarationRoot, declarationRoot, win32),
+        sibling: isPathInside(
+          declarationRoot,
+          win32.join(declarationRoot, "..", "dist-escape", "index.d.ts"),
+          win32,
+        ),
+        otherDrive: isPathInside(
+          declarationRoot,
+          "E:\\\\outside\\\\index.d.ts",
+          win32,
+        ),
+      }));
+    `;
+    const result = spawnSync(
+      process.execPath,
+      ["--input-type=module", "--eval", program],
+      { cwd: root, encoding: "utf8" },
+    );
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      nested: true,
+      root: true,
+      sibling: false,
+      otherDrive: false,
+    });
+  });
+
   it("rejects a hosted matrix that does not install the pinned toolchain", () => {
     const path = replacedText(
       ".github/workflows/rust-vertical-slice.yml",

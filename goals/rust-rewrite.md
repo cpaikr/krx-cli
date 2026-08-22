@@ -39,10 +39,10 @@ Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Next in-scope action
 
-Push the Windows packaging remediation and require a green hosted four-target
-and Node 22/24 certification retry, then deliver the contract-authority PR
-through review and merge. Production Rust remains blocked until that PR is
-complete.
+Push the Windows declaration-containment remediation and require a green hosted
+four-target and Node 22/24 certification retry, then deliver the
+contract-authority PR through review and merge. Production Rust remains blocked
+until that PR is complete.
 
 ### Evidence and blockers
 
@@ -73,8 +73,8 @@ complete.
   malformed public, state, error, target, and migration artifacts. Its checked
   projections include an exhaustive 425-entry CLI option matrix and generated
   Node and Rust operation/error types for all 31 operations.
-- `pnpm verify` passes 48 test files and 457 tests on the candidate-proof
-  checkpoint, including 68 targeted authority, product-contract, and
+- `pnpm verify` passes 48 test files and 458 tests on the candidate-proof
+  checkpoint, including 69 targeted authority, product-contract, and
   vertical-slice gate tests,
   production audit, the 13-scenario installed-package judge with all three
   named mutants rejected, and packed-artifact smoke for 31 schemas and 12
@@ -116,6 +116,14 @@ complete.
   The remediation invokes npm's JavaScript CLI with `node.exe`, adds a hosted
   path regression, preserves failure diagnostics, and updates the workflow to
   the current documented checkout, setup-node, and download-artifact majors.
+- Hosted retry
+  [32561033733](https://github.com/sjunepark/krx-cli/actions/runs/32561033733)
+  passed all four build jobs, including Windows x64 assembly, pack, and upload,
+  and six non-Windows clean-install consumers. Both Windows consumers installed
+  the artifact successfully before exposing a POSIX-separator assumption in
+  declaration containment. The checked fix uses `node:path` relative-path
+  semantics and an executable Win32 regression covering nested, root, sibling,
+  and cross-drive paths; its independent review is clean.
 - A six-mutant vertical-slice gate ties exact Rust dependencies, both workflow
   matrices, package exports, Node majors, and target identities to the frozen
   contracts and rejects cross-target portable-payload divergence. The canonical

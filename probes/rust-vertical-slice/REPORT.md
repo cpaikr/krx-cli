@@ -25,6 +25,13 @@ Hosted evidence on 2026-08-22:
   null status without stderr. The checked remediation invokes npm's JavaScript
   CLI with `node.exe`, reports child-process errors, and has a platform-path
   regression test.
+- [Run 32561033733](https://github.com/sjunepark/krx-cli/actions/runs/32561033733)
+  passed all four build jobs, including Windows x64 assembly, pack, and upload.
+  All six non-Windows Node consumers passed. Both Windows consumers installed
+  the exact archive before a declaration-containment assertion combined a
+  Windows root with a POSIX separator. The checked remediation uses native
+  relative-path semantics and tests nested, exact-root, sibling-escape, and
+  cross-drive Win32 paths.
 
 The remediation retry must pass four target builds and eight clean-install
 Node consumers, then compare all eight reports, before this report can be

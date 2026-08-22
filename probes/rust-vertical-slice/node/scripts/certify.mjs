@@ -18,6 +18,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { installedBinCommand } from "../../../../scripts/package-smoke-command.mjs";
 import { resolveNpmCommand } from "./npm-command.mjs";
+import { isPathInside } from "./path-containment.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const probe = resolve(here, "../..");
@@ -107,8 +108,8 @@ try {
         ".d.ts",
       );
       assert.ok(
-        resolved.startsWith(`${declarationRoot}/`) ||
-          resolved === declarationRoot,
+        isPathInside(declarationRoot, resolved),
+        `declaration import ${match[1]} escapes the package declaration root`,
       );
       assert.ok(
         existsSync(resolved),
