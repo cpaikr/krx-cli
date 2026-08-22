@@ -14,7 +14,8 @@
       "cache",
       "market",
       "watchlist",
-      "version"
+      "version",
+      "serve"
     ],
     "options": [
       "version",
@@ -35,8 +36,7 @@
       "save",
       "retries",
       "help"
-    ],
-    "forbiddenCommands": ["update"]
+    ]
   },
   { "path": ["auth"], "commands": ["set", "remove", "status", "check"] },
   { "path": ["auth", "set"], "options": ["stdin", "help"] },
@@ -72,6 +72,7 @@
   { "path": ["cache"], "commands": ["status", "clear"] },
   { "path": ["cache", "status"] },
   { "path": ["cache", "clear"] },
+  { "path": ["serve"], "options": ["port", "host", "help"] },
   { "path": ["market"], "commands": ["summary"] },
   { "path": ["market", "summary"], "options": ["date", "help"] },
   {

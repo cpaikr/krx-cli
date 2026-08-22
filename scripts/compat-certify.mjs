@@ -9,13 +9,19 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import process from "node:process";
+import { clearTimeout, setTimeout } from "node:timers";
 import { fileURLToPath } from "node:url";
 import { runCompatibilityJudge } from "./compat-judge.mjs";
 import { parseNpmPackReport } from "./package-smoke-command.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const temporaryRoot = await mkdtemp(join(tmpdir(), "krx-compat-certify-"));
+const packageManifest = JSON.parse(
+  await readFile(resolve(repositoryRoot, "package.json"), "utf8"),
+);
 const isWindows = process.platform === "win32";
+let npm;
+let temporaryRoot;
 
 async function resolveNpmCommand() {
   if (!isWindows) return { args: [], command: "npm" };
@@ -47,7 +53,10 @@ function run(
     child.stdout.on("data", (chunk) => (stdout += chunk.toString()));
     child.stderr.on("data", (chunk) => (stderr += chunk.toString()));
     const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
-    child.on("error", reject);
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
     child.on("close", (code) => {
       clearTimeout(timer);
       if (code !== 0) {
@@ -58,8 +67,6 @@ function run(
     });
   });
 }
-
-const npm = await resolveNpmCommand();
 
 async function pack() {
   const destination = join(temporaryRoot, "pack");
@@ -109,7 +116,13 @@ function failures(report) {
 }
 
 async function mutateInstalledCli(root, source, target) {
-  const cliPath = join(root, "node_modules", "krx-cli", "dist", "cli.js");
+  const cliPath = join(
+    root,
+    "node_modules",
+    ...packageManifest.name.split("/"),
+    "dist",
+    "cli.js",
+  );
   const original = await readFile(cliPath, "utf8");
   const occurrences = original.split(source).length - 1;
   if (occurrences !== 1) {
@@ -128,6 +141,9 @@ function requireSingleFailure(report, scenarioId, mutantName) {
 }
 
 try {
+  npm = await resolveNpmCommand();
+  await access(resolve(repositoryRoot, "dist/cli.js"));
+  temporaryRoot = await mkdtemp(join(tmpdir(), "krx-compat-certify-"));
   const tarball = await pack();
   const baselineRoot = await install(tarball, "baseline");
   const baseline = await runCompatibilityJudge(baselineRoot);
@@ -178,5 +194,6 @@ try {
       "the no-data exit, schema, and adjustment mutants were rejected by their named scenarios\n",
   );
 } finally {
-  await rm(temporaryRoot, { recursive: true, force: true });
+  if (temporaryRoot !== undefined)
+    await rm(temporaryRoot, { recursive: true, force: true });
 }

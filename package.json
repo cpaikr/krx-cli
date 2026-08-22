@@ -20,7 +20,7 @@
     "test:package": "node scripts/package-smoke.mjs",
     "test:compat": "pnpm build && node scripts/compat-certify.mjs",
     "audit:prod": "pnpm audit --prod --audit-level low",
-    "lint": "eslint src/",
+    "lint": "eslint src/ scripts/compat-*.mjs",
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "typecheck": "tsc --noEmit",
     "test:e2e": "vitest run --config tests/vitest.config.e2e.ts",

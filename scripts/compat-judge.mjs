@@ -3,10 +3,16 @@ import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import process from "node:process";
+import { clearTimeout, setTimeout } from "node:timers";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { installedBinCommand } from "./package-smoke-command.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const packageManifest = JSON.parse(
+  await readFile(resolve(repositoryRoot, "package.json"), "utf8"),
+);
 const scenarios = JSON.parse(
   await readFile(
     resolve(repositoryRoot, "tests/compat/scenarios.json"),
@@ -109,6 +115,10 @@ async function seedCache(home, name) {
         : [];
   for (const fixtureName of requested) {
     const fixture = endpointFixtures[fixtureName];
+    assertion(
+      fixture !== undefined,
+      `cache fixture ${fixtureName} was not defined`,
+    );
     await writeCacheEntry(home, {
       data: fixture.data,
       date: fixtureDate,
@@ -186,7 +196,10 @@ function run(command, args, options) {
     child.stdout.on("data", (chunk) => (stdout += chunk.toString()));
     child.stderr.on("data", (chunk) => (stderr += chunk.toString()));
     const timer = setTimeout(() => child.kill("SIGKILL"), 15_000);
-    child.on("error", reject);
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
     child.on("close", (code, signal) => {
       clearTimeout(timer);
       resolveRun({
@@ -203,13 +216,27 @@ function assertion(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+export function sameJsonValue(actual, expected) {
+  return isDeepStrictEqual(actual, expected);
+}
+
 function compareJsonSubset(actual, expected, path = "result") {
   for (const [key, value] of Object.entries(expected)) {
     assertion(
-      JSON.stringify(actual?.[key]) === JSON.stringify(value),
+      sameJsonValue(actual?.[key], value),
       `${path}.${key} did not match`,
     );
   }
+}
+
+function assertSetEquals(actual, expected, label) {
+  const expectedSet = new Set(expected);
+  const missing = [...expectedSet].filter((name) => !actual.has(name));
+  const extra = [...actual].filter((name) => !expectedSet.has(name));
+  assertion(
+    missing.length === 0 && extra.length === 0,
+    `${label} differed (missing: ${missing.join(", ") || "none"}; extra: ${extra.join(", ") || "none"})`,
+  );
 }
 
 function helpCommands(stdout) {
@@ -231,9 +258,23 @@ function helpCommands(stdout) {
 }
 
 function helpOptions(stdout) {
-  return new Set(
-    stdout.match(/--[a-z][a-z0-9-]*/g)?.map((name) => name.slice(2)),
-  );
+  const options = new Set();
+  let inOptions = false;
+  for (const line of stdout.split("\n")) {
+    if (line.trim() === "Options:") {
+      inOptions = true;
+      continue;
+    }
+    if (inOptions && /^\S.*:$/.test(line)) {
+      inOptions = false;
+      continue;
+    }
+    const match = inOptions
+      ? /^ {2}(?:-[A-Za-z],\s+)?--([a-z][a-z0-9-]*)\b/.exec(line)
+      : null;
+    if (match) options.add(match[1]);
+  }
+  return options;
 }
 
 async function assessCommandInventory(installRoot, runOptions) {
@@ -253,35 +294,44 @@ async function assessCommandInventory(installRoot, runOptions) {
     assertion(result.stderr === "", `${label} help wrote to stderr`);
     const commands = helpCommands(result.stdout);
     const optionNames = helpOptions(result.stdout);
-    for (const name of entry.commands ?? [])
-      assertion(commands.has(name), `${label} help omitted command ${name}`);
-    for (const name of entry.forbiddenCommands ?? [])
-      assertion(!commands.has(name), `${label} help included command ${name}`);
-    for (const name of entry.options ?? [])
-      assertion(
-        optionNames.has(name),
-        `${label} help omitted option --${name}`,
-      );
+    assertSetEquals(commands, entry.commands ?? [], `${label} commands`);
+    assertSetEquals(optionNames, entry.options ?? ["help"], `${label} options`);
   }
 }
 
-function assessScenario(scenario, result) {
+function expectedText(text, installedVersion) {
+  return text.replaceAll("{{version}}", installedVersion);
+}
+
+function assessScenario(scenario, result, installedVersion) {
   const expected = scenario.expect;
   assertion(result.signal === null, `terminated by ${result.signal}`);
   assertion(result.code === expected.code, `exited ${result.code}`);
   if (expected.stdout !== undefined)
-    assertion(result.stdout === expected.stdout, "stdout did not match");
+    assertion(
+      result.stdout === expectedText(expected.stdout, installedVersion),
+      "stdout did not match",
+    );
   if (expected.stderr !== undefined)
-    assertion(result.stderr === expected.stderr, "stderr did not match");
+    assertion(
+      result.stderr === expectedText(expected.stderr, installedVersion),
+      "stderr did not match",
+    );
   for (const text of expected.stdoutIncludes ?? [])
-    assertion(result.stdout.includes(text), `stdout omitted ${text}`);
+    assertion(
+      result.stdout.includes(expectedText(text, installedVersion)),
+      `stdout omitted ${text}`,
+    );
   for (const text of expected.stdoutExcludes ?? [])
     assertion(
-      !result.stdout.includes(text),
+      !result.stdout.includes(expectedText(text, installedVersion)),
       `stdout unexpectedly included ${text}`,
     );
   for (const text of expected.stderrIncludes ?? [])
-    assertion(result.stderr.includes(text), `stderr omitted ${text}`);
+    assertion(
+      result.stderr.includes(expectedText(text, installedVersion)),
+      `stderr omitted ${text}`,
+    );
 
   if (
     expected.json !== undefined ||
@@ -294,14 +344,10 @@ function assessScenario(scenario, result) {
   ) {
     const parsed = JSON.parse(result.stdout);
     if (expected.json !== undefined)
-      assertion(
-        JSON.stringify(parsed) === JSON.stringify(expected.json),
-        "JSON did not match",
-      );
+      assertion(sameJsonValue(parsed, expected.json), "JSON did not match");
     if (expected.jsonFixture !== undefined)
       assertion(
-        JSON.stringify(parsed) ===
-          JSON.stringify(fixtures[expected.jsonFixture]),
+        sameJsonValue(parsed, fixtures[expected.jsonFixture]),
         "fixture JSON did not match",
       );
     if (expected.jsonSubset !== undefined)
@@ -312,13 +358,17 @@ function assessScenario(scenario, result) {
         "completeness state did not match",
       );
       assertion(
-        JSON.stringify(parsed.completeness?.succeeded) ===
-          JSON.stringify(expected.completeness.succeeded),
+        sameJsonValue(
+          parsed.completeness?.succeeded,
+          expected.completeness.succeeded,
+        ),
         "completeness succeeded partition did not match",
       );
       assertion(
-        JSON.stringify(parsed.completeness?.failed?.map(({ id }) => id)) ===
-          JSON.stringify(expected.completeness.failed),
+        sameJsonValue(
+          parsed.completeness?.failed?.map(({ id }) => id),
+          expected.completeness.failed,
+        ),
         "completeness failed partition did not match",
       );
     }
@@ -343,18 +393,38 @@ function assessScenario(scenario, result) {
     }
     if (expected.schemaOracle === true)
       assertion(
-        JSON.stringify(parsed) === JSON.stringify(schemaOracle),
+        sameJsonValue(parsed, schemaOracle),
         "complete schema oracle did not match",
       );
     if (expected.adjustmentOracle === true)
       assertion(
-        JSON.stringify(parsed) === JSON.stringify(adjustedRangeOracle),
+        sameJsonValue(parsed, adjustedRangeOracle),
         "complete adjusted-range oracle did not match",
       );
   }
 }
 
 export async function runCompatibilityJudge(installRoot) {
+  const installedManifest = JSON.parse(
+    await readFile(
+      resolve(
+        installRoot,
+        "node_modules",
+        ...packageManifest.name.split("/"),
+        "package.json",
+      ),
+      "utf8",
+    ),
+  );
+  assertion(
+    installedManifest.name === packageManifest.name,
+    `installed package name was ${installedManifest.name ?? "missing"}`,
+  );
+  assertion(
+    typeof installedManifest.version === "string" &&
+      installedManifest.version.length > 0,
+    "installed package version was missing",
+  );
   const report = [];
   for (const scenario of scenarios) {
     const scenarioRoot = await mkdtemp(join(tmpdir(), "krx-compat-scenario-"));
@@ -365,42 +435,42 @@ export async function runCompatibilityJudge(installRoot) {
         mkdir(home, { recursive: true, mode: 0o700 }),
         mkdir(cwd, { recursive: true, mode: 0o700 }),
       ]);
-      await seedCache(home, scenario.cache);
-      await seedQuota(home);
-      if (scenario.commandInventory === true) {
-        try {
+      let result;
+      try {
+        await seedCache(home, scenario.cache);
+        await seedQuota(home);
+        if (scenario.commandInventory === true) {
           await assessCommandInventory(installRoot, {
             cwd,
             env: processEnvironment(home, scenario.withoutApiKey),
           });
-          report.push({ id: scenario.id, status: "passed" });
-        } catch (error) {
-          report.push({
-            id: scenario.id,
-            status: "failed",
-            reason: error instanceof Error ? error.message : String(error),
+        } else {
+          const command = installedBinCommand(
+            installRoot,
+            "krx",
+            scenario.args,
+          );
+          result = await run(command.command, command.args, {
+            cwd,
+            env: processEnvironment(home, scenario.withoutApiKey),
           });
+          assessScenario(scenario, result, installedManifest.version);
         }
-        continue;
-      }
-      const command = installedBinCommand(installRoot, "krx", scenario.args);
-      const result = await run(command.command, command.args, {
-        cwd,
-        env: processEnvironment(home, scenario.withoutApiKey),
-      });
-      try {
-        assessScenario(scenario, result);
         report.push({ id: scenario.id, status: "passed" });
       } catch (error) {
         report.push({
           id: scenario.id,
           status: "failed",
           reason: error instanceof Error ? error.message : String(error),
-          observation: {
-            code: result.code,
-            stderr: result.stderr,
-            stdout: result.stdout,
-          },
+          ...(result
+            ? {
+                observation: {
+                  code: result.code,
+                  stderr: result.stderr,
+                  stdout: result.stdout,
+                },
+              }
+            : {}),
         });
       }
     } finally {

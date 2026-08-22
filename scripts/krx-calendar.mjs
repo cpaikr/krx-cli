@@ -102,7 +102,12 @@ async function fetchOfficialYear(year) {
     if (Object.hasOwn(closures, date)) {
       throw new Error(`Official KRX calendar returned duplicate date ${date}`);
     }
-    const officialName = String(row.holdy_nm || "KRX market holiday");
+    const officialName = String(row.holdy_nm ?? "").trim();
+    if (!officialName) {
+      throw new Error(
+        `Official KRX calendar returned an empty holiday label for ${date}`,
+      );
+    }
     closures[date] = CANONICAL_HOLIDAY_NAMES.get(officialName) ?? officialName;
   }
   return Object.fromEntries(

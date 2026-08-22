@@ -2,7 +2,7 @@
   {
     "id": "version",
     "args": ["--version"],
-    "expect": { "code": 0, "stdout": "1.8.1\n", "stderr": "" }
+    "expect": { "code": 0, "stdout": "{{version}}\n", "stderr": "" }
   },
   {
     "id": "root-help",
