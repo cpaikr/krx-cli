@@ -13,11 +13,12 @@ unverifiable adjustment fails without returning price rows. The result is
 suitable for price-history analysis without claiming cash-dividend total
 returns.
 
-## Current state
+## Delivered baseline
 
-- Stock daily endpoints currently return raw KRX OHLCV rows. Date ranges fetch
-  and merge one full-market response per requestable trading day before
-  filtering by security code.
+- Stock daily endpoints return raw KRX OHLCV rows and eligible exact-security
+  ranges add fail-closed adjusted values. Date ranges fetch and merge one
+  full-market response per requestable trading day before filtering by
+  security code.
 - KRX supplies `TDD_CLSPRC` and `CMPPREVDD_PRC`. For a later observation `i`,
   `TDD_CLSPRC[i] - CMPPREVDD_PRC[i]` is its reference price. A mismatch between
   that reference price and the preceding observed raw close identifies a KRX
@@ -30,8 +31,9 @@ returns.
   dividends, splits and consolidations, and other changes to security value.
   The current API does not provide the cash-dividend data required for an
   accurate total-return series.
-- The range-result completeness envelope already distinguishes complete,
-  partial, empty, and failed input. There is no adjusted-price implementation.
+- The range-result completeness envelope distinguishes complete, partial,
+  empty, and failed input. The delivered adjustment implementation requires
+  complete, uniquely identified, internally consistent input.
 
 ## Public contract
 

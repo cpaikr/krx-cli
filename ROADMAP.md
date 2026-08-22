@@ -6,7 +6,10 @@ _None._
 
 ## Plans
 
-_None._
+1. [Rewrite krx-cli as a Rust-backed Node SDK and CLI](plans/rust-rewrite.md)
+   — queued. Preserve the documented CLI contract while moving KRX protocol,
+   reliability, credentials, caching, and domain policy into Rust; add a public
+   Node SDK, remove MCP, and prepare private native release artifacts.
 
 ## Tasks
 
@@ -21,3 +24,7 @@ Continue its operational obligations: run the credentialed weekly contract
 drift check, update the checked-in KRX calendar before uncovered years or
 exceptional closures, and keep dependencies and GitHub Actions current without
 weakening the production audit or packed-artifact release gate.
+
+These obligations remain in force during and after the queued rewrite. The
+rewrite may replace their implementation only after its cutover and acceptance
+gates pass; it does not remove the operational duties.
