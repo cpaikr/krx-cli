@@ -1,0 +1,3044 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://krx-cli.invalid/contracts/state/cache-v2-generated.schema.json",
+  "title": "Canonical cache entry",
+  "type": "object",
+  "required": [
+    "version",
+    "operationId",
+    "schemaSha256",
+    "fetchedAt",
+    "params",
+    "rows"
+  ],
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "operationId": {
+      "type": "string",
+      "enum": [
+        "index_krx_dd_trd",
+        "index_kospi_dd_trd",
+        "index_kosdaq_dd_trd",
+        "index_bon_dd_trd",
+        "index_drvprod_dd_trd",
+        "stock_stk_bydd_trd",
+        "stock_ksq_bydd_trd",
+        "stock_knx_bydd_trd",
+        "stock_sw_bydd_trd",
+        "stock_sr_bydd_trd",
+        "stock_stk_isu_base_info",
+        "stock_ksq_isu_base_info",
+        "stock_knx_isu_base_info",
+        "etp_etf_bydd_trd",
+        "etp_etn_bydd_trd",
+        "etp_elw_bydd_trd",
+        "bond_kts_bydd_trd",
+        "bond_bnd_bydd_trd",
+        "bond_smb_bydd_trd",
+        "derivative_fut_bydd_trd",
+        "derivative_eqsfu_stk_bydd_trd",
+        "derivative_eqkfu_ksq_bydd_trd",
+        "derivative_opt_bydd_trd",
+        "derivative_eqsop_bydd_trd",
+        "derivative_eqkop_bydd_trd",
+        "commodity_oil_bydd_trd",
+        "commodity_gold_bydd_trd",
+        "commodity_ets_bydd_trd",
+        "esg_sri_bond_info",
+        "esg_esg_etp_info",
+        "esg_esg_index_info"
+      ]
+    },
+    "schemaSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "fetchedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "params": {
+      "$ref": "#/$defs/params"
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1
+    }
+  },
+  "additionalProperties": false,
+  "x-krx-openapi-row-discriminator": {
+    "operationSelector": "operationId",
+    "rowsProperty": "rows",
+    "source": "../../../krx/openapi.yaml"
+  },
+  "x-krx-schema-digest": {
+    "algorithm": "sha256",
+    "canonicalization": "RFC8785",
+    "document": ["operationId", "requestSchema", "responseSchema"]
+  },
+  "$defs": {
+    "params": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "string"
+          }
+        ],
+        "items": false,
+        "minItems": 2,
+        "maxItems": 2
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "index_krx_dd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "IDX_CLSS",
+                "IDX_NM",
+                "CLSPRC_IDX",
+                "CMPPREVDD_IDX",
+                "FLUC_RT",
+                "OPNPRC_IDX",
+                "HGPRC_IDX",
+                "LWPRC_IDX",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "IDX_CLSS": {
+                  "type": "string",
+                  "description": "계열구분"
+                },
+                "IDX_NM": {
+                  "type": "string",
+                  "description": "지수명"
+                },
+                "CLSPRC_IDX": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_IDX": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "OPNPRC_IDX": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "HGPRC_IDX": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "LWPRC_IDX": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "상장시가총액"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "index_kospi_dd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "IDX_CLSS",
+                "IDX_NM",
+                "CLSPRC_IDX",
+                "CMPPREVDD_IDX",
+                "FLUC_RT",
+                "OPNPRC_IDX",
+                "HGPRC_IDX",
+                "LWPRC_IDX",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "IDX_CLSS": {
+                  "type": "string",
+                  "description": "계열구분"
+                },
+                "IDX_NM": {
+                  "type": "string",
+                  "description": "지수명"
+                },
+                "CLSPRC_IDX": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_IDX": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "OPNPRC_IDX": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "HGPRC_IDX": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "LWPRC_IDX": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "상장시가총액"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "index_kosdaq_dd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "IDX_CLSS",
+                "IDX_NM",
+                "CLSPRC_IDX",
+                "CMPPREVDD_IDX",
+                "FLUC_RT",
+                "OPNPRC_IDX",
+                "HGPRC_IDX",
+                "LWPRC_IDX",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "IDX_CLSS": {
+                  "type": "string",
+                  "description": "계열구분"
+                },
+                "IDX_NM": {
+                  "type": "string",
+                  "description": "지수명"
+                },
+                "CLSPRC_IDX": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_IDX": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "OPNPRC_IDX": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "HGPRC_IDX": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "LWPRC_IDX": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "상장시가총액"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "index_bon_dd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "BND_IDX_GRP_NM",
+                "TOT_EARNG_IDX",
+                "TOT_EARNG_IDX_CMPPREVDD",
+                "NETPRC_IDX",
+                "NETPRC_IDX_CMPPREVDD",
+                "ZERO_REINVST_IDX",
+                "ZERO_REINVST_IDX_CMPPREVDD",
+                "CALL_REINVST_IDX",
+                "CALL_REINVST_IDX_CMPPREVDD",
+                "MKT_PRC_IDX",
+                "MKT_PRC_IDX_CMPPREVDD",
+                "AVG_DURATION",
+                "AVG_CONVEXITY_PRC",
+                "BND_IDX_AVG_YD"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "BND_IDX_GRP_NM": {
+                  "type": "string",
+                  "description": "채권지수그룹명"
+                },
+                "TOT_EARNG_IDX": {
+                  "type": "string",
+                  "description": "총수익지수"
+                },
+                "TOT_EARNG_IDX_CMPPREVDD": {
+                  "type": "string",
+                  "description": "총수익지수 전일대비"
+                },
+                "NETPRC_IDX": {
+                  "type": "string",
+                  "description": "순가격지수"
+                },
+                "NETPRC_IDX_CMPPREVDD": {
+                  "type": "string",
+                  "description": "순가격지수 전일대비"
+                },
+                "ZERO_REINVST_IDX": {
+                  "type": "string",
+                  "description": "제로재투자지수"
+                },
+                "ZERO_REINVST_IDX_CMPPREVDD": {
+                  "type": "string",
+                  "description": "제로재투자지수 전일대비"
+                },
+                "CALL_REINVST_IDX": {
+                  "type": "string",
+                  "description": "콜재투자지수"
+                },
+                "CALL_REINVST_IDX_CMPPREVDD": {
+                  "type": "string",
+                  "description": "콜재투자지수 전일대비"
+                },
+                "MKT_PRC_IDX": {
+                  "type": "string",
+                  "description": "시가지수"
+                },
+                "MKT_PRC_IDX_CMPPREVDD": {
+                  "type": "string",
+                  "description": "시가지수 전일대비"
+                },
+                "AVG_DURATION": {
+                  "type": "string",
+                  "description": "평균듀레이션"
+                },
+                "AVG_CONVEXITY_PRC": {
+                  "type": "string",
+                  "description": "평균컨벡시티"
+                },
+                "BND_IDX_AVG_YD": {
+                  "type": "string",
+                  "description": "채권지수 평균수익률"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "index_drvprod_dd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "IDX_CLSS",
+                "IDX_NM",
+                "CLSPRC_IDX",
+                "CMPPREVDD_IDX",
+                "FLUC_RT",
+                "OPNPRC_IDX",
+                "HGPRC_IDX",
+                "LWPRC_IDX"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "IDX_CLSS": {
+                  "type": "string",
+                  "description": "계열구분"
+                },
+                "IDX_NM": {
+                  "type": "string",
+                  "description": "지수명"
+                },
+                "CLSPRC_IDX": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_IDX": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "OPNPRC_IDX": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "HGPRC_IDX": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "LWPRC_IDX": {
+                  "type": "string",
+                  "description": "저가"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "stock_stk_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_CD",
+                "ISU_NM",
+                "MKT_NM",
+                "SECT_TP_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "FLUC_RT",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP",
+                "LIST_SHRS"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "SECT_TP_NM": {
+                  "type": "string",
+                  "description": "소속부"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "시가총액"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "stock_ksq_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_CD",
+                "ISU_NM",
+                "MKT_NM",
+                "SECT_TP_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "FLUC_RT",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP",
+                "LIST_SHRS"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "SECT_TP_NM": {
+                  "type": "string",
+                  "description": "소속부"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "시가총액"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "stock_knx_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_CD",
+                "ISU_NM",
+                "MKT_NM",
+                "SECT_TP_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "FLUC_RT",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP",
+                "LIST_SHRS"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "SECT_TP_NM": {
+                  "type": "string",
+                  "description": "소속부"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "시가총액"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "stock_sw_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_CD",
+                "ISU_NM",
+                "MKT_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "FLUC_RT",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP",
+                "LIST_SHRS",
+                "EXER_PRC",
+                "EXST_STRT_DD",
+                "EXST_END_DD",
+                "TARSTK_ISU_SRT_CD",
+                "TARSTK_ISU_NM",
+                "TARSTK_ISU_PRSNT_PRC"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "시가총액"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                },
+                "EXER_PRC": {
+                  "type": "string",
+                  "description": "행사가격"
+                },
+                "EXST_STRT_DD": {
+                  "type": "string",
+                  "description": "행사시작일"
+                },
+                "EXST_END_DD": {
+                  "type": "string",
+                  "description": "행사종료일"
+                },
+                "TARSTK_ISU_SRT_CD": {
+                  "type": "string",
+                  "description": "대상주식 단축코드"
+                },
+                "TARSTK_ISU_NM": {
+                  "type": "string",
+                  "description": "대상주식 종목명"
+                },
+                "TARSTK_ISU_PRSNT_PRC": {
+                  "type": "string",
+                  "description": "대상주식 현재가"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "stock_sr_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_CD",
+                "ISU_NM",
+                "MKT_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "FLUC_RT",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP",
+                "LIST_SHRS",
+                "ISU_PRC",
+                "DELIST_DD",
+                "TARSTK_ISU_SRT_CD",
+                "TARSTK_ISU_NM",
+                "TARSTK_ISU_PRSNT_PRC"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "시가총액"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                },
+                "ISU_PRC": {
+                  "type": "string",
+                  "description": "발행가"
+                },
+                "DELIST_DD": {
+                  "type": "string",
+                  "description": "상장폐지일"
+                },
+                "TARSTK_ISU_SRT_CD": {
+                  "type": "string",
+                  "description": "대상주식 단축코드"
+                },
+                "TARSTK_ISU_NM": {
+                  "type": "string",
+                  "description": "대상주식 종목명"
+                },
+                "TARSTK_ISU_PRSNT_PRC": {
+                  "type": "string",
+                  "description": "대상주식 현재가"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "stock_stk_isu_base_info"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "ISU_CD",
+                "ISU_SRT_CD",
+                "ISU_NM",
+                "ISU_ABBRV",
+                "ISU_ENG_NM",
+                "LIST_DD",
+                "MKT_TP_NM",
+                "SECUGRP_NM",
+                "SECT_TP_NM",
+                "KIND_STKCERT_TP_NM",
+                "PARVAL",
+                "LIST_SHRS"
+              ],
+              "properties": {
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "표준코드"
+                },
+                "ISU_SRT_CD": {
+                  "type": "string",
+                  "description": "단축코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "한글종목명"
+                },
+                "ISU_ABBRV": {
+                  "type": "string",
+                  "description": "한글종목약명"
+                },
+                "ISU_ENG_NM": {
+                  "type": "string",
+                  "description": "영문종목명"
+                },
+                "LIST_DD": {
+                  "type": "string",
+                  "description": "상장일"
+                },
+                "MKT_TP_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "SECUGRP_NM": {
+                  "type": "string",
+                  "description": "증권구분"
+                },
+                "SECT_TP_NM": {
+                  "type": "string",
+                  "description": "소속부"
+                },
+                "KIND_STKCERT_TP_NM": {
+                  "type": "string",
+                  "description": "주식종류"
+                },
+                "PARVAL": {
+                  "type": "string",
+                  "description": "액면가"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "stock_ksq_isu_base_info"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "ISU_CD",
+                "ISU_SRT_CD",
+                "ISU_NM",
+                "ISU_ABBRV",
+                "ISU_ENG_NM",
+                "LIST_DD",
+                "MKT_TP_NM",
+                "SECUGRP_NM",
+                "SECT_TP_NM",
+                "KIND_STKCERT_TP_NM",
+                "PARVAL",
+                "LIST_SHRS"
+              ],
+              "properties": {
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "표준코드"
+                },
+                "ISU_SRT_CD": {
+                  "type": "string",
+                  "description": "단축코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "한글종목명"
+                },
+                "ISU_ABBRV": {
+                  "type": "string",
+                  "description": "한글종목약명"
+                },
+                "ISU_ENG_NM": {
+                  "type": "string",
+                  "description": "영문종목명"
+                },
+                "LIST_DD": {
+                  "type": "string",
+                  "description": "상장일"
+                },
+                "MKT_TP_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "SECUGRP_NM": {
+                  "type": "string",
+                  "description": "증권구분"
+                },
+                "SECT_TP_NM": {
+                  "type": "string",
+                  "description": "소속부"
+                },
+                "KIND_STKCERT_TP_NM": {
+                  "type": "string",
+                  "description": "주식종류"
+                },
+                "PARVAL": {
+                  "type": "string",
+                  "description": "액면가"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "stock_knx_isu_base_info"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "ISU_CD",
+                "ISU_SRT_CD",
+                "ISU_NM",
+                "ISU_ABBRV",
+                "ISU_ENG_NM",
+                "LIST_DD",
+                "MKT_TP_NM",
+                "SECUGRP_NM",
+                "SECT_TP_NM",
+                "KIND_STKCERT_TP_NM",
+                "PARVAL",
+                "LIST_SHRS"
+              ],
+              "properties": {
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "표준코드"
+                },
+                "ISU_SRT_CD": {
+                  "type": "string",
+                  "description": "단축코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "한글종목명"
+                },
+                "ISU_ABBRV": {
+                  "type": "string",
+                  "description": "한글종목약명"
+                },
+                "ISU_ENG_NM": {
+                  "type": "string",
+                  "description": "영문종목명"
+                },
+                "LIST_DD": {
+                  "type": "string",
+                  "description": "상장일"
+                },
+                "MKT_TP_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "SECUGRP_NM": {
+                  "type": "string",
+                  "description": "증권구분"
+                },
+                "SECT_TP_NM": {
+                  "type": "string",
+                  "description": "소속부"
+                },
+                "KIND_STKCERT_TP_NM": {
+                  "type": "string",
+                  "description": "주식종류"
+                },
+                "PARVAL": {
+                  "type": "string",
+                  "description": "액면가"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "etp_etf_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "FLUC_RT",
+                "NAV",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP",
+                "INVSTASST_NETASST_TOTAMT",
+                "LIST_SHRS",
+                "IDX_IND_NM",
+                "OBJ_STKPRC_IDX",
+                "CMPPREVDD_IDX",
+                "FLUC_RT_IDX"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "NAV": {
+                  "type": "string",
+                  "description": "순자산가치(NAV)"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "시가총액"
+                },
+                "INVSTASST_NETASST_TOTAMT": {
+                  "type": "string",
+                  "description": "순자산총액"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                },
+                "IDX_IND_NM": {
+                  "type": "string",
+                  "description": "기초지수명"
+                },
+                "OBJ_STKPRC_IDX": {
+                  "type": "string",
+                  "description": "기초지수종가"
+                },
+                "CMPPREVDD_IDX": {
+                  "type": "string",
+                  "description": "기초지수 전일대비"
+                },
+                "FLUC_RT_IDX": {
+                  "type": "string",
+                  "description": "기초지수 등락률(%)"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "etp_etn_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "FLUC_RT",
+                "PER1SECU_INDIC_VAL",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP",
+                "INDIC_VAL_AMT",
+                "LIST_SHRS",
+                "IDX_IND_NM",
+                "OBJ_STKPRC_IDX",
+                "CMPPREVDD_IDX",
+                "FLUC_RT_IDX"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "PER1SECU_INDIC_VAL": {
+                  "type": "string",
+                  "description": "1증권당 지표가치"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "시가총액"
+                },
+                "INDIC_VAL_AMT": {
+                  "type": "string",
+                  "description": "지표가치총액"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                },
+                "IDX_IND_NM": {
+                  "type": "string",
+                  "description": "기초지수명"
+                },
+                "OBJ_STKPRC_IDX": {
+                  "type": "string",
+                  "description": "기초지수종가"
+                },
+                "CMPPREVDD_IDX": {
+                  "type": "string",
+                  "description": "기초지수 전일대비"
+                },
+                "FLUC_RT_IDX": {
+                  "type": "string",
+                  "description": "기초지수 등락률(%)"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "etp_elw_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "MKTCAP",
+                "LIST_SHRS",
+                "ULY_NM",
+                "ULY_PRC",
+                "CMPPREVDD_PRC_ULY",
+                "FLUC_RT_ULY"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "MKTCAP": {
+                  "type": "string",
+                  "description": "시가총액"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                },
+                "ULY_NM": {
+                  "type": "string",
+                  "description": "기초자산명"
+                },
+                "ULY_PRC": {
+                  "type": "string",
+                  "description": "기초자산가격"
+                },
+                "CMPPREVDD_PRC_ULY": {
+                  "type": "string",
+                  "description": "기초자산 전일대비"
+                },
+                "FLUC_RT_ULY": {
+                  "type": "string",
+                  "description": "기초자산 등락률(%)"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "bond_kts_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "MKT_NM",
+                "ISU_CD",
+                "ISU_NM",
+                "BND_EXP_TP_NM",
+                "GOVBND_ISU_TP_NM",
+                "CLSPRC",
+                "CMPPREVDD_PRC",
+                "CLSPRC_YD",
+                "OPNPRC",
+                "OPNPRC_YD",
+                "HGPRC",
+                "HGPRC_YD",
+                "LWPRC",
+                "LWPRC_YD",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "BND_EXP_TP_NM": {
+                  "type": "string",
+                  "description": "채권만기구분"
+                },
+                "GOVBND_ISU_TP_NM": {
+                  "type": "string",
+                  "description": "국채발행유형"
+                },
+                "CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "CLSPRC_YD": {
+                  "type": "string",
+                  "description": "종가수익률"
+                },
+                "OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "OPNPRC_YD": {
+                  "type": "string",
+                  "description": "시가수익률"
+                },
+                "HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "HGPRC_YD": {
+                  "type": "string",
+                  "description": "고가수익률"
+                },
+                "LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "LWPRC_YD": {
+                  "type": "string",
+                  "description": "저가수익률"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "bond_bnd_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "MKT_NM",
+                "ISU_CD",
+                "ISU_NM",
+                "CLSPRC",
+                "CMPPREVDD_PRC",
+                "CLSPRC_YD",
+                "OPNPRC",
+                "OPNPRC_YD",
+                "HGPRC",
+                "HGPRC_YD",
+                "LWPRC",
+                "LWPRC_YD",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "CLSPRC_YD": {
+                  "type": "string",
+                  "description": "종가수익률"
+                },
+                "OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "OPNPRC_YD": {
+                  "type": "string",
+                  "description": "시가수익률"
+                },
+                "HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "HGPRC_YD": {
+                  "type": "string",
+                  "description": "고가수익률"
+                },
+                "LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "LWPRC_YD": {
+                  "type": "string",
+                  "description": "저가수익률"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "bond_smb_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "MKT_NM",
+                "ISU_CD",
+                "ISU_NM",
+                "CLSPRC",
+                "CMPPREVDD_PRC",
+                "CLSPRC_YD",
+                "OPNPRC",
+                "OPNPRC_YD",
+                "HGPRC",
+                "HGPRC_YD",
+                "LWPRC",
+                "LWPRC_YD",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "CLSPRC_YD": {
+                  "type": "string",
+                  "description": "종가수익률"
+                },
+                "OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "OPNPRC_YD": {
+                  "type": "string",
+                  "description": "시가수익률"
+                },
+                "HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "HGPRC_YD": {
+                  "type": "string",
+                  "description": "고가수익률"
+                },
+                "LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "LWPRC_YD": {
+                  "type": "string",
+                  "description": "저가수익률"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "derivative_fut_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "PROD_NM",
+                "MKT_NM",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "SPOT_PRC",
+                "SETL_PRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "ACC_OPNINT_QTY"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "PROD_NM": {
+                  "type": "string",
+                  "description": "상품명"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "SPOT_PRC": {
+                  "type": "string",
+                  "description": "현물가"
+                },
+                "SETL_PRC": {
+                  "type": "string",
+                  "description": "정산가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "ACC_OPNINT_QTY": {
+                  "type": "string",
+                  "description": "미결제약정수량"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "derivative_eqsfu_stk_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "PROD_NM",
+                "MKT_NM",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "SPOT_PRC",
+                "SETL_PRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "ACC_OPNINT_QTY"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "PROD_NM": {
+                  "type": "string",
+                  "description": "상품명"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "SPOT_PRC": {
+                  "type": "string",
+                  "description": "현물가"
+                },
+                "SETL_PRC": {
+                  "type": "string",
+                  "description": "정산가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "ACC_OPNINT_QTY": {
+                  "type": "string",
+                  "description": "미결제약정수량"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "derivative_eqkfu_ksq_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "PROD_NM",
+                "MKT_NM",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "SPOT_PRC",
+                "SETL_PRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "ACC_OPNINT_QTY"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "PROD_NM": {
+                  "type": "string",
+                  "description": "상품명"
+                },
+                "MKT_NM": {
+                  "type": "string",
+                  "description": "시장구분"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "SPOT_PRC": {
+                  "type": "string",
+                  "description": "현물가"
+                },
+                "SETL_PRC": {
+                  "type": "string",
+                  "description": "정산가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "ACC_OPNINT_QTY": {
+                  "type": "string",
+                  "description": "미결제약정수량"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "derivative_opt_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "PROD_NM",
+                "RGHT_TP_NM",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "IMP_VOLT",
+                "NXTDD_BAS_PRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "ACC_OPNINT_QTY"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "PROD_NM": {
+                  "type": "string",
+                  "description": "상품명"
+                },
+                "RGHT_TP_NM": {
+                  "type": "string",
+                  "description": "권리유형 (콜/풋)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "IMP_VOLT": {
+                  "type": "string",
+                  "description": "내재변동성"
+                },
+                "NXTDD_BAS_PRC": {
+                  "type": "string",
+                  "description": "익일기준가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "ACC_OPNINT_QTY": {
+                  "type": "string",
+                  "description": "미결제약정수량"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "derivative_eqsop_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "PROD_NM",
+                "RGHT_TP_NM",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "IMP_VOLT",
+                "NXTDD_BAS_PRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "ACC_OPNINT_QTY"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "PROD_NM": {
+                  "type": "string",
+                  "description": "상품명"
+                },
+                "RGHT_TP_NM": {
+                  "type": "string",
+                  "description": "권리유형 (콜/풋)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "IMP_VOLT": {
+                  "type": "string",
+                  "description": "내재변동성"
+                },
+                "NXTDD_BAS_PRC": {
+                  "type": "string",
+                  "description": "익일기준가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "ACC_OPNINT_QTY": {
+                  "type": "string",
+                  "description": "미결제약정수량"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "derivative_eqkop_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "PROD_NM",
+                "RGHT_TP_NM",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "IMP_VOLT",
+                "NXTDD_BAS_PRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "ACC_OPNINT_QTY"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "PROD_NM": {
+                  "type": "string",
+                  "description": "상품명"
+                },
+                "RGHT_TP_NM": {
+                  "type": "string",
+                  "description": "권리유형 (콜/풋)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "IMP_VOLT": {
+                  "type": "string",
+                  "description": "내재변동성"
+                },
+                "NXTDD_BAS_PRC": {
+                  "type": "string",
+                  "description": "익일기준가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "ACC_OPNINT_QTY": {
+                  "type": "string",
+                  "description": "미결제약정수량"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "commodity_oil_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "OIL_NM",
+                "WT_AVG_PRC",
+                "WT_DIS_AVG_PRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "OIL_NM": {
+                  "type": "string",
+                  "description": "유종명"
+                },
+                "WT_AVG_PRC": {
+                  "type": "string",
+                  "description": "가중평균가격"
+                },
+                "WT_DIS_AVG_PRC": {
+                  "type": "string",
+                  "description": "가중할인평균가격"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "commodity_gold_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "FLUC_RT",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "commodity_ets_bydd_trd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_CD",
+                "ISU_NM",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "FLUC_RT",
+                "TDD_OPNPRC",
+                "TDD_HGPRC",
+                "TDD_LWPRC",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "TDD_OPNPRC": {
+                  "type": "string",
+                  "description": "시가"
+                },
+                "TDD_HGPRC": {
+                  "type": "string",
+                  "description": "고가"
+                },
+                "TDD_LWPRC": {
+                  "type": "string",
+                  "description": "저가"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "esg_sri_bond_info"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISUR_NM",
+                "ISU_CD",
+                "SRI_BND_TP_NM",
+                "ISU_NM",
+                "LIST_DD",
+                "ISU_DD",
+                "REDMPT_DD",
+                "ISU_RT",
+                "ISU_AMT",
+                "LIST_AMT",
+                "BND_TP_NM"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISUR_NM": {
+                  "type": "string",
+                  "description": "발행기관명"
+                },
+                "ISU_CD": {
+                  "type": "string",
+                  "description": "종목코드"
+                },
+                "SRI_BND_TP_NM": {
+                  "type": "string",
+                  "description": "SRI채권유형"
+                },
+                "ISU_NM": {
+                  "type": "string",
+                  "description": "종목명"
+                },
+                "LIST_DD": {
+                  "type": "string",
+                  "description": "상장일"
+                },
+                "ISU_DD": {
+                  "type": "string",
+                  "description": "발행일"
+                },
+                "REDMPT_DD": {
+                  "type": "string",
+                  "description": "상환일"
+                },
+                "ISU_RT": {
+                  "type": "string",
+                  "description": "발행이율"
+                },
+                "ISU_AMT": {
+                  "type": "string",
+                  "description": "발행금액"
+                },
+                "LIST_AMT": {
+                  "type": "string",
+                  "description": "상장금액"
+                },
+                "BND_TP_NM": {
+                  "type": "string",
+                  "description": "채권유형"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "esg_esg_etp_info"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "ISU_ABBRV",
+                "TDD_CLSPRC",
+                "CMPPREVDD_PRC",
+                "FLUC_RT",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL",
+                "LIST_SHRS"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "ISU_ABBRV": {
+                  "type": "string",
+                  "description": "종목약명"
+                },
+                "TDD_CLSPRC": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "CMPPREVDD_PRC": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "FLUC_RT": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                },
+                "LIST_SHRS": {
+                  "type": "string",
+                  "description": "상장주식수"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["operationId"],
+        "properties": {
+          "operationId": {
+            "const": "esg_esg_index_info"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "BAS_DD",
+                "IDX_NM",
+                "CLSPRC_IDX",
+                "PRV_DD_CMPR",
+                "UPDN_RATE",
+                "TRD_ISU_CNT",
+                "ACC_TRDVOL",
+                "ACC_TRDVAL"
+              ],
+              "properties": {
+                "BAS_DD": {
+                  "type": "string",
+                  "description": "기준일자 (YYYYMMDD)"
+                },
+                "IDX_NM": {
+                  "type": "string",
+                  "description": "지수명"
+                },
+                "CLSPRC_IDX": {
+                  "type": "string",
+                  "description": "종가"
+                },
+                "PRV_DD_CMPR": {
+                  "type": "string",
+                  "description": "전일대비"
+                },
+                "UPDN_RATE": {
+                  "type": "string",
+                  "description": "등락률(%)"
+                },
+                "TRD_ISU_CNT": {
+                  "type": "string",
+                  "description": "거래종목수"
+                },
+                "ACC_TRDVOL": {
+                  "type": "string",
+                  "description": "거래량"
+                },
+                "ACC_TRDVAL": {
+                  "type": "string",
+                  "description": "거래대금"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -43,11 +43,15 @@ publication decision.
   Credentialed live drift remains separately blocked because the repository
   has no Actions `KRX_API_KEY` secret.
 - The current contract branch establishes `contracts/krx/openapi.yaml` as the
-  validated sole provider-wire authority for all 31 operations. Generated
-  runtime and language-neutral projections are digest-checked, 23 deliberate
-  authority mutations are rejected, and the full deterministic gate passes 46
-  test files and 413 tests. Public API, error, migration, and disposable-probe
-  contracts remain in this same pre-implementation PR.
+  validated sole provider-wire authority for all 31 operations and freezes the
+  project-owned Rust, Node, CLI, error, package, target, and persisted-state
+  boundaries under `contracts/product/v1`. Checked projections include the
+  exhaustive 425-entry CLI option matrix, generated language operation and
+  error types, and strict operation-aware cache schemas. Nine maintained state
+  schemas and classified fixtures cover credential, approval, cache, quota,
+  and watchlist migration. The full deterministic gate passes 47 test files
+  and 442 tests, including 53 targeted contract tests. Only the disposable
+  four-target candidate proof remains in this pre-implementation PR.
 - `../ytm` supplies the target structural precedent. The accepted guidance in
   `../mytech` supplies the design rules: OpenAPI wire authority, a handwritten
   Rust conformer, narrow Node-API binding, boundary-owned contracts, pure

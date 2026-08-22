@@ -591,6 +591,7 @@ const allowedWireConsumers = new Set([
   registryPath,
   resolve(root, "src/contracts/generated/openapi-registry.ts"),
   resolve(root, "scripts/contracts.mjs"),
+  resolve(root, "scripts/product-contracts.mjs"),
   resolve(root, "scripts/compat-judge.mjs"),
 ]);
 const sharedWireValues = [

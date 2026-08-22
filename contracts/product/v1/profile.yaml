@@ -1,0 +1,73 @@
+schemaVersion: 1
+id: krx-product/v1
+wireSource: ../../krx/openapi.yaml
+
+direct:
+  operations:
+    $openapi: all
+  requestDate: basDd
+  emptyRows: success
+  range:
+    calendar: krx-trading-calendar/v1
+    completeness: composite/v1
+
+operationSets:
+  adjustedDailyStock:
+    - stock_stk_bydd_trd
+    - stock_ksq_bydd_trd
+    - stock_knx_bydd_trd
+
+approvalProbes:
+  index: index_kospi_dd_trd
+  stock: stock_stk_bydd_trd
+  etp: etp_etf_bydd_trd
+  bond: bond_bnd_bydd_trd
+  derivative: derivative_fut_bydd_trd
+  commodity: commodity_gold_bydd_trd
+  esg: esg_esg_index_info
+
+composites:
+  stockSearch:
+    components:
+      KOSPI: stock_stk_isu_base_info
+      KOSDAQ: stock_ksq_isu_base_info
+  watchlistPrices:
+    components:
+      KOSPI: stock_stk_bydd_trd
+      KOSDAQ: stock_ksq_bydd_trd
+  marketSummary:
+    components:
+      kospiIndex: index_kospi_dd_trd
+      kosdaqIndex: index_kosdaq_dd_trd
+      kospiStocks: stock_stk_bydd_trd
+      kosdaqStocks: stock_ksq_bydd_trd
+    topCount: 5
+
+defaults:
+  retries: 3
+  attemptTimeoutMs: 15000
+  overallTimeoutMs: 45000
+  cacheMaxAgeHours: 168
+  quotaPerKstDay: 10000
+  approvalTtlSeconds: 900
+
+provenance:
+  sources:
+    - network
+    - cache
+  freshness:
+    - fresh
+    - stale
+  required:
+    - source
+    - fetchedAt
+    - freshness
+    - contractId
+  contractId:
+    algorithm: sha256
+    encoding: lowercase-hex
+    canonicalization: RFC8785
+    document:
+      - operationId
+      - requestSchema
+      - responseSchema

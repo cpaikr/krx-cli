@@ -4,6 +4,12 @@ Only operations that combine multiple KRX requests use the composite envelope:
 date ranges, stock search, market summary, and watchlist prices. Single-endpoint
 CLI and MCP queries retain their existing row-array output.
 
+The frozen Rust and Node SDK contracts preserve this envelope. An
+all-component provider failure is a returned composite with `state: "failed"`;
+call-wide cancellation, invalid input, and local-state failure reject the SDK
+call with the stable project error catalog. The native CLI projects both paths
+back to the exit semantics below.
+
 ```json
 {
   "success": true,
@@ -32,9 +38,10 @@ The four states are:
 - `empty`: every required request completed without failure, but the final
   query has no rows. For date ranges, successful empty dates appear in
   `skipped` rather than `succeeded`.
-- `failed`: the operation did not produce an acceptable result. All-request
-  failure and caller cancellation use this state; `error` and `errorType`
-  retain the primary typed failure.
+- `failed`: every requested component failed without a call-wide SDK failure;
+  `error` and `errorType` retain the primary typed failure. Call-wide
+  cancellation, invalid input, and local-state failures reject the SDK call
+  instead of returning a composite envelope.
 
 Eligible exact-code stock ranges are adjusted by default and add an
 `adjustment` object with method/version, actual `asOf`, rounding, raw and

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://krx-cli.invalid/contracts/state/approval-config-v1.schema.json",
+  "title": "Credential-bound service approval observations",
+  "type": "object",
+  "required": ["version", "serviceStatus"],
+  "properties": {
+    "apiKey": false,
+    "version": { "const": 1 },
+    "serviceStatus": {
+      "type": "object",
+      "maxProperties": 7,
+      "propertyNames": {
+        "enum": [
+          "index",
+          "stock",
+          "etp",
+          "bond",
+          "derivative",
+          "commodity",
+          "esg"
+        ]
+      },
+      "additionalProperties": { "$ref": "#/$defs/observation" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "base": {
+      "type": "object",
+      "required": ["state", "checkedAt", "validUntil", "credentialId"],
+      "properties": {
+        "state": {
+          "enum": ["approved", "rejected", "inconclusive"]
+        },
+        "approved": { "type": "boolean" },
+        "checkedAt": { "type": "string", "format": "date-time" },
+        "validUntil": { "type": "string", "format": "date-time" },
+        "credentialId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "failureType": {
+          "enum": [
+            "timeout",
+            "cancelled",
+            "rate_limit",
+            "authentication",
+            "approval",
+            "network",
+            "upstream",
+            "invalid_response",
+            "integrity",
+            "local_state",
+            "no_data",
+            "unknown_category"
+          ]
+        },
+        "error": { "type": "string", "maxLength": 240 }
+      }
+    },
+    "observation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "allOf": [
+            { "$ref": "#/$defs/base" },
+            {
+              "required": ["approved"],
+              "properties": {
+                "state": { "const": "approved" },
+                "approved": { "const": true }
+              },
+              "not": {
+                "anyOf": [
+                  { "required": ["failureType"] },
+                  { "required": ["error"] }
+                ]
+              }
+            }
+          ],
+          "unevaluatedProperties": false
+        },
+        {
+          "type": "object",
+          "allOf": [
+            { "$ref": "#/$defs/base" },
+            {
+              "required": ["approved", "failureType"],
+              "properties": {
+                "state": { "const": "rejected" },
+                "approved": { "const": false },
+                "failureType": { "const": "approval" }
+              }
+            }
+          ],
+          "unevaluatedProperties": false
+        },
+        {
+          "type": "object",
+          "allOf": [
+            { "$ref": "#/$defs/base" },
+            {
+              "properties": {
+                "state": { "const": "inconclusive" }
+              },
+              "not": { "required": ["approved"] }
+            }
+          ],
+          "unevaluatedProperties": false
+        }
+      ]
+    }
+  }
+}

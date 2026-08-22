@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "packageName": "krx-cli",
+  "moduleFormat": "esm-only",
+  "nodeEngine": ">=22",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "defaultExport": false,
+  "commonJs": false,
+  "publicNativeBindingSubpath": false
+}

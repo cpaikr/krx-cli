@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://krx-cli.invalid/contracts/state/cache-v1.schema.json",
+  "title": "Strict legacy cache reader",
+  "type": "object",
+  "required": ["version", "fetchedAt", "endpoint", "params", "data"],
+  "properties": {
+    "version": { "const": 1 },
+    "fetchedAt": { "type": "string", "format": "date-time" },
+    "endpoint": { "type": "string", "minLength": 1 },
+    "params": { "$ref": "#/$defs/params" },
+    "data": { "type": "array", "minItems": 1 }
+  },
+  "additionalProperties": false,
+  "x-krx-openapi-row-discriminator": {
+    "operationSelector": "endpoint",
+    "rowsProperty": "data",
+    "source": "../../../krx/openapi.yaml"
+  },
+  "$defs": {
+    "params": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "array",
+        "prefixItems": [{ "type": "string" }, { "type": "string" }],
+        "items": false,
+        "minItems": 2,
+        "maxItems": 2
+      }
+    }
+  }
+}

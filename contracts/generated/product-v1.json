@@ -1,0 +1,2549 @@
+{
+  "schemaVersion": 1,
+  "id": "krx-product/v1",
+  "generatedFrom": {
+    "openapi": "contracts/krx/openapi.yaml",
+    "profile": "contracts/product/v1/profile.yaml",
+    "errors": "contracts/product/v1/errors.yaml",
+    "cliOverlay": "contracts/product/v1/cli-overlay.json",
+    "cliCases": "contracts/product/v1/cli-cases.json",
+    "nodeSdk": "contracts/product/v1/node-sdk.d.ts",
+    "rustSdkConsumer": "contracts/product/v1/rust-sdk-consumer.rs",
+    "nodePackage": "contracts/product/v1/node-package-surface.json",
+    "nativeTargets": "contracts/product/v1/native-targets.json",
+    "migrations": "contracts/product/v1/migrations.yaml",
+    "fixtures": "contracts/product/v1/fixtures/manifest.yaml",
+    "runtimeCases": "contracts/product/v1/consumers/node-runtime-cases.json",
+    "stateSchemas": "contracts/product/v1/state/*.schema.json"
+  },
+  "sourceDigests": {
+    "openapiSha256": "3fc0684573565bc8a79963e3caf4cdad2d0f35fa9186e6c3bb78512340a8ec2c",
+    "profileSha256": "67993c34d6e71310a3ecbb786ad9e57d696b475ac2173da6c3e8ca43b395f910",
+    "errorsSha256": "bc1d11ef39f308c5f918ef64691cfe051bcde9bf50374f1aaebf608660a50068",
+    "cliOverlaySha256": "22c057bab476e6e19a047d6b3d533f895c12b0a9049ae1ed33d86e75e21988af",
+    "cliCasesSha256": "a4814a40c7642f1bad41cbe01f169e8912c32488969502d421022cee078ff49d",
+    "nodeSdkSha256": "4d68124a5aaa6928617dece4b0991baa7b6c62058327d7baa09ad9d84b485f0b",
+    "rustSdkConsumerSha256": "32b0af6c20cc80ceabfed54265326e32f6adedf177777d8a6692ad47c4333416",
+    "nodePackageSha256": "b0a81616f221508515af59986795353ab08b86cbc3b3e44c522d4767b5097b49",
+    "nativeTargetsSha256": "05e6da8e01d3cefcaef4bf5a5b46bcc7f5a39aa6b9b8399f6e3f3b3680923242",
+    "migrationsSha256": "bf49d8e9fe71cd9b4fefdb542bdcdacac30b03c1604975fdeb9bde34a080cde6",
+    "fixturesSha256": "826c6f039fe406617e9efc9836a6677680f82bca3ac5928be850b643fdaef1b7",
+    "runtimeCasesSha256": "9831fd722718a051eafbc4dafb20f9f3087da656efb85334397317ee06ce59a4",
+    "stateSchemasSha256": "b1e1419301fd5a7f84a4a1b08e4b30b349b28e8489fc3f99c61265f5a4d64742"
+  },
+  "operations": [
+    {
+      "operationId": "index_krx_dd_trd",
+      "path": "/svc/apis/idx/krx_dd_trd",
+      "category": "index",
+      "description": "KRX series index daily trading",
+      "descriptionKo": "KRX 시리즈 지수 일별시세",
+      "legacyCommand": "index.krx_dd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "IDX_CLSS",
+          "description": "계열구분"
+        },
+        {
+          "name": "IDX_NM",
+          "description": "지수명"
+        },
+        {
+          "name": "CLSPRC_IDX",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_IDX",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "OPNPRC_IDX",
+          "description": "시가"
+        },
+        {
+          "name": "HGPRC_IDX",
+          "description": "고가"
+        },
+        {
+          "name": "LWPRC_IDX",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "상장시가총액"
+        }
+      ],
+      "contractId": "1f999971e419b5935cc30be5d11e799a71f36d5f815c6d6f73c7346aa5f64407"
+    },
+    {
+      "operationId": "index_kospi_dd_trd",
+      "path": "/svc/apis/idx/kospi_dd_trd",
+      "category": "index",
+      "description": "KOSPI series index daily trading",
+      "descriptionKo": "KOSPI 시리즈 지수 일별시세",
+      "legacyCommand": "index.kospi_dd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "IDX_CLSS",
+          "description": "계열구분"
+        },
+        {
+          "name": "IDX_NM",
+          "description": "지수명"
+        },
+        {
+          "name": "CLSPRC_IDX",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_IDX",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "OPNPRC_IDX",
+          "description": "시가"
+        },
+        {
+          "name": "HGPRC_IDX",
+          "description": "고가"
+        },
+        {
+          "name": "LWPRC_IDX",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "상장시가총액"
+        }
+      ],
+      "contractId": "9b397ea033e0d6140a90f2074aa61f922e7f6cac22c22b6f5b75f95976365114"
+    },
+    {
+      "operationId": "index_kosdaq_dd_trd",
+      "path": "/svc/apis/idx/kosdaq_dd_trd",
+      "category": "index",
+      "description": "KOSDAQ series index daily trading",
+      "descriptionKo": "KOSDAQ 시리즈 지수 일별시세",
+      "legacyCommand": "index.kosdaq_dd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "IDX_CLSS",
+          "description": "계열구분"
+        },
+        {
+          "name": "IDX_NM",
+          "description": "지수명"
+        },
+        {
+          "name": "CLSPRC_IDX",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_IDX",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "OPNPRC_IDX",
+          "description": "시가"
+        },
+        {
+          "name": "HGPRC_IDX",
+          "description": "고가"
+        },
+        {
+          "name": "LWPRC_IDX",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "상장시가총액"
+        }
+      ],
+      "contractId": "13b9fbab92a106b498c812f38ecb0bbe974f9cdf6d00fb204f7cc7ff0f765531"
+    },
+    {
+      "operationId": "index_bon_dd_trd",
+      "path": "/svc/apis/idx/bon_dd_trd",
+      "category": "index",
+      "description": "Bond index daily trading",
+      "descriptionKo": "채권지수 일별시세",
+      "legacyCommand": "index.bon_dd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "BND_IDX_GRP_NM",
+          "description": "채권지수그룹명"
+        },
+        {
+          "name": "TOT_EARNG_IDX",
+          "description": "총수익지수"
+        },
+        {
+          "name": "TOT_EARNG_IDX_CMPPREVDD",
+          "description": "총수익지수 전일대비"
+        },
+        {
+          "name": "NETPRC_IDX",
+          "description": "순가격지수"
+        },
+        {
+          "name": "NETPRC_IDX_CMPPREVDD",
+          "description": "순가격지수 전일대비"
+        },
+        {
+          "name": "ZERO_REINVST_IDX",
+          "description": "제로재투자지수"
+        },
+        {
+          "name": "ZERO_REINVST_IDX_CMPPREVDD",
+          "description": "제로재투자지수 전일대비"
+        },
+        {
+          "name": "CALL_REINVST_IDX",
+          "description": "콜재투자지수"
+        },
+        {
+          "name": "CALL_REINVST_IDX_CMPPREVDD",
+          "description": "콜재투자지수 전일대비"
+        },
+        {
+          "name": "MKT_PRC_IDX",
+          "description": "시가지수"
+        },
+        {
+          "name": "MKT_PRC_IDX_CMPPREVDD",
+          "description": "시가지수 전일대비"
+        },
+        {
+          "name": "AVG_DURATION",
+          "description": "평균듀레이션"
+        },
+        {
+          "name": "AVG_CONVEXITY_PRC",
+          "description": "평균컨벡시티"
+        },
+        {
+          "name": "BND_IDX_AVG_YD",
+          "description": "채권지수 평균수익률"
+        }
+      ],
+      "contractId": "885e53ab6d366a540591048da9d4ce9ef5059610e6962e23bb21548996fde025"
+    },
+    {
+      "operationId": "index_drvprod_dd_trd",
+      "path": "/svc/apis/idx/drvprod_dd_trd",
+      "category": "index",
+      "description": "Derivatives index daily trading",
+      "descriptionKo": "파생상품지수 일별시세",
+      "legacyCommand": "index.drvprod_dd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "IDX_CLSS",
+          "description": "계열구분"
+        },
+        {
+          "name": "IDX_NM",
+          "description": "지수명"
+        },
+        {
+          "name": "CLSPRC_IDX",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_IDX",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "OPNPRC_IDX",
+          "description": "시가"
+        },
+        {
+          "name": "HGPRC_IDX",
+          "description": "고가"
+        },
+        {
+          "name": "LWPRC_IDX",
+          "description": "저가"
+        }
+      ],
+      "contractId": "f8af18b22912af0be806ca7e6596165f009044728e2ee2e472eb9c6c5a87bb30"
+    },
+    {
+      "operationId": "stock_stk_bydd_trd",
+      "path": "/svc/apis/sto/stk_bydd_trd",
+      "category": "stock",
+      "description": "KOSPI stock daily trading",
+      "descriptionKo": "유가증권(KOSPI) 주식 일별매매정보",
+      "legacyCommand": "stock.stk_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "SECT_TP_NM",
+          "description": "소속부"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "시가총액"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        }
+      ],
+      "contractId": "730f6139f3d929b7f95de7a10c6e1dfcadf7a262d2af4f717356bea3b001526b"
+    },
+    {
+      "operationId": "stock_ksq_bydd_trd",
+      "path": "/svc/apis/sto/ksq_bydd_trd",
+      "category": "stock",
+      "description": "KOSDAQ stock daily trading",
+      "descriptionKo": "코스닥(KOSDAQ) 주식 일별매매정보",
+      "legacyCommand": "stock.ksq_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "SECT_TP_NM",
+          "description": "소속부"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "시가총액"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        }
+      ],
+      "contractId": "22c2b14309e23557c29f1626309d7b9847768fe05ee8b5514fa5037f26ca9c4d"
+    },
+    {
+      "operationId": "stock_knx_bydd_trd",
+      "path": "/svc/apis/sto/knx_bydd_trd",
+      "category": "stock",
+      "description": "KONEX stock daily trading",
+      "descriptionKo": "코넥스(KONEX) 주식 일별매매정보",
+      "legacyCommand": "stock.knx_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "SECT_TP_NM",
+          "description": "소속부"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "시가총액"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        }
+      ],
+      "contractId": "87e0b29c33acbe1771c36fd7c5b403d87f999e56d7637f6359ade8a606db9619"
+    },
+    {
+      "operationId": "stock_sw_bydd_trd",
+      "path": "/svc/apis/sto/sw_bydd_trd",
+      "category": "stock",
+      "description": "Subscription warrant daily trading",
+      "descriptionKo": "신주인수권증권 일별매매정보",
+      "legacyCommand": "stock.sw_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "시가총액"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        },
+        {
+          "name": "EXER_PRC",
+          "description": "행사가격"
+        },
+        {
+          "name": "EXST_STRT_DD",
+          "description": "행사시작일"
+        },
+        {
+          "name": "EXST_END_DD",
+          "description": "행사종료일"
+        },
+        {
+          "name": "TARSTK_ISU_SRT_CD",
+          "description": "대상주식 단축코드"
+        },
+        {
+          "name": "TARSTK_ISU_NM",
+          "description": "대상주식 종목명"
+        },
+        {
+          "name": "TARSTK_ISU_PRSNT_PRC",
+          "description": "대상주식 현재가"
+        }
+      ],
+      "contractId": "8e040f4f5b4dfe1a8b365b62bc7bb9695bd30d5f121c76044fd2d2d37954b802"
+    },
+    {
+      "operationId": "stock_sr_bydd_trd",
+      "path": "/svc/apis/sto/sr_bydd_trd",
+      "category": "stock",
+      "description": "Subscription right daily trading",
+      "descriptionKo": "신주인수권증서 일별매매정보",
+      "legacyCommand": "stock.sr_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "시가총액"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        },
+        {
+          "name": "ISU_PRC",
+          "description": "발행가"
+        },
+        {
+          "name": "DELIST_DD",
+          "description": "상장폐지일"
+        },
+        {
+          "name": "TARSTK_ISU_SRT_CD",
+          "description": "대상주식 단축코드"
+        },
+        {
+          "name": "TARSTK_ISU_NM",
+          "description": "대상주식 종목명"
+        },
+        {
+          "name": "TARSTK_ISU_PRSNT_PRC",
+          "description": "대상주식 현재가"
+        }
+      ],
+      "contractId": "831c179909c49a191a33c54405d6efb6a6e1da781e95d4b8d62449083783fc81"
+    },
+    {
+      "operationId": "stock_stk_isu_base_info",
+      "path": "/svc/apis/sto/stk_isu_base_info",
+      "category": "stock",
+      "description": "KOSPI stock base info",
+      "descriptionKo": "유가증권 종목 기본정보",
+      "legacyCommand": "stock.stk_isu_base_info",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "ISU_CD",
+          "description": "표준코드"
+        },
+        {
+          "name": "ISU_SRT_CD",
+          "description": "단축코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "한글종목명"
+        },
+        {
+          "name": "ISU_ABBRV",
+          "description": "한글종목약명"
+        },
+        {
+          "name": "ISU_ENG_NM",
+          "description": "영문종목명"
+        },
+        {
+          "name": "LIST_DD",
+          "description": "상장일"
+        },
+        {
+          "name": "MKT_TP_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "SECUGRP_NM",
+          "description": "증권구분"
+        },
+        {
+          "name": "SECT_TP_NM",
+          "description": "소속부"
+        },
+        {
+          "name": "KIND_STKCERT_TP_NM",
+          "description": "주식종류"
+        },
+        {
+          "name": "PARVAL",
+          "description": "액면가"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        }
+      ],
+      "contractId": "bf86f191c520d67b1529b8c5eac00b9c0ff0de1f57a5a01dbd921a37962970de"
+    },
+    {
+      "operationId": "stock_ksq_isu_base_info",
+      "path": "/svc/apis/sto/ksq_isu_base_info",
+      "category": "stock",
+      "description": "KOSDAQ stock base info",
+      "descriptionKo": "코스닥 종목 기본정보",
+      "legacyCommand": "stock.ksq_isu_base_info",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "ISU_CD",
+          "description": "표준코드"
+        },
+        {
+          "name": "ISU_SRT_CD",
+          "description": "단축코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "한글종목명"
+        },
+        {
+          "name": "ISU_ABBRV",
+          "description": "한글종목약명"
+        },
+        {
+          "name": "ISU_ENG_NM",
+          "description": "영문종목명"
+        },
+        {
+          "name": "LIST_DD",
+          "description": "상장일"
+        },
+        {
+          "name": "MKT_TP_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "SECUGRP_NM",
+          "description": "증권구분"
+        },
+        {
+          "name": "SECT_TP_NM",
+          "description": "소속부"
+        },
+        {
+          "name": "KIND_STKCERT_TP_NM",
+          "description": "주식종류"
+        },
+        {
+          "name": "PARVAL",
+          "description": "액면가"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        }
+      ],
+      "contractId": "c1d4fa2b584d330cfeef79df05870057b58efefd035d0cf67919c6f473cbfdda"
+    },
+    {
+      "operationId": "stock_knx_isu_base_info",
+      "path": "/svc/apis/sto/knx_isu_base_info",
+      "category": "stock",
+      "description": "KONEX stock base info",
+      "descriptionKo": "코넥스 종목 기본정보",
+      "legacyCommand": "stock.knx_isu_base_info",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "ISU_CD",
+          "description": "표준코드"
+        },
+        {
+          "name": "ISU_SRT_CD",
+          "description": "단축코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "한글종목명"
+        },
+        {
+          "name": "ISU_ABBRV",
+          "description": "한글종목약명"
+        },
+        {
+          "name": "ISU_ENG_NM",
+          "description": "영문종목명"
+        },
+        {
+          "name": "LIST_DD",
+          "description": "상장일"
+        },
+        {
+          "name": "MKT_TP_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "SECUGRP_NM",
+          "description": "증권구분"
+        },
+        {
+          "name": "SECT_TP_NM",
+          "description": "소속부"
+        },
+        {
+          "name": "KIND_STKCERT_TP_NM",
+          "description": "주식종류"
+        },
+        {
+          "name": "PARVAL",
+          "description": "액면가"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        }
+      ],
+      "contractId": "31958b6e6106c977e1c7e7b02dde35eba46bf7f9f9399f0452470a264f9a7ce7"
+    },
+    {
+      "operationId": "etp_etf_bydd_trd",
+      "path": "/svc/apis/etp/etf_bydd_trd",
+      "category": "etp",
+      "description": "ETF daily trading",
+      "descriptionKo": "ETF 일별매매정보",
+      "legacyCommand": "etp.etf_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "NAV",
+          "description": "순자산가치(NAV)"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "시가총액"
+        },
+        {
+          "name": "INVSTASST_NETASST_TOTAMT",
+          "description": "순자산총액"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        },
+        {
+          "name": "IDX_IND_NM",
+          "description": "기초지수명"
+        },
+        {
+          "name": "OBJ_STKPRC_IDX",
+          "description": "기초지수종가"
+        },
+        {
+          "name": "CMPPREVDD_IDX",
+          "description": "기초지수 전일대비"
+        },
+        {
+          "name": "FLUC_RT_IDX",
+          "description": "기초지수 등락률(%)"
+        }
+      ],
+      "contractId": "83e50ed6a717b54a41ff6c74ee99670746930dec15974dfc80c702f448b98317"
+    },
+    {
+      "operationId": "etp_etn_bydd_trd",
+      "path": "/svc/apis/etp/etn_bydd_trd",
+      "category": "etp",
+      "description": "ETN daily trading",
+      "descriptionKo": "ETN 일별매매정보",
+      "legacyCommand": "etp.etn_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "PER1SECU_INDIC_VAL",
+          "description": "1증권당 지표가치"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "시가총액"
+        },
+        {
+          "name": "INDIC_VAL_AMT",
+          "description": "지표가치총액"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        },
+        {
+          "name": "IDX_IND_NM",
+          "description": "기초지수명"
+        },
+        {
+          "name": "OBJ_STKPRC_IDX",
+          "description": "기초지수종가"
+        },
+        {
+          "name": "CMPPREVDD_IDX",
+          "description": "기초지수 전일대비"
+        },
+        {
+          "name": "FLUC_RT_IDX",
+          "description": "기초지수 등락률(%)"
+        }
+      ],
+      "contractId": "0910ec19f8db55c57e515d008c4455712e3e9af4d8e9f9315022a45b0adb6d4a"
+    },
+    {
+      "operationId": "etp_elw_bydd_trd",
+      "path": "/svc/apis/etp/elw_bydd_trd",
+      "category": "etp",
+      "description": "ELW daily trading",
+      "descriptionKo": "ELW 일별매매정보",
+      "legacyCommand": "etp.elw_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "MKTCAP",
+          "description": "시가총액"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        },
+        {
+          "name": "ULY_NM",
+          "description": "기초자산명"
+        },
+        {
+          "name": "ULY_PRC",
+          "description": "기초자산가격"
+        },
+        {
+          "name": "CMPPREVDD_PRC_ULY",
+          "description": "기초자산 전일대비"
+        },
+        {
+          "name": "FLUC_RT_ULY",
+          "description": "기초자산 등락률(%)"
+        }
+      ],
+      "contractId": "01fc78c668428f5e98a52fe678755092652cd4b8f8e00928cd10d06c3e8dee0b"
+    },
+    {
+      "operationId": "bond_kts_bydd_trd",
+      "path": "/svc/apis/bon/kts_bydd_trd",
+      "category": "bond",
+      "description": "KTS government bond daily trading",
+      "descriptionKo": "국채전문유통시장 일별매매정보",
+      "legacyCommand": "bond.kts_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "BND_EXP_TP_NM",
+          "description": "채권만기구분"
+        },
+        {
+          "name": "GOVBND_ISU_TP_NM",
+          "description": "국채발행유형"
+        },
+        {
+          "name": "CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "CLSPRC_YD",
+          "description": "종가수익률"
+        },
+        {
+          "name": "OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "OPNPRC_YD",
+          "description": "시가수익률"
+        },
+        {
+          "name": "HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "HGPRC_YD",
+          "description": "고가수익률"
+        },
+        {
+          "name": "LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "LWPRC_YD",
+          "description": "저가수익률"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        }
+      ],
+      "contractId": "4b746ffc7e7f84b8a6d2aee2ae3faecd8993143ad422e6fede038021be0b25d2"
+    },
+    {
+      "operationId": "bond_bnd_bydd_trd",
+      "path": "/svc/apis/bon/bnd_bydd_trd",
+      "category": "bond",
+      "description": "General bond daily trading",
+      "descriptionKo": "일반채권시장 일별매매정보",
+      "legacyCommand": "bond.bnd_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "CLSPRC_YD",
+          "description": "종가수익률"
+        },
+        {
+          "name": "OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "OPNPRC_YD",
+          "description": "시가수익률"
+        },
+        {
+          "name": "HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "HGPRC_YD",
+          "description": "고가수익률"
+        },
+        {
+          "name": "LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "LWPRC_YD",
+          "description": "저가수익률"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        }
+      ],
+      "contractId": "818722b4169680d84ddf5de833395aebe482d86b4163a1803f936c18e89958aa"
+    },
+    {
+      "operationId": "bond_smb_bydd_trd",
+      "path": "/svc/apis/bon/smb_bydd_trd",
+      "category": "bond",
+      "description": "Small bond daily trading",
+      "descriptionKo": "소액채권시장 일별매매정보",
+      "legacyCommand": "bond.smb_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "CLSPRC_YD",
+          "description": "종가수익률"
+        },
+        {
+          "name": "OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "OPNPRC_YD",
+          "description": "시가수익률"
+        },
+        {
+          "name": "HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "HGPRC_YD",
+          "description": "고가수익률"
+        },
+        {
+          "name": "LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "LWPRC_YD",
+          "description": "저가수익률"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        }
+      ],
+      "contractId": "583fbb8b91dad4db68c84b80d13b014d29d797021c212fe3bd7809acd7e54d08"
+    },
+    {
+      "operationId": "derivative_fut_bydd_trd",
+      "path": "/svc/apis/drv/fut_bydd_trd",
+      "category": "derivative",
+      "description": "Futures daily trading",
+      "descriptionKo": "선물 일별매매정보",
+      "legacyCommand": "derivative.fut_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "PROD_NM",
+          "description": "상품명"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "SPOT_PRC",
+          "description": "현물가"
+        },
+        {
+          "name": "SETL_PRC",
+          "description": "정산가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "ACC_OPNINT_QTY",
+          "description": "미결제약정수량"
+        }
+      ],
+      "contractId": "fb5d0a200627557565010adfe07b19586a9f7f2962c7efd21b04fd044d55a3d7"
+    },
+    {
+      "operationId": "derivative_eqsfu_stk_bydd_trd",
+      "path": "/svc/apis/drv/eqsfu_stk_bydd_trd",
+      "category": "derivative",
+      "description": "KOSPI stock futures daily trading",
+      "descriptionKo": "유가증권 주식선물 일별매매정보",
+      "legacyCommand": "derivative.eqsfu_stk_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "PROD_NM",
+          "description": "상품명"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "SPOT_PRC",
+          "description": "현물가"
+        },
+        {
+          "name": "SETL_PRC",
+          "description": "정산가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "ACC_OPNINT_QTY",
+          "description": "미결제약정수량"
+        }
+      ],
+      "contractId": "b28ee1332d2c9f12ef169f3ea0dee7c9b664e8c68e2e0dad5d7110d4be274581"
+    },
+    {
+      "operationId": "derivative_eqkfu_ksq_bydd_trd",
+      "path": "/svc/apis/drv/eqkfu_ksq_bydd_trd",
+      "category": "derivative",
+      "description": "KOSDAQ stock futures daily trading",
+      "descriptionKo": "코스닥 주식선물 일별매매정보",
+      "legacyCommand": "derivative.eqkfu_ksq_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "PROD_NM",
+          "description": "상품명"
+        },
+        {
+          "name": "MKT_NM",
+          "description": "시장구분"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "SPOT_PRC",
+          "description": "현물가"
+        },
+        {
+          "name": "SETL_PRC",
+          "description": "정산가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "ACC_OPNINT_QTY",
+          "description": "미결제약정수량"
+        }
+      ],
+      "contractId": "c9510e0d3e6c4a54aa5730d87110ee858aa68e76505355c2374da0fb35c33c1d"
+    },
+    {
+      "operationId": "derivative_opt_bydd_trd",
+      "path": "/svc/apis/drv/opt_bydd_trd",
+      "category": "derivative",
+      "description": "Options daily trading",
+      "descriptionKo": "옵션 일별매매정보",
+      "legacyCommand": "derivative.opt_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "PROD_NM",
+          "description": "상품명"
+        },
+        {
+          "name": "RGHT_TP_NM",
+          "description": "권리유형 (콜/풋)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "IMP_VOLT",
+          "description": "내재변동성"
+        },
+        {
+          "name": "NXTDD_BAS_PRC",
+          "description": "익일기준가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "ACC_OPNINT_QTY",
+          "description": "미결제약정수량"
+        }
+      ],
+      "contractId": "b402263cf19e423b4f69584f470b37cd7fcf813bec80bf3e3b7f6b1d72acbf9e"
+    },
+    {
+      "operationId": "derivative_eqsop_bydd_trd",
+      "path": "/svc/apis/drv/eqsop_bydd_trd",
+      "category": "derivative",
+      "description": "KOSPI stock options daily trading",
+      "descriptionKo": "유가증권 주식옵션 일별매매정보",
+      "legacyCommand": "derivative.eqsop_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "PROD_NM",
+          "description": "상품명"
+        },
+        {
+          "name": "RGHT_TP_NM",
+          "description": "권리유형 (콜/풋)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "IMP_VOLT",
+          "description": "내재변동성"
+        },
+        {
+          "name": "NXTDD_BAS_PRC",
+          "description": "익일기준가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "ACC_OPNINT_QTY",
+          "description": "미결제약정수량"
+        }
+      ],
+      "contractId": "585d98ba7a5d2acfce25dd167c53e606fc2163e1b3cd799a706c6a03b8738e5e"
+    },
+    {
+      "operationId": "derivative_eqkop_bydd_trd",
+      "path": "/svc/apis/drv/eqkop_bydd_trd",
+      "category": "derivative",
+      "description": "KOSDAQ stock options daily trading",
+      "descriptionKo": "코스닥 주식옵션 일별매매정보",
+      "legacyCommand": "derivative.eqkop_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "PROD_NM",
+          "description": "상품명"
+        },
+        {
+          "name": "RGHT_TP_NM",
+          "description": "권리유형 (콜/풋)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "IMP_VOLT",
+          "description": "내재변동성"
+        },
+        {
+          "name": "NXTDD_BAS_PRC",
+          "description": "익일기준가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "ACC_OPNINT_QTY",
+          "description": "미결제약정수량"
+        }
+      ],
+      "contractId": "2cc0a82fe10595cbfb1162110e765553eebc4d11f471609002a59d0b1e662851"
+    },
+    {
+      "operationId": "commodity_oil_bydd_trd",
+      "path": "/svc/apis/gen/oil_bydd_trd",
+      "category": "commodity",
+      "description": "Oil market daily trading",
+      "descriptionKo": "석유시장 일별매매정보",
+      "legacyCommand": "commodity.oil_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "OIL_NM",
+          "description": "유종명"
+        },
+        {
+          "name": "WT_AVG_PRC",
+          "description": "가중평균가격"
+        },
+        {
+          "name": "WT_DIS_AVG_PRC",
+          "description": "가중할인평균가격"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        }
+      ],
+      "contractId": "a07350563c61388afb8a89d9178152318fe2ec92407309daf3b432eb620f2586"
+    },
+    {
+      "operationId": "commodity_gold_bydd_trd",
+      "path": "/svc/apis/gen/gold_bydd_trd",
+      "category": "commodity",
+      "description": "Gold market daily trading",
+      "descriptionKo": "금시장 일별매매정보",
+      "legacyCommand": "commodity.gold_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        }
+      ],
+      "contractId": "8c074d7af920426d4b2a4533fdda83dca9478bd34a584d47cd04da9b0435631c"
+    },
+    {
+      "operationId": "commodity_ets_bydd_trd",
+      "path": "/svc/apis/gen/ets_bydd_trd",
+      "category": "commodity",
+      "description": "Emission trading daily",
+      "descriptionKo": "배출권시장 일별매매정보",
+      "legacyCommand": "commodity.ets_bydd_trd",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "TDD_OPNPRC",
+          "description": "시가"
+        },
+        {
+          "name": "TDD_HGPRC",
+          "description": "고가"
+        },
+        {
+          "name": "TDD_LWPRC",
+          "description": "저가"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        }
+      ],
+      "contractId": "bf07f5068f6e69147ebb75a7c9e6ef6b184ff2f92406817f61bfc7e62e5887dd"
+    },
+    {
+      "operationId": "esg_sri_bond_info",
+      "path": "/svc/apis/esg/sri_bond_info",
+      "category": "esg",
+      "description": "SRI bond info",
+      "descriptionKo": "사회책임투자채권 종목정보",
+      "legacyCommand": "esg.sri_bond_info",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISUR_NM",
+          "description": "발행기관명"
+        },
+        {
+          "name": "ISU_CD",
+          "description": "종목코드"
+        },
+        {
+          "name": "SRI_BND_TP_NM",
+          "description": "SRI채권유형"
+        },
+        {
+          "name": "ISU_NM",
+          "description": "종목명"
+        },
+        {
+          "name": "LIST_DD",
+          "description": "상장일"
+        },
+        {
+          "name": "ISU_DD",
+          "description": "발행일"
+        },
+        {
+          "name": "REDMPT_DD",
+          "description": "상환일"
+        },
+        {
+          "name": "ISU_RT",
+          "description": "발행이율"
+        },
+        {
+          "name": "ISU_AMT",
+          "description": "발행금액"
+        },
+        {
+          "name": "LIST_AMT",
+          "description": "상장금액"
+        },
+        {
+          "name": "BND_TP_NM",
+          "description": "채권유형"
+        }
+      ],
+      "contractId": "ca4932235327a68a71242cc1a34f6be8658b021197f2c79019c3b613e575fd73"
+    },
+    {
+      "operationId": "esg_esg_etp_info",
+      "path": "/svc/apis/esg/esg_etp_info",
+      "category": "esg",
+      "description": "ESG ETP info",
+      "descriptionKo": "ESG 증권상품 정보",
+      "legacyCommand": "esg.esg_etp_info",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "ISU_ABBRV",
+          "description": "종목약명"
+        },
+        {
+          "name": "TDD_CLSPRC",
+          "description": "종가"
+        },
+        {
+          "name": "CMPPREVDD_PRC",
+          "description": "전일대비"
+        },
+        {
+          "name": "FLUC_RT",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        },
+        {
+          "name": "LIST_SHRS",
+          "description": "상장주식수"
+        }
+      ],
+      "contractId": "a675bc7eea18d36c90a4ac62ffa89874bc1548197e14f999450a1af5966fbc88"
+    },
+    {
+      "operationId": "esg_esg_index_info",
+      "path": "/svc/apis/esg/esg_index_info",
+      "category": "esg",
+      "description": "ESG index info",
+      "descriptionKo": "ESG 지수 정보",
+      "legacyCommand": "esg.esg_index_info",
+      "requestFields": [
+        {
+          "name": "basDd",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responseFields": [
+        {
+          "name": "BAS_DD",
+          "description": "기준일자 (YYYYMMDD)"
+        },
+        {
+          "name": "IDX_NM",
+          "description": "지수명"
+        },
+        {
+          "name": "CLSPRC_IDX",
+          "description": "종가"
+        },
+        {
+          "name": "PRV_DD_CMPR",
+          "description": "전일대비"
+        },
+        {
+          "name": "UPDN_RATE",
+          "description": "등락률(%)"
+        },
+        {
+          "name": "TRD_ISU_CNT",
+          "description": "거래종목수"
+        },
+        {
+          "name": "ACC_TRDVOL",
+          "description": "거래량"
+        },
+        {
+          "name": "ACC_TRDVAL",
+          "description": "거래대금"
+        }
+      ],
+      "contractId": "2f6f9fe0f454f26866afa18d7329353492b21d74d7db5df903fc42df23190e29"
+    }
+  ],
+  "operationSets": {
+    "adjustedDailyStock": [
+      "stock_stk_bydd_trd",
+      "stock_ksq_bydd_trd",
+      "stock_knx_bydd_trd"
+    ]
+  },
+  "approvalProbes": {
+    "index": "index_kospi_dd_trd",
+    "stock": "stock_stk_bydd_trd",
+    "etp": "etp_etf_bydd_trd",
+    "bond": "bond_bnd_bydd_trd",
+    "derivative": "derivative_fut_bydd_trd",
+    "commodity": "commodity_gold_bydd_trd",
+    "esg": "esg_esg_index_info"
+  },
+  "composites": {
+    "stockSearch": {
+      "components": {
+        "KOSPI": "stock_stk_isu_base_info",
+        "KOSDAQ": "stock_ksq_isu_base_info"
+      }
+    },
+    "watchlistPrices": {
+      "components": {
+        "KOSPI": "stock_stk_bydd_trd",
+        "KOSDAQ": "stock_ksq_bydd_trd"
+      }
+    },
+    "marketSummary": {
+      "components": {
+        "kospiIndex": "index_kospi_dd_trd",
+        "kosdaqIndex": "index_kosdaq_dd_trd",
+        "kospiStocks": "stock_stk_bydd_trd",
+        "kosdaqStocks": "stock_ksq_bydd_trd"
+      },
+      "topCount": 5
+    }
+  },
+  "defaults": {
+    "retries": 3,
+    "attemptTimeoutMs": 15000,
+    "overallTimeoutMs": 45000,
+    "cacheMaxAgeHours": 168,
+    "quotaPerKstDay": 10000,
+    "approvalTtlSeconds": 900
+  },
+  "provenance": {
+    "sources": ["network", "cache"],
+    "freshness": ["fresh", "stale"],
+    "required": ["source", "fetchedAt", "freshness", "contractId"],
+    "contractId": {
+      "algorithm": "sha256",
+      "encoding": "lowercase-hex",
+      "canonicalization": "RFC8785",
+      "document": ["operationId", "requestSchema", "responseSchema"]
+    }
+  },
+  "errors": {
+    "publicFields": {
+      "required": ["name", "kind", "code", "message", "retryable"],
+      "optional": ["httpStatus", "providerCode", "operationId"],
+      "forbidden": ["cause", "details", "rawBody", "dependencyMessage"]
+    },
+    "kinds": {
+      "invalid_request": {
+        "cliExit": 2,
+        "codes": {
+          "invalid_argument": false,
+          "conflicting_options": false,
+          "invalid_date": false,
+          "invalid_operation": false,
+          "invalid_field": false,
+          "invalid_filter": false
+        }
+      },
+      "cancelled": {
+        "cliExit": 1,
+        "codes": {
+          "request_cancelled": false
+        }
+      },
+      "timeout": {
+        "cliExit": 1,
+        "codes": {
+          "deadline_exceeded": true
+        }
+      },
+      "authentication": {
+        "cliExit": 4,
+        "codes": {
+          "credential_missing": false,
+          "credential_or_approval_rejected": false
+        }
+      },
+      "approval": {
+        "cliExit": 6,
+        "codes": {
+          "service_not_approved": false
+        }
+      },
+      "rate_limit": {
+        "cliExit": 5,
+        "codes": {
+          "local_quota_exhausted": false,
+          "provider_rate_limited": true
+        }
+      },
+      "offline": {
+        "cliExit": 1,
+        "codes": {
+          "cache_miss": false,
+          "cache_invalid": false
+        }
+      },
+      "network": {
+        "cliExit": 1,
+        "codes": {
+          "request_failed": true
+        }
+      },
+      "upstream": {
+        "cliExit": 1,
+        "codes": {
+          "http_error": false,
+          "provider_error": false
+        }
+      },
+      "invalid_response": {
+        "cliExit": 1,
+        "codes": {
+          "invalid_json": false,
+          "invalid_envelope": false,
+          "invalid_row": false
+        }
+      },
+      "integrity": {
+        "cliExit": 1,
+        "codes": {
+          "adjustment_incomplete": false,
+          "adjustment_inconsistent": false,
+          "calendar_invalid": false,
+          "contract_mismatch": false
+        }
+      },
+      "local_state": {
+        "cliExit": 1,
+        "codes": {
+          "credential_store_unavailable": false,
+          "credential_read_failed": false,
+          "credential_write_failed": false,
+          "credential_verify_failed": false,
+          "cache_read_failed": false,
+          "cache_write_failed": false,
+          "cache_lock_timeout": true,
+          "cache_scan_limit": false,
+          "quota_state_invalid": false,
+          "quota_state_io_failed": false,
+          "quota_lock_timeout": true,
+          "legacy_state_invalid": false,
+          "migration_conflict": false,
+          "migration_failed": false,
+          "watchlist_state_invalid": false,
+          "watchlist_io_failed": false,
+          "unsupported_platform": false
+        }
+      }
+    },
+    "httpMappings": [
+      {
+        "match": 401,
+        "kind": "authentication",
+        "code": "credential_or_approval_rejected",
+        "retryable": false
+      },
+      {
+        "match": 403,
+        "kind": "approval",
+        "code": "service_not_approved",
+        "retryable": false
+      },
+      {
+        "match": 408,
+        "afterRetries": true,
+        "kind": "timeout",
+        "code": "deadline_exceeded",
+        "retryable": true
+      },
+      {
+        "match": 429,
+        "afterRetries": true,
+        "kind": "rate_limit",
+        "code": "provider_rate_limited",
+        "retryable": true
+      },
+      {
+        "match": [500, 502, 503, 504],
+        "afterRetries": true,
+        "kind": "upstream",
+        "code": "http_error",
+        "retryable": true
+      },
+      {
+        "match": "otherNonSuccess",
+        "kind": "upstream",
+        "code": "http_error",
+        "retryable": false
+      },
+      {
+        "match": "http200ProviderError",
+        "kind": "upstream",
+        "code": "provider_error",
+        "retryable": false
+      }
+    ],
+    "responseMappings": {
+      "invalidJson": {
+        "kind": "invalid_response",
+        "code": "invalid_json"
+      },
+      "invalidEnvelope": {
+        "kind": "invalid_response",
+        "code": "invalid_envelope"
+      },
+      "invalidRow": {
+        "kind": "invalid_response",
+        "code": "invalid_row"
+      }
+    },
+    "compositePriority": [
+      "cancelled",
+      "timeout",
+      "rate_limit",
+      "authentication",
+      "approval",
+      "offline",
+      "local_state",
+      "network",
+      "upstream",
+      "invalid_response",
+      "integrity"
+    ],
+    "resultExitPolicies": {
+      "noDataOrLocalTargetAbsent": 3,
+      "partialComposite": 7
+    }
+  }
+}

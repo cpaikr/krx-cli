@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://krx-cli.invalid/contracts/state/watchlist-v1.schema.json",
+  "title": "Versioned watchlist",
+  "type": "object",
+  "required": ["version", "entries"],
+  "properties": {
+    "version": { "const": 1 },
+    "entries": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "required": ["isuCd", "isuSrtCd", "name", "market"],
+      "properties": {
+        "isuCd": { "type": "string", "pattern": "^KR[0-9]{10}$" },
+        "isuSrtCd": { "type": "string", "pattern": "^[0-9]{6}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "market": { "enum": ["KOSPI", "KOSDAQ", "KONEX"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

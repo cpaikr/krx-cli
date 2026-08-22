@@ -1,0 +1,340 @@
+formatVersion: 1
+id: krx-local-state/v1
+
+root:
+  path: ~/.krx-cli
+  relocation: forbidden
+  timezone: Asia/Seoul
+  symlinkPolicy: reject-all-components
+  ownership:
+    posix: effective-uid
+    windows: user-profile-acl
+  permissions:
+    posix:
+      directories: "0700"
+      regularFiles: "0600"
+      lockDirectories: "0700"
+      lockOwnerFiles: "0600"
+    foreignOwned: reject-without-read-or-chmod
+    secretLegacyState: reject-unsafe-mode-without-repair
+    nonSecretState: repair-owned-mode-on-successful-write
+  atomicWrite:
+    steps:
+      - create-unique-sibling-temp
+      - write-complete-bytes
+      - file-fsync
+      - rename-over-destination
+      - parent-directory-fsync
+    interruptedTemps: ignore
+
+credential:
+  keychain:
+    service: krx-cli
+    account: default
+    plaintextFallback: forbidden
+  identity:
+    algorithm: sha256
+    encoding: lowercase-hex
+    input: exact-resolved-utf8-secret-bytes
+    unicodeNormalization: none
+  resolutionPrecedence:
+    - explicit-sdk-argument
+    - KRX_API_KEY
+    - os-keychain
+  emptyPresentCredential: invalid-no-fallthrough
+  newSecretNormalization: trim-outer-whitespace-once
+  migratedSecretNormalization: preserve-exact-bytes
+  normalStartupReadsLegacySecret: false
+  authRemoveDeletes: keychain-only
+
+offline:
+  resolvesCredential: false
+  touchesKeychain: false
+  touchesQuota: false
+  touchesNetwork: false
+  acquiresRefreshLease: false
+  validStaleCache: allowed
+  absentCacheError: offline/cache_miss
+  invalidCacheError: offline/cache_invalid
+
+stores:
+  credential:
+    sourcePath: config.json
+    sourceSchema: state/legacy-config-v0.schema.json
+    sourceField: apiKey
+    target: os-keychain
+    fixtureSchema: state/credential-keychain-fixture-v1.schema.json
+  approval:
+    path: config.json
+    targetSchema: state/approval-config-v1.schema.json
+    writableAuthorities: 1
+  cacheV1:
+    pathPattern: cache/<basDd>/<first16LegacySha256>.json
+    schemaTemplate: state/cache-v1.schema.json
+    schema: ../../generated/state/cache-v1.schema.json
+    keyPreimage: "<endpoint>:<JSON(sortedParams)>"
+    keyDigest: sha256-first-16-lowercase-hex
+  cacheV2:
+    pathPattern: cache/v2/<basDd>/<sha256>.json
+    schemaTemplate: state/cache-v2.schema.json
+    schema: ../../generated/state/cache-v2.schema.json
+    keyPreimage: "krx-cache-v2\\n<operationId>\\n<JSON(sortedParams)>"
+    keyDigest: sha256-lowercase-hex
+    schemaDigest:
+      algorithm: sha256
+      canonicalization: RFC8785
+      document:
+        operationId: canonical-operation-id
+        requestSchema: fully-dereferenced-openapi-request-schema
+        responseSchema: fully-dereferenced-openapi-200-json-schema
+    writableAuthorities: 1
+  quota:
+    path: rate-limit.json
+    sourceSchema: state/quota-root-v0.schema.json
+    targetSchema: state/quota-v1.schema.json
+    targetVersion: 1
+    replacementVersion: forbidden
+    writableAuthorities: 1
+  watchlist:
+    path: watchlist.json
+    sourceSchema: state/watchlist-v0.schema.json
+    targetSchema: state/watchlist-v1.schema.json
+    writableAuthorities: 1
+
+transitions:
+  - id: credential-config-v0-to-keychain-v1
+    trigger: krx-auth-migrate-only
+    lock: config.json.lock
+    preconditions:
+      - legacy-config-is-regular-owned-file
+      - legacy-root-mode-is-0700
+      - legacy-file-mode-is-0600
+      - legacy-config-validates
+    actions:
+      - invalid-legacy-source-fails-before-keychain-inspection
+      - read-apiKey-as-exact-utf8-bytes
+      - keychain-absent-create-exact-secret
+      - keychain-same-continue
+      - keychain-present-empty-or-invalid-fail-without-writes
+      - keychain-different-fail-migration-conflict-without-writes
+      - read-back-keychain-and-verify-exact-bytes
+      - atomically-rewrite-config-removing-only-apiKey
+    postconditions:
+      - config-has-no-apiKey
+      - every-other-config-key-and-value-preserved
+      - keychain-readback-equals-legacy-secret
+    crashRecovery:
+      - rerun-after-keychain-write-observes-same-secret-and-finishes
+      - original-config-survives-every-failure-before-final-rename
+    rollback:
+      - best-effort-delete-only-newly-created-still-matching-keychain-item
+      - never-modify-preexisting-keychain-item
+    coexistence:
+      - normal-candidate-startup-never-reads-legacy-apiKey
+      - legacy-remains-authoritative-until-explicit-migration
+
+  - id: approval-config-v0-to-v1
+    trigger: explicit-credential-migration-or-first-candidate-approval-write
+    lock: config.json.lock
+    preconditions:
+      - credential-transition-complete-or-apiKey-absent
+      - config-reread-under-lock
+    actions:
+      - all-current-bound-rows-add-version-and-preserve
+      - all-legacy-unbound-rows-replace-serviceStatus-with-empty-object
+      - non-v1-root-version-fails-and-preserves-bytes
+      - mixed-unknown-or-invalid-state-fail-and-preserve-bytes
+      - credential-rotation-clears-serviceStatus-atomically
+    semanticValidation:
+      - checkedAt-and-validUntil-are-canonical-utc-Z
+      - validUntil-equals-checkedAt-plus-900-seconds
+      - error-is-at-most-240-unicode-code-points
+      - error-does-not-contain-exact-credential-bytes
+    coexistence:
+      - legacy-and-candidate-share-config.json
+      - last-writer-wins-approval-observations-are-advisory
+      - no-parallel-approval-file
+
+  - id: cache-v1-to-v2
+    trigger: lazy-per-key-after-strict-successful-read-or-successful-refresh
+    lock: per-key-cache-v2-lease
+    preconditions:
+      - source-is-regular-owned-file
+      - source-entry-operation-params-and-row-shape-validate-strictly
+      - source-has-at-least-one-row
+      - basDd-is-valid-and-before-current-KST-date
+      - fetchedAt-is-no-more-than-five-minutes-in-future
+      - source-size-at-most-64MiB
+    actions:
+      - prefer-valid-v2-when-v1-and-v2-coexist
+      - atomically-write-and-fsync-v2
+      - remove-matching-v1-only-after-v2-commit
+      - offline-valid-v1-best-effort-promotes-without-hiding-hit-on-failure
+      - online-invalid-quarantines-if-unchanged-then-fetches
+      - offline-invalid-quarantines-if-unchanged-then-returns-cache-invalid
+    rejects:
+      - empty-rows
+      - unknown-version
+      - unknown-operation
+      - schema-digest-mismatch
+      - request-identity-mismatch
+      - partial-or-extra-row-fields
+      - current-or-future-KST-date
+      - unreasonable-future-fetchedAt
+      - oversized-entry
+      - symlink-or-reparse-point
+    quarantine:
+      suffix: .corrupt-<UTC-basic-timestamp>-<uuid-v4>
+      preconditions:
+        - lstat-still-regular
+        - file-identity-and-content-unchanged-since-read
+      followsLinks: false
+    crashRecovery:
+      - coexistence-prefers-valid-v2-and-retries-v1-removal
+      - interrupted-temp-never-becomes-readable-entry
+    bulkConversion: forbidden
+
+  - id: quota-root-v0-to-v1
+    trigger: next-outbound-attempt-reservation-only
+    lock: rate-limit.json.lock
+    preconditions:
+      - resolved-credential-is-present-and-nonempty
+      - quota-state-reread-under-existing-lock
+      - state-valid-and-count-not-over-10000
+    actions:
+      - map-root-entry-to-exact-credential-fingerprint
+      - current-KST-date-increment-existing-count
+      - old-KST-date-reset-current-credential-to-one
+      - prune-non-current-KST-entries-only-during-write
+      - atomically-write-quota-v1
+    lockProtocol:
+      acquisition: mkdir
+      directoryMode: "0700"
+      ownerFile: owner
+      ownerMode: "0600"
+      ownerGrammar: "^[1-9][0-9]*-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      pollMs: 25
+      timeoutMs: 5000
+      staleAfterMs: 30000
+      stealRequiresOwnerDead: true
+      steal: rename-stale-directory-then-remove
+      symlinkPolicy: reject
+    failurePolicy:
+      corrupt-unknown-or-over-limit: fail-closed-preserve-bytes
+      crash-after-reservation: may-overcount-never-decrement
+      offline: never-trigger
+    coexistence:
+      - preserve-version-1-as-shared-target
+      - Node-and-Rust-must-use-byte-identical-lock-protocol
+      - concurrent-Node-and-Rust-reservations-total-exactly-N
+
+  - id: watchlist-v0-to-v1
+    trigger: first-Rust-mutation-after-cutover
+    lock: watchlist.json.lock
+    preconditions:
+      - source-reread-and-strictly-validated-under-lock
+      - legacy-processes-stopped-before-v1-write
+    actions:
+      - pre-cutover-Rust-may-read-strict-v0-but-must-not-mutate-it
+      - apply-one-requested-mutation
+      - preserve-entry-order
+      - reject-duplicate-isuCd
+      - atomically-replace-v0-with-v1
+    mutationSemantics:
+      add: idempotent-by-isuCd
+      remove: exact-isuCd-or-exact-name
+    failurePolicy:
+      corrupt-unknown-invalid: typed-local-state-and-preserve-bytes
+      corrupt-read-as-empty: forbidden
+      dual-write: forbidden
+    coexistence:
+      - legacy-cannot-read-v1-wrapper
+      - no-legacy-process-after-cutover-mutation
+      - concurrent-Rust-mutations-serialize-and-reread
+
+cacheRefresh:
+  inProcess: singleflight-by-v2-key
+  lease:
+    pathPattern: cache/.leases/<v2-sha256>.lock
+    acquisition: mkdir
+    directoryMode: "0700"
+    ownerFile: owner.json
+    ownerMode: "0600"
+    ownerSchema:
+      version: 1
+      pid: positive-integer
+      nonce: uuid-v4
+      createdAt: canonical-utc-Z
+    wait:
+      recheckCache: true
+      cancellationAware: true
+      deadline: overall-request-deadline
+    stale:
+      ownerDeadAfterMs: 30000
+      absoluteAgeMs: 60000
+      steal: rename-stale-directory-then-remove
+    release: matching-nonce-only
+    offline: never-acquire
+  writeConflict: last-valid-atomic-write-wins
+
+bounds:
+  cacheEntryReadBytes: 67108864
+  inspectDefaultEntries: 100
+  inspectMaximumEntries: 1000
+  pruneScanMaximumFiles: 100000
+  pruneScanMaximumMetadataBytes: 10737418240
+  pruneDeleteBatchMaximum: 10000
+  scanLimitBehavior: local_state/cache_scan_limit
+  symlinkTraversal: forbidden
+  pruneTargets:
+    - recognized-cache-entries
+    - explicitly-stale-temporary-files
+    - explicitly-stale-lease-directories
+  quarantineIncludedByDefault: false
+
+acceptance:
+  validators:
+    - Node-reference
+    - Rust-production
+  requirements:
+    - every-schema-compiles
+    - every-valid-and-invalid-fixture-runs-in-both-validators
+    - every-transition-supports-dry-run
+    - crash-injection-at-every-action
+    - rerun-is-idempotent
+    - no-store-has-two-writable-authorities
+    - no-secret-in-logs-errors-cache-approval-quota-or-watchlist
+  fixtures:
+    credential:
+      - absent-keychain
+      - same-keychain
+      - conflicting-keychain
+      - unknown-config-key-preserved
+      - crash-after-keychain-set
+    approval:
+      - bound-valid
+      - all-unbound-becomes-empty
+      - mixed-invalid-unchanged
+    cache:
+      - strict-full-row-v1-to-v2
+      - stale-v1-offline-promotion
+      - partial-row-invalid-quarantine
+      - current-and-future-date-rejected
+      - v1-v2-coexistence-prefers-v2
+      - interrupted-temp-ignored
+      - live-lease-contention
+      - dead-owner-lease
+      - stale-lease
+      - symlink-rejected
+    quota:
+      - current-root-nine-becomes-fingerprint-ten
+      - old-root-date-becomes-one
+      - corrupt-unknown-and-over-limit-unchanged
+      - Node-Rust-concurrent-exact-total
+      - interrupted-temp-and-lock
+    watchlist:
+      - strict-v0-to-v1
+      - duplicate-and-ordering
+      - corrupt-and-extra-field-unchanged
+      - concurrent-mutations
+      - legacy-read-prohibited-after-cutover

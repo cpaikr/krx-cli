@@ -1,0 +1,163 @@
+schemaVersion: 1
+id: krx-errors/v1
+publicFields:
+  required:
+    - name
+    - kind
+    - code
+    - message
+    - retryable
+  optional:
+    - httpStatus
+    - providerCode
+    - operationId
+  forbidden:
+    - cause
+    - details
+    - rawBody
+    - dependencyMessage
+
+kinds:
+  invalid_request:
+    cliExit: 2
+    codes:
+      invalid_argument: false
+      conflicting_options: false
+      invalid_date: false
+      invalid_operation: false
+      invalid_field: false
+      invalid_filter: false
+  cancelled:
+    cliExit: 1
+    codes:
+      request_cancelled: false
+  timeout:
+    cliExit: 1
+    codes:
+      deadline_exceeded: true
+  authentication:
+    cliExit: 4
+    codes:
+      credential_missing: false
+      credential_or_approval_rejected: false
+  approval:
+    cliExit: 6
+    codes:
+      service_not_approved: false
+  rate_limit:
+    cliExit: 5
+    codes:
+      local_quota_exhausted: false
+      provider_rate_limited: true
+  offline:
+    cliExit: 1
+    codes:
+      cache_miss: false
+      cache_invalid: false
+  network:
+    cliExit: 1
+    codes:
+      request_failed: true
+  upstream:
+    cliExit: 1
+    codes:
+      http_error: false
+      provider_error: false
+  invalid_response:
+    cliExit: 1
+    codes:
+      invalid_json: false
+      invalid_envelope: false
+      invalid_row: false
+  integrity:
+    cliExit: 1
+    codes:
+      adjustment_incomplete: false
+      adjustment_inconsistent: false
+      calendar_invalid: false
+      contract_mismatch: false
+  local_state:
+    cliExit: 1
+    codes:
+      credential_store_unavailable: false
+      credential_read_failed: false
+      credential_write_failed: false
+      credential_verify_failed: false
+      cache_read_failed: false
+      cache_write_failed: false
+      cache_lock_timeout: true
+      cache_scan_limit: false
+      quota_state_invalid: false
+      quota_state_io_failed: false
+      quota_lock_timeout: true
+      legacy_state_invalid: false
+      migration_conflict: false
+      migration_failed: false
+      watchlist_state_invalid: false
+      watchlist_io_failed: false
+      unsupported_platform: false
+
+httpMappings:
+  - match: 401
+    kind: authentication
+    code: credential_or_approval_rejected
+    retryable: false
+  - match: 403
+    kind: approval
+    code: service_not_approved
+    retryable: false
+  - match: 408
+    afterRetries: true
+    kind: timeout
+    code: deadline_exceeded
+    retryable: true
+  - match: 429
+    afterRetries: true
+    kind: rate_limit
+    code: provider_rate_limited
+    retryable: true
+  - match:
+      - 500
+      - 502
+      - 503
+      - 504
+    afterRetries: true
+    kind: upstream
+    code: http_error
+    retryable: true
+  - match: otherNonSuccess
+    kind: upstream
+    code: http_error
+    retryable: false
+  - match: http200ProviderError
+    kind: upstream
+    code: provider_error
+    retryable: false
+
+responseMappings:
+  invalidJson:
+    kind: invalid_response
+    code: invalid_json
+  invalidEnvelope:
+    kind: invalid_response
+    code: invalid_envelope
+  invalidRow:
+    kind: invalid_response
+    code: invalid_row
+
+compositePriority:
+  - cancelled
+  - timeout
+  - rate_limit
+  - authentication
+  - approval
+  - offline
+  - local_state
+  - network
+  - upstream
+  - invalid_response
+  - integrity
+
+resultExitPolicies:
+  noDataOrLocalTargetAbsent: 3
+  partialComposite: 7

@@ -39,11 +39,10 @@ Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Next in-scope action
 
-Freeze the Rust SDK, Node SDK, CLI compatibility and intentional-change
-ledgers, error taxonomy, and credential, cache, approval, quota, and watchlist
-migration contracts around the validated OpenAPI authority. Then prove the
-candidate seams in a disposable four-target Rust vertical slice without
-starting the production workspace.
+Prove the frozen candidate seams in a disposable four-target Rust vertical
+slice without starting the production workspace. Compile the Rust consumer
+fixture, exercise the native Clap and Node-API boundaries, and certify or amend
+the private target manifest before delivering the contract-authority PR.
 
 ### Evidence and blockers
 
@@ -62,10 +61,28 @@ starting the production workspace.
   provider errors, schema-composition bypasses, stale artifacts, and
   handwritten JavaScript/TypeScript/Rust mirrors. HTTP-200 provider errors are
   classified and sanitized consistently by runtime and live-probe consumers.
-- `pnpm verify` passes 46 test files and 413 tests on the OpenAPI checkpoint,
-  including production audit, installed-package judge, and packed-artifact
-  smoke. Independent code review completed after multiple mutation passes with
-  no remaining actionable findings in this bounded authority slice.
+- `contracts/product/v1` now freezes the project-owned Rust consumer, complete
+  public Node declarations and package surface, CLI delta and intentional
+  changes, paired error kinds/codes and retry/exit mappings, four private
+  native target archives, and credential, approval, cache, quota, and
+  watchlist state transitions. Provider operations and row types remain
+  generated from OpenAPI rather than duplicated in the maintained profile.
+- The product gate compiles nine strict maintained state schemas plus generated
+  operation-aware cache schemas, exercises classified valid and invalid
+  migration fixtures, typechecks a public Node consumer, and rejects stale or
+  malformed public, state, error, target, and migration artifacts. Its checked
+  projections include an exhaustive 425-entry CLI option matrix and generated
+  Node and Rust operation/error types for all 31 operations.
+- `pnpm verify` passes 47 test files and 442 tests on the public-contract
+  checkpoint, including 53 targeted authority and product-contract tests,
+  production audit, the 13-scenario installed-package judge with all three
+  named mutants rejected, and packed-artifact smoke for 31 schemas and 12
+  legacy MCP tools. Independent review findings on error redaction, mapping
+  completeness, executable migrations, SDK surface coverage, CLI scope, empty
+  approval observations, typed HTTP match sets, schema-reference resolution,
+  version collisions, invalid approval sources, and exact-byte no-write
+  preservation, empty-present credential handling, and credential source
+  validation ordering are closed.
 - Reproduced hosted failures from CI run `31672062655`: Windows checkout
   newlines broke two LF-sensitive assertions, and npm 10 lifecycle output
   preceded `npm pack --json`. The fixes normalize only test input newlines and

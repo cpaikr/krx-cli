@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://krx-cli.invalid/contracts/state/cache-v2.schema.json",
+  "title": "Canonical cache entry",
+  "type": "object",
+  "required": [
+    "version",
+    "operationId",
+    "schemaSha256",
+    "fetchedAt",
+    "params",
+    "rows"
+  ],
+  "properties": {
+    "version": { "const": 2 },
+    "operationId": { "type": "string" },
+    "schemaSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "fetchedAt": { "type": "string", "format": "date-time" },
+    "params": { "$ref": "#/$defs/params" },
+    "rows": { "type": "array", "minItems": 1 }
+  },
+  "additionalProperties": false,
+  "x-krx-openapi-row-discriminator": {
+    "operationSelector": "operationId",
+    "rowsProperty": "rows",
+    "source": "../../../krx/openapi.yaml"
+  },
+  "x-krx-schema-digest": {
+    "algorithm": "sha256",
+    "canonicalization": "RFC8785",
+    "document": ["operationId", "requestSchema", "responseSchema"]
+  },
+  "$defs": {
+    "params": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "array",
+        "prefixItems": [{ "type": "string" }, { "type": "string" }],
+        "items": false,
+        "minItems": 2,
+        "maxItems": 2
+      }
+    }
+  }
+}

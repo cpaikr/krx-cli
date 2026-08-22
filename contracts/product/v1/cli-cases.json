@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "auth-set-stdin-preserved",
+      "coversBehavior": "auth-set-rejects-argv-secret",
+      "polarity": "positive",
+      "args": ["auth", "set", "--stdin"],
+      "stdin": "fixture-key\n",
+      "expect": { "code": 0, "stdoutJsonSubset": { "success": true } }
+    },
+    {
+      "id": "auth-set-argv-secret-rejected",
+      "coversBehavior": "auth-set-rejects-argv-secret",
+      "polarity": "rejection",
+      "args": ["auth", "set", "fixture-key"],
+      "expect": { "code": 2, "stderrKind": "invalid_request" }
+    },
+    {
+      "id": "auth-migrate-present",
+      "coversInventory": "add-command:[\"auth\"]:migrate",
+      "polarity": "positive",
+      "args": ["auth", "migrate", "--help"],
+      "expect": { "code": 0 }
+    },
+    {
+      "id": "auth-migrate-conflict-preserves-state",
+      "coversInventory": "add-command:[\"auth\"]:migrate",
+      "polarity": "rejection",
+      "args": ["auth", "migrate"],
+      "setup": "legacy-key-differs-from-keychain",
+      "expect": {
+        "code": 1,
+        "stderrCode": "migration_conflict",
+        "legacyBytesUnchanged": true,
+        "keychainWrites": 0
+      }
+    },
+    {
+      "id": "active-root-option-preserved",
+      "coversBehavior": "inactive-root-options-exit-2",
+      "polarity": "positive",
+      "args": ["--limit", "1", "stock", "list", "--date", "20260102"],
+      "setup": "cache-v2-full",
+      "expect": { "code": 0, "rowCount": 1 }
+    },
+    {
+      "id": "inactive-root-option-rejected",
+      "coversBehavior": "inactive-root-options-exit-2",
+      "polarity": "rejection",
+      "args": ["--limit", "1", "version"],
+      "expect": { "code": 2, "stderrKind": "invalid_request" }
+    },
+    {
+      "id": "offline-cache-hit",
+      "coversBehavior": "offline-conflicts",
+      "coversInventory": "add-option:[]:offline",
+      "polarity": "positive",
+      "args": ["--offline", "stock", "list", "--date", "20260102"],
+      "setup": "cache-v2-full-no-credential",
+      "expect": { "code": 0, "networkCalls": 0, "credentialReads": 0 }
+    },
+    {
+      "id": "offline-refresh-conflict",
+      "coversBehavior": "offline-conflicts",
+      "coversInventory": "add-option:[]:offline",
+      "polarity": "rejection",
+      "args": ["--offline", "--refresh", "stock", "list", "--date", "20260102"],
+      "expect": { "code": 2, "networkCalls": 0, "credentialReads": 0 }
+    },
+    {
+      "id": "offline-no-cache-conflict",
+      "coversBehavior": "offline-conflicts",
+      "polarity": "rejection",
+      "args": [
+        "--offline",
+        "--no-cache",
+        "stock",
+        "list",
+        "--date",
+        "20260102"
+      ],
+      "expect": { "code": 2, "networkCalls": 0, "credentialReads": 0 }
+    },
+    {
+      "id": "offline-dry-run-conflict",
+      "coversBehavior": "offline-conflicts",
+      "polarity": "rejection",
+      "args": ["--offline", "--dry-run", "stock", "list", "--date", "20260102"],
+      "expect": { "code": 2, "networkCalls": 0, "credentialReads": 0 }
+    },
+    {
+      "id": "offline-retries-conflict",
+      "coversBehavior": "offline-conflicts",
+      "polarity": "rejection",
+      "args": [
+        "--offline",
+        "--retries",
+        "0",
+        "stock",
+        "list",
+        "--date",
+        "20260102"
+      ],
+      "expect": { "code": 2, "networkCalls": 0, "credentialReads": 0 }
+    },
+    {
+      "id": "historical-nonempty-cache-write",
+      "coversBehavior": "empty-current-future-not-cached",
+      "polarity": "positive",
+      "args": ["stock", "list", "--date", "20260102"],
+      "setup": "network-nonempty-as-of-20260103",
+      "expect": { "code": 0, "cacheEntries": 1 }
+    },
+    {
+      "id": "empty-current-future-not-cached",
+      "coversBehavior": "empty-current-future-not-cached",
+      "polarity": "rejection",
+      "args": ["stock", "list", "--date", "20260103"],
+      "setup": "network-empty-as-of-20260103",
+      "expect": { "code": 3, "cacheEntries": 0 }
+    },
+    {
+      "id": "empty-historical-not-cached",
+      "coversBehavior": "empty-current-future-not-cached",
+      "polarity": "rejection",
+      "args": ["stock", "list", "--date", "20260102"],
+      "setup": "network-empty-as-of-20260103",
+      "expect": { "code": 3, "cacheEntries": 0 }
+    },
+    {
+      "id": "future-nonempty-not-cached",
+      "coversBehavior": "empty-current-future-not-cached",
+      "polarity": "rejection",
+      "args": ["stock", "list", "--date", "20260104"],
+      "setup": "network-nonempty-as-of-20260103",
+      "expect": { "code": 0, "cacheEntries": 0 }
+    },
+    {
+      "id": "offline-direct-provenance",
+      "coversBehavior": "direct-offline-provenance-stderr",
+      "polarity": "positive",
+      "args": ["--offline", "stock", "list", "--date", "20260102"],
+      "setup": "cache-v2-full-no-credential",
+      "expect": {
+        "code": 0,
+        "stderrDiagnostic": {
+          "source": "cache",
+          "freshness": "stale",
+          "fetchedAt": "2026-01-03T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "online-direct-keeps-empty-stderr",
+      "coversBehavior": "direct-offline-provenance-stderr",
+      "polarity": "rejection",
+      "args": ["stock", "list", "--date", "20260102"],
+      "setup": "cache-v2-full",
+      "expect": { "code": 0, "stderr": "" }
+    },
+    {
+      "id": "removed-serve-help-exclusion",
+      "coversInventory": "remove-command:[]:serve",
+      "polarity": "positive",
+      "args": ["--help"],
+      "expect": { "code": 0, "stdoutExcludes": ["serve"] }
+    },
+    {
+      "id": "removed-serve-command",
+      "coversInventory": "remove-command:[]:serve",
+      "polarity": "rejection",
+      "args": ["serve"],
+      "expect": { "code": 2 }
+    },
+    {
+      "id": "cache-inspect-present",
+      "coversInventory": "add-command:[\"cache\"]:inspect",
+      "polarity": "positive",
+      "args": ["cache", "inspect", "--help"],
+      "expect": { "code": 0 }
+    },
+    {
+      "id": "cache-inspect-limit-rejected",
+      "coversInventory": "add-command:[\"cache\"]:inspect",
+      "polarity": "rejection",
+      "args": ["cache", "inspect", "--limit", "1001"],
+      "expect": { "code": 2, "stderrKind": "invalid_request" }
+    },
+    {
+      "id": "cache-prune-present",
+      "coversInventory": "add-command:[\"cache\"]:prune",
+      "polarity": "positive",
+      "args": ["cache", "prune", "--help"],
+      "expect": { "code": 0 }
+    },
+    {
+      "id": "cache-prune-batch-limit-rejected",
+      "coversInventory": "add-command:[\"cache\"]:prune",
+      "polarity": "rejection",
+      "args": ["cache", "prune", "--max-entries", "10001"],
+      "expect": { "code": 2, "stderrKind": "invalid_request" }
+    }
+  ]
+}

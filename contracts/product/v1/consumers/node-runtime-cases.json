@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "esm-named-import",
+      "expect": "KrxClient and KrxError import from package root"
+    },
+    {
+      "id": "invalid-date",
+      "input": "2026-01-02",
+      "expectError": "invalid_request/invalid_date"
+    },
+    {
+      "id": "empty-explicit-api-key",
+      "input": "",
+      "expectError": "invalid_request/invalid_argument",
+      "fallthrough": false
+    },
+    {
+      "id": "abort-signal",
+      "expectError": "cancelled/request_cancelled"
+    },
+    {
+      "id": "adjusted-range-requires-exact-eligible-security",
+      "expectError": "invalid_request/conflicting_options"
+    },
+    {
+      "id": "error-instance",
+      "expect": "error instanceof KrxError"
+    },
+    {
+      "id": "secret-redaction",
+      "secret": "consumer-fixture-secret",
+      "forbiddenIn": [
+        "message",
+        "stack",
+        "providerCode",
+        "operationId",
+        "cause",
+        "details",
+        "rawBody",
+        "dependencyMessage"
+      ]
+    },
+    {
+      "id": "supported-node-majors",
+      "versions": [22, 24]
+    },
+    {
+      "id": "unsupported-native-target",
+      "expectError": "local_state/unsupported_platform"
+    }
+  ]
+}
