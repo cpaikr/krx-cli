@@ -77,7 +77,10 @@ publication decision.
   builds, all eight exact-archive consumers under Node 22 and 24, and the final
   cross-target identity aggregator. An independent replay over the downloaded
   reports confirmed one portable digest, package metadata, and capability
-  identity across all eight consumers.
+  identity across all eight consumers. Documentation-head run 32564281020
+  repeated the complete 13-job matrix successfully at commit
+  `07fe73fe4c5500f3dcba0910a592b9d2c7a681ab`, the final implementation and
+  certification-report head before PR delivery.
 - `../ytm` supplies the target structural precedent. The accepted guidance in
   `../mytech` supplies the design rules: OpenAPI wire authority, a handwritten
   Rust conformer, narrow Node-API binding, boundary-owned contracts, pure

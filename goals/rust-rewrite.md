@@ -146,6 +146,11 @@ that PR is complete.
   All eight reports share portable digest `7f5dc0f96e7c38fd458ebc203f599d5ff561712a3d88111cb28fb723d3c90180`,
   package metadata, and native capability identity. An independent download
   and local comparator replay passed against those reports.
+- Documentation-head run
+  [32564281020](https://github.com/sjunepark/krx-cli/actions/runs/32564281020)
+  repeated the complete 13-job certification matrix successfully at commit
+  `07fe73fe4c5500f3dcba0910a592b9d2c7a681ab`, the final implementation and
+  certification-report head before the contract PR lifecycle.
 - A six-mutant vertical-slice gate ties exact Rust dependencies, both workflow
   matrices, package exports, Node majors, and target identities to the frozen
   contracts and rejects cross-target portable-payload divergence. The canonical
