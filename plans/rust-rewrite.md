@@ -1,20 +1,22 @@
-# Rewrite krx-cli as a Rust-backed Node SDK and CLI
+# Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK
 
 Status: queued
 
 ## Outcome
 
-`krx-cli` becomes a Node.js product backed by one Rust implementation of the
-KRX Open API. It exposes an idiomatic public Node SDK and the existing `krx`
-executable, preserves the documented CLI behavior except for deliberate
-corrections, removes MCP completely, and produces private installable native
-tarballs for every supported platform without requiring a Rust toolchain on
-consumer machines.
+`krx-cli` becomes a native Rust CLI and a Node.js SDK backed by one shared Rust
+SDK implementation of the KRX Open API. The existing `krx` executable is
+rebuilt with Clap over that Rust SDK, while an idiomatic public Node SDK reaches
+the same implementation through Node-API. The product preserves documented CLI
+behavior except for deliberate corrections, removes MCP completely, and
+produces private installable native tarballs for every supported platform
+without requiring a Rust toolchain on consumer machines.
 
-The rewrite is complete when the Rust-backed product passes contract,
-black-box, package-consumer, and supported-platform validation and the legacy
-TypeScript protocol implementation has been removed. Creating the first tag or
-GitHub Release remains a separate publication decision.
+The rewrite is complete when the Rust SDK, native CLI, and Node SDK pass
+contract, black-box, package-consumer, and supported-platform validation and
+the legacy TypeScript protocol and JavaScript CLI implementations have been
+removed. Creating the first tag or GitHub Release remains a separate
+publication decision.
 
 ## Current state
 
@@ -61,9 +63,10 @@ GitHub Release remains a separate publication decision.
   Bearer-token authentication, MCP tools/resources, MCP dependencies, tests,
   workflows, help, and documentation. Do not replace them with another agent
   protocol.
-- Support Node.js as the runtime consumer. Browser, edge, Deno, Bun-runtime,
-  Python, standalone Rust CLI, and a public Rust crate are outside the product
-  boundary.
+- Support the native `krx` executable and Node.js SDK as runtime consumers of
+  the Rust SDK. Browser, edge, Deno, Bun-runtime, Python, and other language
+  bindings are outside the product boundary. The Rust SDK is a supported
+  workspace boundary, but publishing it to crates.io is outside this release.
 
 ### Target architecture and authority
 
@@ -71,29 +74,30 @@ GitHub Release remains a separate publication decision.
 contracts/krx/openapi.yaml
             |
             v
-      crates/krx-core
+       crates/krx-sdk
  protocol + domain + local policy
-            |
-            v
-      crates/krx-node
-       Node-API boundary
-            |
-            v
-     packages/node/src
-      public SDK + CLI
-            |
-            v
+        /           \
+       v             v
+crates/krx-cli   crates/krx-node
+  Clap CLI       Node-API boundary
+       |             |
+       |             v
+       |       packages/node/src
+       |         public Node SDK
+        \           /
+         v         v
  private per-target npm tarballs
 ```
 
 - `contracts/krx/openapi.yaml` is the sole authority for supported KRX wire
   operations, parameter serialization, headers, response envelopes, and known
   field shapes. Handwrite the Rust conformer; do not generate the client.
-- `crates/krx-core` is independent of Node-API types. Rust owns KRX request
-  preparation and decoding, validation, HTTP behavior, retry/deadline and
-  cancellation policy, quota accounting, credentials, cache lifecycle,
-  calendar selection, composites, adjusted prices, capability projection, and
-  project-owned errors.
+- `crates/krx-sdk` is independent of Clap and Node-API types. It exposes the
+  reusable project-owned Rust API and owns KRX request preparation and
+  decoding, validation, HTTP behavior, retry/deadline and cancellation policy,
+  quota accounting, credentials, cache lifecycle, calendar selection,
+  composites, adjusted prices, capability projection, and project-owned
+  errors.
 - Use reqwest with Rustls and disabled redirects. The application owns every
   retry and reserves quota before every outbound attempt; configure the
   transport so it cannot perform an uncounted automatic retry.
@@ -101,12 +105,36 @@ contracts/krx/openapi.yaml
   napi-rs. It projects stable values and errors, accepts cancellation, and does
   not expose Rust internals, HTTP-library types, raw bodies, credentials,
   dependency messages, or panics.
-- `packages/node` owns the public TypeScript types, ergonomic SDK facade,
-  Commander CLI parsing, secret-prompt UX, help, rendering, stdout/stderr, and
-  process exits. It owns no KRX wire facts, transport, cache rules, or domain
-  calculations.
+- `crates/krx-cli` owns the native executable and uses Clap's derive API for
+  parsing, nested subcommands, reusable argument groups, closed value enums,
+  argv syntax and relationship checks, and generated help. It owns terminal-only
+  secret prompting, rendering, stdout/stderr, and process exits, and invokes
+  `crates/krx-sdk` directly for every operation. It owns no KRX wire facts,
+  transport, cache rules, domain calculations, or shared semantic invariants.
+- `packages/node` owns only the public TypeScript types and ergonomic Node SDK
+  facade over `crates/krx-node`. It does not implement or parse the CLI and owns
+  no KRX wire facts, transport, cache rules, or domain calculations.
 - Add `ARCHITECTURE.md` only when the candidate implementation makes this
   shape true. Until then this plan is the target-design authority.
+
+### Rust SDK and native CLI
+
+- Treat `crates/krx-sdk` as the shared application API used by both adapters.
+  Its asynchronous project-owned request, result, provenance, cancellation,
+  credential, cache, and error types must not depend on Clap, Node-API, reqwest
+  public types, terminal concerns, or unrestricted raw KRX bodies.
+- Build `crates/krx-cli` with Clap derive. Model the command tree with `Parser`
+  and `Subcommand`, reusable option groups with `Args`, and closed command-line
+  values with `ValueEnum`. Parser-level constraints reject invalid or
+  conflicting combinations before SDK calls. The Rust SDK independently
+  rejects every shared semantic violation so native and Node callers cannot
+  diverge by bypassing Clap.
+- Keep the CLI thin: translate parsed arguments into Rust SDK requests, invoke
+  the SDK, then render the result and map project errors to the documented
+  diagnostics and exit codes. Do not add a JavaScript command parser or a
+  second CLI implementation.
+- Rust SDK calls never prompt. Hidden input and stdin handling belong only to
+  explicit native CLI credential commands.
 
 ### Public Node SDK
 
@@ -117,9 +145,9 @@ contracts/krx/openapi.yaml
 - Freeze an idiomatic typed SDK contract before implementation. Use
   project-owned request/result types, asynchronous operations, `AbortSignal`,
   immutable operation descriptions, and stable structured error categories.
-  Do not expose CLI argv shapes, Commander objects, napi-rs objects, reqwest
-  types, arbitrary transport injection, or unrestricted raw KRX bodies.
-- SDK calls never prompt. An explicitly supplied in-memory API key takes
+  Do not expose CLI argv shapes, Clap types, napi-rs objects, reqwest types,
+  arbitrary transport injection, or unrestricted raw KRX bodies.
+- Node SDK calls never prompt. An explicitly supplied in-memory API key takes
   precedence for that client, followed by `KRX_API_KEY`, then the OS keychain.
   Secrets may cross the private binding only for the requested operation and
   must never appear in errors, diagnostics, cache keys, or persisted state.
@@ -176,21 +204,25 @@ contracts/krx/openapi.yaml
 
 - Support macOS ARM64, Linux GNU x64, Linux GNU ARM64, and Windows x64. Other
   operating systems, architectures, libc variants, and WASM remain unclaimed.
-- Keep the public SDK facade and CLI in `packages/node`; use a canonical native
-  target manifest to drive binding names, release assembly, CI, and docs.
+- Keep the public Node SDK facade in `packages/node` and the native CLI in
+  `crates/krx-cli`; use a canonical native target manifest to drive binding and
+  executable names, release assembly, CI, and docs.
 - The release design uses one self-contained npm-compatible `.tgz` per
   supported target. The rewrite assembles and certifies all four as attachable
   private GitHub Release assets; a separately authorized release attaches
-  them. Each tarball contains the same SDK/CLI JavaScript and exactly one
-  matching `.node` artifact, so installation needs Node but no Rust toolchain
-  or registry access.
+  them. Each tarball contains the same Node SDK JavaScript, exactly one matching
+  `.node` artifact, and exactly one matching native `krx` executable. Package
+  metadata may use only a minimal launcher when required to enter that binary;
+  it must contain no command parsing or CLI behavior and must transparently
+  forward argv, stdin, stdout, stderr, exit status, and termination signals.
+  Installation needs Node but no Rust toolchain or registry access.
 - Clean-install every exact tarball on its native runner and test both SDK
   import and `krx` execution. Installation and update docs use authenticated
   GitHub Release download followed by local tarball installation; tokens never
   appear in package URLs or lockfiles.
 - Retire Git-tag source builds after the prebuilt path passes on all targets.
-  Version, JavaScript, declarations, native artifact, package metadata, and
-  capability output must agree exactly.
+  Version, JavaScript, declarations, Node binding, CLI executable, package
+  metadata, and capability output must agree exactly.
 
 ## Execution plan
 
@@ -214,16 +246,21 @@ contracts/krx/openapi.yaml
   language-neutral profile needed for constraints OpenAPI cannot express.
   Derive validators or capability views as checked artifacts, never as a
   parallel authority.
-- Freeze the public Node SDK API, CLI compatibility ledger, intentional-change
-  ledger, project error taxonomy, and cache/credential migration contracts.
+- Freeze the Rust SDK API, public Node SDK API, Clap CLI compatibility ledger,
+  intentional-change ledger, project error taxonomy, and cache/credential
+  migration contracts.
 - Add a disposable Rust vertical slice proving official TLS, headers,
-  representative decoding, cancellation, timeouts, keychain behavior, and
-  Node-API async execution. Discard probe secrets and raw live payloads.
+  representative decoding, cancellation, timeouts, keychain behavior, one
+  representative Clap command over the Rust SDK, and Node-API async execution.
+  Prove whether package-manager entrypoints can invoke the native executable
+  directly on every target; permit the transparent launcher only where direct
+  invocation cannot meet the CLI contract. Discard probe secrets and raw live
+  payloads.
 - Select exact Rust and Node dependency versions through current official
   documentation and record only decisions that affect the public contract or
   long-term maintenance.
 
-### 2. Implement the Rust core
+### 2. Implement the Rust SDK
 
 - Implement pure request preparation and response decoding against OpenAPI,
   followed by bounded transport, typed failures, explicit application retries,
@@ -237,7 +274,7 @@ contracts/krx/openapi.yaml
 - Keep fixture and provider-evidence tests in Rust. No Node test double may
   become a second transport implementation.
 
-### 3. Build the binding, public SDK, and CLI
+### 3. Build the native CLI, Node binding, and public Node SDK
 
 - Expose the minimum asynchronous Node-API operations needed by the public SDK,
   including cancellation, capabilities, typed result provenance, and stable
@@ -245,9 +282,10 @@ contracts/krx/openapi.yaml
 - Implement the typed Node SDK facade and contract tests. Generate or compare
   declarations deterministically and test plain JavaScript and TypeScript
   consumers.
-- Rebuild the `krx` command tree as a thin Commander adapter over the SDK.
-  Preserve documented output and exits, add auth migration and offline/cache
-  operations, and reject unsupported or ineffective combinations.
+- Rebuild the `krx` command tree in `crates/krx-cli` with Clap derive over the
+  Rust SDK. Preserve documented output and exits, add auth migration and
+  offline/cache operations, and reject unsupported or ineffective combinations
+  before invoking the SDK.
 - Remove MCP only at cutover; before then, prevent the candidate from acquiring
   an MCP compatibility layer.
 
@@ -261,8 +299,10 @@ contracts/krx/openapi.yaml
   readers/writers, offline stale hits, and offline misses without credentials.
 - Assemble all four private target tarballs and clean-install each on its native
   runner across every supported Node major. Exercise SDK imports, CLI help,
-  representative commands, missing-native failures, cancellation, and package
-  contents from the tarballs rather than the source tree.
+  representative native CLI commands, OS/CPU/libc rejection, Unix executable
+  permissions, independent missing or mismatched binding and executable
+  failures, cancellation, and package contents from the tarballs rather than
+  the source tree.
 - Run source, binding, package-consumer, security, dependency, license, contract
   freshness, and deliberate-mutation checks. Run credentialed live smoke only
   as a separate bounded validation.
@@ -270,11 +310,12 @@ contracts/krx/openapi.yaml
 ### 5. Cut over atomically
 
 - Switch package exports, the executable, tests, documentation, packaged skill,
-  CI, contract drift, and release assembly to the Rust-backed SDK and CLI in one
-  reviewable cutover.
+  CI, contract drift, and release assembly to the Rust SDK, native CLI, and
+  Node SDK in one reviewable cutover.
 - Delete the legacy TypeScript KRX transport/domain implementation and every MCP
   source, entrypoint, dependency, test, workflow path, environment variable,
-  help item, and documentation claim. Preserve only thin public Node adapters.
+  help item, and documentation claim. Preserve only the Rust SDK, native Clap
+  CLI, narrow Node binding, and thin public Node SDK adapters.
 - Replace source-build installation guidance with private release-tarball
   installation and migration instructions. Create `ARCHITECTURE.md` describing
   the implemented state and reconcile every durable document with its single
@@ -300,22 +341,29 @@ contracts/krx/openapi.yaml
   persistence, atomicity, quarantine, singleflight, cross-process leases,
   shared quota, bounded pruning, version-1 migration, and offline stale reads
   without credential or network access.
-- SDK contract tests cover every public operation, TypeScript declarations,
-  plain JavaScript imports, `AbortSignal`, stable errors, provenance, and
-  credential-free offline stale hits and misses without exposing private
-  binding or transport types.
-- CLI contract tests preserve documented commands, output, completeness, exit
-  codes, and stdout/stderr behavior while proving removed MCP and corrected
-  option/secret/cache behavior.
+- Rust SDK contract tests cover every supported operation, stable project-owned
+  types and errors, shared invalid and conflicting request states, cancellation,
+  provenance, and credential-free offline stale hits and misses without
+  exposing adapter or transport types.
+- Node SDK contract tests cover every public operation, TypeScript declarations,
+  plain JavaScript imports, `AbortSignal`, stable errors, provenance, and parity
+  with the Rust SDK without exposing private binding or transport types.
+- Native Clap CLI contract tests preserve documented commands, help, output,
+  completeness, exit codes, and stdout/stderr behavior while proving parser
+  constraints, removed MCP, and corrected option/secret/cache behavior. No
+  JavaScript CLI parser or alternate command implementation remains.
 - Clean consumers install each macOS ARM64, Linux GNU x64/ARM64, and Windows x64
   tarball and run both the SDK and executable without a compiler or Rust
-  toolchain. Package inspection finds exactly one matching native artifact.
+  toolchain. Package inspection finds exactly one matching `.node` binding and
+  one matching native `krx` executable; wrong-platform artifacts, missing
+  artifacts, mismatched artifacts, and missing Unix executable permissions fail
+  explicitly.
 - Deterministic merge validation, supported-platform CI, code review, and
   documentation freshness pass. Live credentialed checks remain separately
   reported and cannot weaken or block credential-free correctness evidence.
-- The final repository has no legacy TypeScript protocol/domain code, MCP
-  surface, plaintext credential fallback, generated-client authority, or
-  install-time native build path.
+- The final repository has no legacy TypeScript protocol/domain code, JavaScript
+  CLI implementation, MCP surface, plaintext credential fallback,
+  generated-client authority, or install-time native build path.
 
 ## Next action
 
