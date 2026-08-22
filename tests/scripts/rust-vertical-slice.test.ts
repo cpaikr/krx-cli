@@ -225,6 +225,13 @@ describe("Rust vertical-slice gate", () => {
     );
   });
 
+  it("rejects platform-dependent portable package line endings", () => {
+    const path = mutatedText(".gitattributes", "*.d.ts text eol=crlf");
+    const result = run("--attributes", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/exact LF-only attributes policy/u);
+  });
+
   it("rejects a hosted matrix that does not install the pinned toolchain", () => {
     const path = replacedText(
       ".github/workflows/rust-vertical-slice.yml",

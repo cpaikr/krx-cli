@@ -23,6 +23,7 @@ function equal(actual, expected, message) {
 }
 
 const paths = {
+  attributes: argument("--attributes", ".gitattributes"),
   targets: argument(
     "--native-targets",
     "contracts/product/v1/native-targets.json",
@@ -49,6 +50,7 @@ const paths = {
 };
 
 const [
+  attributes,
   targets,
   nodePackage,
   workflow,
@@ -58,6 +60,7 @@ const [
   packageJson,
   runtimeCases,
 ] = await Promise.all([
+  readFile(paths.attributes, "utf8"),
   readJson(paths.targets),
   readJson(paths.nodePackage),
   readYaml(paths.workflow),
@@ -92,6 +95,7 @@ equal(
 
 const buildTargets = workflow.jobs?.build?.strategy?.matrix?.include;
 const requiredWorkflowPaths = [
+  ".gitattributes",
   ".github/workflows/rust-vertical-slice.yml",
   "contracts/**",
   "package.json",
@@ -100,6 +104,15 @@ const requiredWorkflowPaths = [
   "scripts/package-smoke-command.mjs",
   "scripts/rust-vertical-slice.mjs",
 ];
+equal(
+  attributes.split(/\r?\n/u).filter(Boolean),
+  [
+    "/contracts/generated/*.d.ts text eol=lf",
+    "/contracts/product/v1/node-sdk.d.ts text eol=lf",
+    "/probes/rust-vertical-slice/node/package/dist/*.js text eol=lf",
+  ],
+  "portable package sources must have an exact LF-only attributes policy",
+);
 equal(
   workflow.on?.push?.paths,
   requiredWorkflowPaths,

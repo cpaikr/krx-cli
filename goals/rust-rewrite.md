@@ -39,8 +39,8 @@ Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Next in-scope action
 
-Push the Windows native-module cleanup remediation and require a green hosted
-four-target and Node 22/24 certification retry, then deliver the
+Pin portable package sources to LF and require a green hosted four-target and
+Node 22/24 certification retry, then deliver the
 contract-authority PR through review and merge. Production Rust remains blocked
 until that PR is complete.
 
@@ -73,8 +73,8 @@ until that PR is complete.
   malformed public, state, error, target, and migration artifacts. Its checked
   projections include an exhaustive 425-entry CLI option matrix and generated
   Node and Rust operation/error types for all 31 operations.
-- `pnpm verify` passes 48 test files and 459 tests on the candidate-proof
-  checkpoint, including 70 targeted authority, product-contract, and
+- `pnpm verify` passes 48 test files and 460 tests on the candidate-proof
+  checkpoint, including 71 targeted authority, product-contract, and
   vertical-slice gate tests,
   production audit, the 13-scenario installed-package judge with all three
   named mutants rejected, and packed-artifact smoke for 31 schemas and 12
@@ -132,6 +132,14 @@ until that PR is complete.
   DLL open. Capability capture now comes from the existing child runtime probe,
   which exits and releases the module before the parent removes the temporary
   install. Local clean installs pass unchanged under Node 22 and 24.
+- Hosted retry
+  [32562681277](https://github.com/sjunepark/krx-cli/actions/runs/32562681277)
+  passed all four builds and all eight clean-install consumers, including DLL
+  release and cleanup on Windows under Node 22 and 24. The final aggregator
+  then detected that Windows checkout had converted every portable JavaScript
+  and declaration file to CRLF. Exact artifact comparison proves the payloads
+  are otherwise byte-identical. Checked attributes now pin every portable
+  source to LF, and the workflow watches that policy as a certification input.
 - A six-mutant vertical-slice gate ties exact Rust dependencies, both workflow
   matrices, package exports, Node majors, and target identities to the frozen
   contracts and rejects cross-target portable-payload divergence. The canonical

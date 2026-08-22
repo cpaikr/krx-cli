@@ -40,6 +40,14 @@ Hosted evidence on 2026-08-22:
   now reuses the child runtime probe, whose exit releases the native module
   before parent-process cleanup. Local clean installs pass this flow under Node
   22 and 24 with identical portable identity.
+- [Run 32562681277](https://github.com/sjunepark/krx-cli/actions/runs/32562681277)
+  passed all four builds and all eight consumers. Both Windows consumers
+  certified the exact archive and removed their temporary installs, closing
+  the native DLL lifecycle defect. The final aggregator then rejected the
+  Windows portable hash: artifact extraction proved that all seven JavaScript
+  and declaration files differed only by CRLF checkout conversion. Checked
+  attributes now pin the three portable source groups to LF, and the workflow
+  watches that policy directly.
 
 The remediation retry must pass four target builds and eight clean-install
 Node consumers, then compare all eight reports, before this report can be
