@@ -70,9 +70,9 @@ that PR is complete.
   `Ignored — Not a secret (false positive)`: it contains only a derived
   synthetic fixture fingerprint, has zero files requiring a code fix, and its
   two occurrences record the addition and later removal of the fixture value.
-  Delivery now waits on a fresh GitGuardian head check and permission to
-  manually retry CodeRabbit after its initial review failed to post and did
-  not automatically rerun on the remediation push.
+  A fresh GitGuardian head check passes at `020c790`. Delivery now waits on
+  permission to manually retry CodeRabbit after its initial review failed to
+  post and did not automatically rerun on the remediation push.
 - A four-variant SDK design pass converged on one deep concrete `Client` module
   with a private shared direct-operation engine, crate-private local-state
   seams, and one true-external KRX HTTP seam. Contract review then closed three
