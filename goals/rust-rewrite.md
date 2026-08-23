@@ -60,14 +60,17 @@ that PR is complete.
   `pnpm verify` (48 files, 469 tests), and rebuilt clean installs under Node 22
   and 24 pass locally; both consumers certify portable digest
   `7f5dc0f96e7c38fd458ebc203f599d5ff561712a3d88111cb28fb723d3c90180`.
-  Follow-up push run
-  [32566942073](https://github.com/sjunepark/krx-cli/actions/runs/32566942073)
+  Final push run
+  [32568704214](https://github.com/sjunepark/krx-cli/actions/runs/32568704214)
   and PR run
-  [32566944078](https://github.com/sjunepark/krx-cli/actions/runs/32566944078)
+  [32568706447](https://github.com/sjunepark/krx-cli/actions/runs/32568706447)
   each pass all four native builds, all eight unchanged-archive Node
   consumers, and the final identity aggregator. All six Codex threads are
-  answered and resolved. Delivery now waits on permission to classify the
-  removed synthetic-fingerprint GitGuardian incident as a false positive and
+  answered and resolved. GitGuardian incident `36482895` is classified as
+  `Ignored — Not a secret (false positive)`: it contains only a derived
+  synthetic fixture fingerprint, has zero files requiring a code fix, and its
+  two occurrences record the addition and later removal of the fixture value.
+  Delivery now waits on a fresh GitGuardian head check and permission to
   manually retry CodeRabbit after its initial review failed to post and did
   not automatically rerun on the remediation push.
 - A four-variant SDK design pass converged on one deep concrete `Client` module
