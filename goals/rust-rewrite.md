@@ -66,19 +66,22 @@ that PR is complete.
   tests), and rebuilt clean installs under
   Node 22 and 24 pass locally; both consumers certify portable digest
   `7f5dc0f96e7c38fd458ebc203f599d5ff561712a3d88111cb28fb723d3c90180`.
-  Final push run
-  [32568704214](https://github.com/sjunepark/krx-cli/actions/runs/32568704214)
+  Final implementation-head push run
+  [32617597910](https://github.com/sjunepark/krx-cli/actions/runs/32617597910)
   and PR run
-  [32568706447](https://github.com/sjunepark/krx-cli/actions/runs/32568706447)
+  [32617600682](https://github.com/sjunepark/krx-cli/actions/runs/32617600682)
   each pass all four native builds, all eight unchanged-archive Node
-  consumers, and the final identity aggregator. All six Codex threads are
-  answered and resolved. GitGuardian incident `36482895` is classified as
+  consumers, and the final identity aggregator at `6b46cc1`. A refreshed
+  complete feedback collection confirms all six Codex threads are answered
+  and resolved, with no outside-diff findings or active review. GitGuardian
+  incident `36482895` is classified as
   `Ignored — Not a secret (false positive)`: it contains only a derived
   synthetic fixture fingerprint, has zero files requiring a code fix, and its
   two occurrences record the addition and later removal of the fixture value.
-  A fresh GitGuardian head check passes at `74bc223`. Delivery now waits on
-  permission to manually retry CodeRabbit after its initial review failed to
-  post and did not automatically rerun on the remediation push.
+  A fresh GitGuardian check passes at `6b46cc1`. CodeRabbit's initial review
+  failed to post, and its current-head check explicitly skipped because
+  automatic reviews are disabled. Delivery now waits on permission to post the
+  one-time `@coderabbitai full review` retry required by the PR lifecycle.
 - A four-variant SDK design pass converged on one deep concrete `Client` module
   with a private shared direct-operation engine, crate-private local-state
   seams, and one true-external KRX HTTP seam. Contract review then closed three
