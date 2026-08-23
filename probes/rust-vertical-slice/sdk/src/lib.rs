@@ -190,6 +190,33 @@ impl TradingDate {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CalendarDate(String);
+
+impl CalendarDate {
+    pub fn parse(value: &str) -> Result<Self, KrxError> {
+        let bytes = value.as_bytes();
+        if bytes.len() != 10 || bytes[4] != b'-' || bytes[7] != b'-' {
+            return Err(KrxError::new(
+                KrxErrorCode::InvalidDate,
+                "calendar date must use YYYY-MM-DD",
+            ));
+        }
+        let compact = [&value[0..4], &value[5..7], &value[8..10]].concat();
+        if !valid_date(&compact) {
+            return Err(KrxError::new(
+                KrxErrorCode::InvalidDate,
+                "calendar date must be a valid YYYY-MM-DD date",
+            ));
+        }
+        Ok(Self(value.to_owned()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 fn valid_date(value: &str) -> bool {
     if value.len() != 8 || !value.bytes().all(|byte| byte.is_ascii_digit()) {
         return false;
@@ -394,6 +421,46 @@ pub struct RangeResult {
     pub result: CompositeResult<Vec<Row>, TradingDate>,
     pub fetched_days: usize,
     pub failed_days: usize,
+    pub calendar: CalendarSelection,
+    pub adjustment: Option<AdjustmentMetadata>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CalendarCoverage {
+    Official,
+    Fallback,
+}
+
+#[derive(Clone, Debug)]
+pub struct CalendarSelection {
+    pub version: String,
+    pub source: String,
+    pub retrieved_at: CalendarDate,
+    pub coverage: CalendarCoverage,
+    pub unverified_dates: Vec<TradingDate>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AdjustmentFactorField {
+    AdjFactor,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CashDividendTreatment {
+    Excluded,
+}
+
+#[derive(Clone, Debug)]
+pub struct AdjustmentMetadata {
+    pub method: String,
+    pub version: u32,
+    pub as_of: TradingDate,
+    pub rounding: String,
+    pub raw_fields: Vec<String>,
+    pub adjusted_fields: Vec<String>,
+    pub factor_field: AdjustmentFactorField,
+    pub basis_transitions: Vec<String>,
+    pub cash_dividends: CashDividendTreatment,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -420,16 +487,30 @@ pub enum MarketComponent {
     KosdaqStocks,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
+pub struct StockStats {
+    pub advancing: u64,
+    pub declining: u64,
+    pub unchanged: u64,
+    pub total_volume: u64,
+    pub total_value: u64,
+}
+
+#[derive(Clone, Debug)]
 pub struct MarketSummary {
-    pub date: String,
+    pub date: TradingDate,
+    pub kospi_index: Option<Vec<Row>>,
+    pub kosdaq_index: Option<Vec<Row>>,
+    pub stock_stats: Option<StockStats>,
+    pub top_gainers: Option<Vec<Row>>,
+    pub top_losers: Option<Vec<Row>>,
 }
 
 pub type MarketSummaryResult = CompositeResult<MarketSummary, MarketComponent>;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct WatchlistPrices {
-    pub date: String,
+    pub date: TradingDate,
     pub stocks: Vec<Row>,
 }
 
@@ -909,6 +990,18 @@ pub struct CredentialStatus {
 #[derive(Clone, Debug)]
 pub struct ApprovalObservation {
     pub category: ApprovalCategory,
+    pub state: ApprovalState,
+    pub checked_at: SystemTime,
+    pub valid_until: SystemTime,
+    pub fresh: bool,
+    pub error: Option<KrxError>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ApprovalState {
+    Approved,
+    Rejected,
+    Inconclusive,
 }
 
 #[derive(Clone, Debug)]
@@ -1094,17 +1187,33 @@ fn credential_store_error(message: &str) -> KrxError {
 
 #[derive(Clone, Debug, Default)]
 pub struct CacheInspectOptions {
-    _private: (),
+    pub operation: Option<OperationId>,
+    pub date: Option<TradingDate>,
+    pub limit: Option<usize>,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct CachePruneOptions {
-    _private: (),
+    pub older_than: Option<SystemTime>,
+    pub max_entries: Option<usize>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CacheEntryDescription {
+    pub operation: OperationId,
+    pub date: TradingDate,
+    pub fetched_at: SystemTime,
+    pub freshness: Freshness,
+    pub size_bytes: u64,
+    pub contract_id: String,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct CacheInspection {
+    pub entries: Vec<CacheEntryDescription>,
     pub total_entries: usize,
+    pub total_size_bytes: u64,
+    pub truncated: bool,
 }
 
 #[derive(Clone, Debug, Default)]

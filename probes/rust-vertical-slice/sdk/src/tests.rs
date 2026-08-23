@@ -12,6 +12,23 @@ use tokio::time::{sleep, timeout};
 
 use super::*;
 
+#[test]
+fn calendar_date_preserves_valid_date_only_metadata() {
+    let date = CalendarDate::parse("2026-08-22").expect("valid snapshot date");
+    assert_eq!(date.as_str(), "2026-08-22");
+
+    for invalid in [
+        "20260822",
+        "2026-8-22",
+        "2026-02-29",
+        "2026-13-01",
+        "2026-00-01",
+        "fixture-date",
+    ] {
+        assert!(CalendarDate::parse(invalid).is_err(), "accepted {invalid}");
+    }
+}
+
 #[derive(Clone)]
 struct MockResponse {
     status: u16,

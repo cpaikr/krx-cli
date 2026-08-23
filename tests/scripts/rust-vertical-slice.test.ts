@@ -110,6 +110,54 @@ describe("Rust vertical-slice gate", () => {
     expect(result.stderr).toMatch(/redundant client cache-age authority/u);
   });
 
+  it("rejects a workspace that omits the public Rust consumer", () => {
+    const path = replacedText(
+      "probes/rust-vertical-slice/Cargo.toml",
+      'members = ["sdk", "consumer", "cli", "node"]',
+      'members = ["sdk", "cli", "node"]',
+    );
+    const result = run("--cargo", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/must include the public Rust SDK consumer/u);
+  });
+
+  it("rejects a consumer detached from the disposable SDK", () => {
+    const path = replacedText(
+      "probes/rust-vertical-slice/consumer/Cargo.toml",
+      'krx-sdk = { path = "../sdk" }',
+      'krx-sdk = { path = "../other-sdk" }',
+    );
+    const result = run("--consumer-cargo", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/depend directly on the disposable SDK/u);
+  });
+
+  it("rejects a probe detached from the canonical Rust consumer contract", () => {
+    const path = replacedText(
+      "probes/rust-vertical-slice/consumer/src/lib.rs",
+      "../../../../contracts/product/v1/rust-sdk-consumer.rs",
+      "../../../../contracts/product/v1/other-consumer.rs",
+    );
+    const result = run("--consumer-source", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(
+      /compile the canonical public Rust SDK contract/u,
+    );
+  });
+
+  it("rejects hosted compilation that narrows away from the consumer", () => {
+    const path = replacedText(
+      ".github/workflows/rust-vertical-slice.yml",
+      "cargo check --locked --workspace --all-targets --all-features",
+      "cargo check --locked -p krx-sdk --all-targets --all-features",
+    );
+    const result = run("--workflow", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(
+      /compile the complete workspace and public consumer/u,
+    );
+  });
+
   it("rejects a public native binding subpath", () => {
     const path = mutatedJson(
       "probes/rust-vertical-slice/node/package/package.json",

@@ -56,9 +56,15 @@ that PR is complete.
   freezes KONEX, binds native and npm versions, restricts probe traffic to a
   public dummy credential on numeric loopback, and pins workflow actions to
   reviewed immutable revisions. An independent complete-diff re-review is
-  clean. Targeted mutation gates, all-feature Rust tests and Clippy, full
-  `pnpm verify` (48 files, 469 tests), and rebuilt clean installs under Node 22
-  and 24 pass locally; both consumers certify portable digest
+  clean. A final contract-surface review then proved that name-only Rust result
+  uses still admitted incomplete range, market-summary, approval, and cache
+  shapes. The checked fix freezes every field with strongly typed consumer
+  accesses, closed Rust enums, explicit cache options, and a hosted compiler
+  path that cannot omit the consumer; twelve new mutants reject surface or
+  build linkage loss. The bounded follow-up review is clean. Targeted mutation
+  gates, all-feature Rust tests and Clippy, full `pnpm verify` (48 files, 481
+  tests), and rebuilt clean installs under
+  Node 22 and 24 pass locally; both consumers certify portable digest
   `7f5dc0f96e7c38fd458ebc203f599d5ff561712a3d88111cb28fb723d3c90180`.
   Final push run
   [32568704214](https://github.com/sjunepark/krx-cli/actions/runs/32568704214)
@@ -70,7 +76,7 @@ that PR is complete.
   `Ignored — Not a secret (false positive)`: it contains only a derived
   synthetic fixture fingerprint, has zero files requiring a code fix, and its
   two occurrences record the addition and later removal of the fixture value.
-  A fresh GitGuardian head check passes at `020c790`. Delivery now waits on
+  A fresh GitGuardian head check passes at `74bc223`. Delivery now waits on
   permission to manually retry CodeRabbit after its initial review failed to
   post and did not automatically rerun on the remediation push.
 - A four-variant SDK design pass converged on one deep concrete `Client` module
@@ -81,7 +87,7 @@ that PR is complete.
   covers persisted KONEX entries instead of silently omitting them, and the
   redundant Rust client-level cache-age authority is removed and negatively
   gated. Independent follow-up review is clean. The full deterministic gate
-  passes 48 files and 469 tests; 54 focused product/vertical mutants, strict
+  passes 48 files and 481 tests; 66 focused product/vertical mutants, strict
   Node consumption, and all-feature Rust tests/Clippy/formatting also pass.
 - Initialization boundary: necessary to satisfy the goal's Resume invariant and PR-delivery lifecycle.
 - Delivery integration branch: `codex/rust-rewrite-integration`, created from local `main` at `1f3dbd2`; it preserves the two queued rewrite-planning commits without pushing the production branch.
@@ -110,8 +116,8 @@ that PR is complete.
   malformed public, state, error, target, and migration artifacts. Its checked
   projections include an exhaustive 425-entry CLI option matrix and generated
   Node and Rust operation/error types for all 31 operations.
-- `pnpm verify` passes 48 test files and 469 tests on the candidate-proof
-  checkpoint, including 80 targeted authority, product-contract, and
+- `pnpm verify` passes 48 test files and 481 tests on the candidate-proof
+  checkpoint, including 92 targeted authority, product-contract, and
   vertical-slice gate tests,
   production audit, the 13-scenario installed-package judge with all three
   named mutants rejected, and packed-artifact smoke for 31 schemas and 12

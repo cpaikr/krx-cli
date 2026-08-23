@@ -50,7 +50,7 @@ publication decision.
   error types, and strict operation-aware cache schemas. Nine maintained state
   schemas and classified fixtures cover credential, approval, cache, quota,
   and watchlist migration. The full deterministic gate passes 48 test files
-  and 469 tests, including 80 targeted authority, product, and vertical-slice
+  and 481 tests, including 92 targeted authority, product, and vertical-slice
   gate tests.
 - The disposable workspace compiles the frozen Rust consumer and proves one
   OpenAPI-derived operation through reqwest/Rustls, a native Clap executable,

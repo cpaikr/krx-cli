@@ -39,6 +39,14 @@ const paths = {
     "--cli-cargo",
     "probes/rust-vertical-slice/cli/Cargo.toml",
   ),
+  consumerCargo: argument(
+    "--consumer-cargo",
+    "probes/rust-vertical-slice/consumer/Cargo.toml",
+  ),
+  consumerSource: argument(
+    "--consumer-source",
+    "probes/rust-vertical-slice/consumer/src/lib.rs",
+  ),
   rootPackage: argument("--root-package", "package.json"),
   certifier: argument(
     "--certifier",
@@ -70,6 +78,8 @@ const [
   cargoLock,
   cargo,
   cliCargo,
+  consumerCargo,
+  consumerSource,
   rootPackage,
   certifier,
   toolchain,
@@ -84,6 +94,8 @@ const [
   readFile(paths.cargoLock, "utf8"),
   readFile(paths.cargo, "utf8"),
   readFile(paths.cliCargo, "utf8"),
+  readFile(paths.consumerCargo, "utf8"),
+  readFile(paths.consumerSource, "utf8"),
   readJson(paths.rootPackage),
   readFile(paths.certifier, "utf8"),
   readFile(paths.toolchain, "utf8"),
@@ -253,6 +265,28 @@ invariant(
 invariant(
   toolchain.includes('channel = "1.92.0"'),
   "probe Rust toolchain must remain pinned to 1.92.0",
+);
+invariant(
+  cargo.includes('members = ["sdk", "consumer", "cli", "node"]'),
+  "probe workspace must include the public Rust SDK consumer",
+);
+invariant(
+  consumerCargo.includes('krx-sdk = { path = "../sdk" }'),
+  "public Rust SDK consumer must depend directly on the disposable SDK",
+);
+invariant(
+  consumerSource.includes(
+    '#[path = "../../../../contracts/product/v1/rust-sdk-consumer.rs"]',
+  ) && consumerSource.includes("mod public_sdk_contract;"),
+  "consumer probe must compile the canonical public Rust SDK contract",
+);
+const workspaceCheck = workflow.jobs?.build?.steps?.find(
+  (step) => step.name === "Compile the complete probe workspace",
+);
+equal(
+  workspaceCheck?.run,
+  "cargo check --locked --workspace --all-targets --all-features",
+  "hosted certification must compile the complete workspace and public consumer",
 );
 invariant(
   !/\bpub\s+fn\s+cache_max_age\b/u.test(sdkSource),

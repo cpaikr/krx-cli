@@ -57,6 +57,20 @@ function mutatedText(source: string, name: string, mutation: string): string {
   return target;
 }
 
+function replacedText(
+  source: string,
+  name: string,
+  expected: string,
+  replacement: string,
+): string {
+  const directory = mkdtempSync(join(tmpdir(), "krx-product-contract-"));
+  const target = join(directory, name);
+  const original = readFileSync(join(root, source), "utf8");
+  expect(original).toContain(expected);
+  writeFileSync(target, original.replace(expected, replacement), "utf8");
+  return target;
+}
+
 function mutatedFixtureManifest(
   name: string,
   mutate: (document: Record<string, any>, directory: string) => void,
@@ -361,6 +375,65 @@ describe("product contract gate", () => {
       "// clap must remain adapter-private",
     );
     expectRejected(["--rust-contract", rustContract], /must not expose clap/u);
+  });
+
+  it.each([
+    {
+      name: "composite results and provenance",
+      expected: "&result.completeness.succeeded",
+      replacement: "&result.completeness.requested",
+      error: /must freeze composite results and provenance/u,
+    },
+    {
+      name: "range calendar and adjustment metadata",
+      expected: "&range.calendar.source",
+      replacement: "&range.calendar.version",
+      error: /must freeze range calendar and adjustment metadata/u,
+    },
+    {
+      name: "market summary and stock statistics",
+      expected: "stats.total_value",
+      replacement: "stats.total_volume",
+      error: /must freeze market summary and stock statistics/u,
+    },
+    {
+      name: "credential and approval results",
+      expected: "&observation.error",
+      replacement: "&observation.valid_until",
+      error: /must freeze credential and approval results/u,
+    },
+    {
+      name: "cache option construction",
+      expected: ".inspect(CacheInspectOptions {",
+      replacement: ".inspect(CacheInspectOptions::default()) /*",
+      error: /must freeze cache options inspection and pruning/u,
+    },
+    {
+      name: "cache inspection entries",
+      expected: "&entry.contract_id",
+      replacement: "&entry.date",
+      error: /must freeze cache options inspection and pruning/u,
+    },
+    {
+      name: "closed result metadata variants",
+      expected: "ApprovalState::Inconclusive => {}",
+      replacement: "ApprovalState::Rejected => {}",
+      error: /must freeze closed result metadata variants/u,
+    },
+    {
+      name: "search capability and watchlist results",
+      expected: "&prices.stocks",
+      replacement: "&prices.date",
+      error: /must freeze search capability and watchlist results/u,
+    },
+  ])("rejects an incomplete Rust $name surface", (mutation) => {
+    const rustContract = replacedText(
+      "contracts/product/v1/rust-sdk-consumer.rs",
+      "rust-sdk-consumer.rs",
+      mutation.expected,
+      mutation.replacement,
+    );
+    expectRejected(["--rust-contract", rustContract], mutation.error);
   });
 
   it("rejects a public native-binding export", () => {
