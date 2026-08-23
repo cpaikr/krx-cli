@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Probe mutants deliberately edit untyped contract documents. */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -264,6 +264,30 @@ describe("Rust vertical-slice gate", () => {
       sibling: false,
       otherDrive: false,
     });
+  });
+
+  it("rejects an out-of-probe assembly path before recursive deletion", () => {
+    const outside = mkdtempSync(join(tmpdir(), "krx-assemble-outside-"));
+    const sentinel = join(outside, "sentinel.txt");
+    writeFileSync(sentinel, "preserve\n");
+    const result = spawnSync(
+      process.execPath,
+      [
+        "probes/rust-vertical-slice/node/scripts/assemble.mjs",
+        "--target",
+        "darwin-arm64",
+        "--binding",
+        "missing-binding",
+        "--executable",
+        "missing-executable",
+        "--out",
+        outside,
+      ],
+      { cwd: root, encoding: "utf8" },
+    );
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/output must be a descendant/u);
+    expect(existsSync(sentinel)).toBe(true);
   });
 
   it("releases the installed native binding before temporary cleanup", () => {

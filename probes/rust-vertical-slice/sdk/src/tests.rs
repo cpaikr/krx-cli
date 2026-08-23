@@ -41,6 +41,7 @@ struct MockResponse {
 struct MockServer {
     base_url: String,
     calls: Arc<AtomicUsize>,
+    surplus_calls: Arc<AtomicUsize>,
     requests: Arc<Mutex<Vec<String>>>,
     task: JoinHandle<()>,
 }
@@ -52,9 +53,11 @@ impl MockServer {
             .expect("bind mock provider");
         let address = listener.local_addr().expect("mock provider address");
         let calls = Arc::new(AtomicUsize::new(0));
+        let surplus_calls = Arc::new(AtomicUsize::new(0));
         let requests = Arc::new(Mutex::new(Vec::new()));
         let queued = Arc::new(Mutex::new(VecDeque::from(responses)));
         let task_calls = Arc::clone(&calls);
+        let task_surplus_calls = Arc::clone(&surplus_calls);
         let task_requests = Arc::clone(&requests);
         let task = tokio::spawn(async move {
             loop {
@@ -63,11 +66,14 @@ impl MockServer {
                 };
                 task_calls.fetch_add(1, Ordering::SeqCst);
                 let requests = Arc::clone(&task_requests);
-                let response = queued
-                    .lock()
-                    .expect("response queue")
-                    .pop_front()
-                    .expect("unexpected provider call");
+                let response = queued.lock().expect("response queue").pop_front();
+                let Some(response) = response else {
+                    task_surplus_calls.fetch_add(1, Ordering::SeqCst);
+                    let request = read_http_request(&mut stream).await;
+                    requests.lock().expect("request log").push(request);
+                    let _ = stream.shutdown().await;
+                    continue;
+                };
                 tokio::spawn(async move {
                     let request = read_http_request(&mut stream).await;
                     requests.lock().expect("request log").push(request);
@@ -115,6 +121,7 @@ impl MockServer {
         Self {
             base_url: format!("http://{address}/"),
             calls,
+            surplus_calls,
             requests,
             task,
         }
@@ -122,12 +129,16 @@ impl MockServer {
 
     async fn wait_for_calls(&self, expected: usize) {
         timeout(Duration::from_secs(1), async {
-            while self.calls.load(Ordering::SeqCst) != expected {
+            while self.calls.load(Ordering::SeqCst) < expected {
                 sleep(Duration::from_millis(5)).await;
             }
         })
         .await
         .expect("provider call count");
+        let actual = self.calls.load(Ordering::SeqCst);
+        let surplus = self.surplus_calls.load(Ordering::SeqCst);
+        assert_eq!(actual, expected, "unexpected provider call count");
+        assert_eq!(surplus, 0, "mock provider received surplus calls");
     }
 }
 

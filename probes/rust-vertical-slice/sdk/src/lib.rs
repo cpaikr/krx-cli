@@ -1064,17 +1064,17 @@ impl CredentialStore {
     }
 
     pub async fn set(&self, api_key: ApiKey) -> Result<(), KrxError> {
-        let secret = api_key.expose().to_owned();
+        let secret = Zeroizing::new(api_key.expose().to_owned());
         let backend = Arc::clone(&self.backend);
         tokio::task::spawn_blocking(move || {
             backend.set(&secret)?;
-            let read_back = backend.get()?.ok_or_else(|| {
+            let read_back = backend.get()?.map(Zeroizing::new).ok_or_else(|| {
                 KrxError::new(
                     KrxErrorCode::CredentialVerifyFailed,
                     "credential verification failed",
                 )
             })?;
-            if read_back != secret {
+            if *read_back != *secret {
                 return Err(KrxError::new(
                     KrxErrorCode::CredentialVerifyFailed,
                     "credential verification failed",

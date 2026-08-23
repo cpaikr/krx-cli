@@ -34,24 +34,26 @@ fn clap_owns_the_native_topology_and_removed_serve_surface() {
 
 #[test]
 fn parser_and_semantic_failures_use_the_frozen_diagnostic_grammar() {
-    for args in [
-        vec![
-            "--offline",
-            "--refresh",
-            "stock",
-            "list",
-            "--date",
-            "20260821",
-        ],
-        vec!["--retries", "4", "stock", "list", "--date", "20260821"],
+    for (args, expected) in [
+        (
+            vec![
+                "--offline",
+                "--refresh",
+                "stock",
+                "list",
+                "--date",
+                "20260821",
+            ],
+            "krx: error[invalid_request/conflicting_options]: arguments do not satisfy the native CLI contract\n",
+        ),
+        (
+            vec!["--retries", "4", "stock", "list", "--date", "20260821"],
+            "krx: error[invalid_request/invalid_argument]: arguments do not satisfy the native CLI contract\n",
+        ),
     ] {
         let output = krx(&args);
         assert_eq!(output.status.code(), Some(2));
-        assert_eq!(
-            text(&output.stderr),
-            "krx: error[invalid_request/conflicting_options]: arguments do not satisfy the native CLI contract\n"
-                .replace("conflicting_options", if args[0] == "--offline" { "conflicting_options" } else { "invalid_argument" }),
-        );
+        assert_eq!(text(&output.stderr), expected);
         assert!(output.stdout.is_empty());
     }
 
@@ -61,6 +63,24 @@ fn parser_and_semantic_failures_use_the_frozen_diagnostic_grammar() {
         text(&invalid_date.stderr),
         "krx: error[invalid_request/invalid_date]: date must be a valid YYYYMMDD calendar date\n"
     );
+
+    let inactive_adjustment = krx(&["stock", "list", "--date", "20260821", "--no-adjusted"]);
+    assert_eq!(inactive_adjustment.status.code(), Some(2));
+    assert_eq!(
+        text(&inactive_adjustment.stderr),
+        "krx: error[invalid_request/invalid_argument]: --no-adjusted requires an eligible exact-code stock range\n"
+    );
+    assert!(inactive_adjustment.stdout.is_empty());
+
+    for format in ["table", "ndjson", "csv"] {
+        let unsupported_output = krx(&["--output", format, "stock", "list", "--date", "20260821"]);
+        assert_eq!(unsupported_output.status.code(), Some(2));
+        assert_eq!(
+            text(&unsupported_output.stderr),
+            "krx: error[invalid_request/invalid_argument]: the disposable native probe supports --output json only\n"
+        );
+        assert!(unsupported_output.stdout.is_empty());
+    }
 }
 
 #[test]

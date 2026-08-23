@@ -243,9 +243,14 @@ const errorFields = Object.fromEntries(
   }),
 );
 equal(
-  errorFields,
-  wireEvidence.errorFields,
+  [errorFields.code, errorFields.message],
+  [wireEvidence.errorFields?.code, wireEvidence.errorFields?.message],
   "KRX error fields must match reviewed evidence",
+);
+equalKeys(
+  object(wireEvidence.errorFields, "reviewedEvidence.sharedWire.errorFields"),
+  ["code", "message"],
+  "reviewed evidence must name exactly the code and message error fields",
 );
 equal(
   errorSchema.anyOf,

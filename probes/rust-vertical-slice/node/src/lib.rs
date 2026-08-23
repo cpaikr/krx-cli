@@ -308,7 +308,7 @@ pub async fn probe_async_panic() -> Result<NativeOutcome> {
         panic!("disposable asynchronous panic fixture")
     };
     Ok(match AssertUnwindSafe(future).catch_unwind().await {
-        Ok(()) => internal_failure(),
+        Ok(()) => success(json!({ "panicFixtureDidPanic": false })),
         Err(_) => internal_failure(),
     })
 }

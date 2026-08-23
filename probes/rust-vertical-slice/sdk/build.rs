@@ -153,7 +153,29 @@ fn main() {
         "/requestBody/content/application~1json/schema/$ref",
     );
     let request_schema = local_schema(&document, request_reference);
-    let request_field = required_str(request_schema, "/required/0");
+    let request_required = required(request_schema, "/required")
+        .as_array()
+        .expect("representative request required fields");
+    assert_eq!(
+        request_required.len(),
+        1,
+        "representative request schema must require exactly one field"
+    );
+    let request_properties = required(request_schema, "/properties")
+        .as_object()
+        .expect("representative request properties");
+    assert_eq!(
+        request_properties.len(),
+        1,
+        "representative request schema must expose exactly one field"
+    );
+    let request_field = request_required[0]
+        .as_str()
+        .expect("representative request field string");
+    assert!(
+        request_properties.contains_key(request_field),
+        "representative required request field must name its sole property"
+    );
     let request_description = required_str(
         request_schema,
         &format!("/properties/{request_field}/description"),
@@ -177,11 +199,29 @@ fn main() {
             .and_then(Value::as_str)
             .expect("success response reference"),
     );
-    let envelope = success
-        .get("properties")
-        .and_then(Value::as_object)
-        .and_then(|properties| properties.keys().next())
-        .expect("success envelope property");
+    let success_required = required(success, "/required")
+        .as_array()
+        .expect("success response required fields");
+    assert_eq!(
+        success_required.len(),
+        1,
+        "representative success response must require exactly one envelope"
+    );
+    let success_properties = required(success, "/properties")
+        .as_object()
+        .expect("success response properties");
+    assert_eq!(
+        success_properties.len(),
+        1,
+        "representative success response must expose exactly one envelope"
+    );
+    let envelope = success_required[0]
+        .as_str()
+        .expect("success envelope field string");
+    assert!(
+        success_properties.contains_key(envelope),
+        "required success envelope must name the sole response property"
+    );
     let row_reference = required_str(success, &format!("/properties/{envelope}/items/$ref"));
     let row_schema = local_schema(&document, row_reference);
     let row_fields = row_schema
@@ -288,6 +328,14 @@ fn main() {
     }
     generated.push_str("        }\n    }\n}\n");
 
+    let mut seen_codes = BTreeMap::new();
+    for (kind, contract) in &product.errors.kinds {
+        for code in contract.codes.keys() {
+            if let Some(previous) = seen_codes.insert(code, kind) {
+                panic!("error code {code} is mapped to both {previous} and {kind}");
+            }
+        }
+    }
     generated
         .push_str("#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]\npub enum KrxErrorCode {\n");
     for contract in product.errors.kinds.values() {

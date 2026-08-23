@@ -154,6 +154,7 @@ const requiredWorkflowPaths = [
   "probes/rust-vertical-slice/**",
   "scripts/package-smoke-command.mjs",
   "scripts/rust-vertical-slice.mjs",
+  "src/calendar/krx-closures.json",
 ];
 equal(
   attributes.split(/\r?\n/u).filter(Boolean),

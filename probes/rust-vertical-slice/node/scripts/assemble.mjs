@@ -3,8 +3,11 @@ import { dirname, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { isPathInside } from "./path-containment.mjs";
+
 const here = dirname(fileURLToPath(import.meta.url));
 const probe = resolve(here, "../..");
+const outputRoot = resolve(probe, "target");
 const repository = resolve(probe, "../..");
 const argumentsByName = new Map();
 for (let index = 2; index < process.argv.length; index += 2) {
@@ -30,6 +33,11 @@ const manifest = JSON.parse(
 const target = manifest.targets.find((candidate) => candidate.id === targetId);
 if (!target)
   throw new Error(`target ${targetId} is not certified by the manifest`);
+if (output === outputRoot || !isPathInside(outputRoot, output)) {
+  throw new Error(
+    `assembled package output must be a descendant of ${outputRoot}`,
+  );
+}
 
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });

@@ -13,6 +13,7 @@ on:
       - "probes/rust-vertical-slice/**"
       - "scripts/package-smoke-command.mjs"
       - "scripts/rust-vertical-slice.mjs"
+      - "src/calendar/krx-closures.json"
   pull_request:
     paths:
       - ".gitattributes"
@@ -23,6 +24,7 @@ on:
       - "probes/rust-vertical-slice/**"
       - "scripts/package-smoke-command.mjs"
       - "scripts/rust-vertical-slice.mjs"
+      - "src/calendar/krx-closures.json"
   workflow_dispatch:
 
 permissions:

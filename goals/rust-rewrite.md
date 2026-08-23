@@ -79,9 +79,15 @@ that PR is complete.
   synthetic fixture fingerprint, has zero files requiring a code fix, and its
   two occurrences record the addition and later removal of the fixture value.
   A fresh GitGuardian check passes at `6b46cc1`. CodeRabbit's initial review
-  failed to post, and its current-head check explicitly skipped because
-  automatic reviews are disabled. Delivery now waits on permission to post the
-  one-time `@coderabbitai full review` retry required by the PR lifecycle.
+  failed to post because of a transient GitHub review-submission error. The
+  authorized one-time full-review retry then completed at exact head `97bfe95`
+  and posted 13 threads. The checked local remediation accepts eleven findings
+  and rejects two contract-inconsistent suggestions, passes 48 files and 482
+  tests plus all-feature Rust tests, Clippy, formatting, and rebuilt clean
+  installs under Node 22 and 24; both consumers certify portable digest
+  `c9bd7d93a971d977edc8aa0c0dc88d846c9f849326c2ff83f302f76ed34dac86`.
+  At this local remediation checkpoint, delivery still requires the new head,
+  thread closure, and exact-head hosted certification.
 - A four-variant SDK design pass converged on one deep concrete `Client` module
   with a private shared direct-operation engine, crate-private local-state
   seams, and one true-external KRX HTTP seam. Contract review then closed three
@@ -152,8 +158,10 @@ that PR is complete.
   npm's direct native `krx` bin link. Both local consumers report identical
   portable payload, metadata, and capability identities. The workflow builds
   macOS ARM64, Linux GNU x64/ARM64, and Windows x64 once per target, fans each
-  exact tarball out to both Node majors, and compares all eight reports; hosted
-  certification remains pending until the remediation retry passes.
+  exact tarball out to both Node majors, and compares all eight reports. At this
+  historical pre-certification checkpoint, hosted certification was still
+  pending; the successful certification and documentation-head reruns are
+  recorded below.
 - Hosted run
   [32560050687](https://github.com/sjunepark/krx-cli/actions/runs/32560050687)
   passed every build, test, Rustls, keyring, assembly, pack, and upload step on
