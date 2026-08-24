@@ -4,9 +4,10 @@
 
 [Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK](plans/rust-rewrite.md)
 — active under [the durable goal contract](goals/rust-rewrite.md). The green
-legacy baseline is frozen at `3732598`; the current slice establishes the sole
-OpenAPI wire authority, freezes public and migration contracts, and certifies
-the disposable candidate seams before production Rust implementation begins.
+legacy baseline, canonical OpenAPI/contracts, and production shared Rust SDK
+are merged. The native Clap CLI, public Node SDK, and production artifact slice
+is locally complete and awaiting PR delivery; secure migration, parity
+promotion, legacy removal, and atomic cutover follow in the final slice.
 
 ## Plans
 
