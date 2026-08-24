@@ -345,11 +345,22 @@ impl NativeCredentialBackend {
         keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT)
             .map_err(|_| credential_store_unavailable("credential store is unavailable"))
     }
+
+    fn entry_for_read(&self) -> Result<keyring::Entry, KrxError> {
+        // Some platform backends defer store discovery until get_password(),
+        // while headless Linux can reject Entry construction itself. Keep the
+        // public read diagnostic independent of that backend-specific boundary.
+        classify_read_entry(keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT))
+    }
+}
+
+fn classify_read_entry<T, E>(entry: Result<T, E>) -> Result<T, KrxError> {
+    entry.map_err(|_| KrxError::new(KrxErrorCode::CredentialReadFailed, "credential read failed"))
 }
 
 impl CredentialBackend for NativeCredentialBackend {
     fn get(&self) -> Result<Option<String>, KrxError> {
-        match self.entry()?.get_password() {
+        match self.entry_for_read()?.get_password() {
             Ok(secret) => Ok(Some(secret)),
             Err(keyring::Error::NoEntry) => Ok(None),
             Err(_) => Err(KrxError::new(
@@ -632,6 +643,13 @@ mod tests {
             backend,
             state_root,
         }
+    }
+
+    #[test]
+    fn read_entry_setup_failure_uses_the_frozen_read_diagnostic() {
+        let error = classify_read_entry::<(), _>(Err("backend unavailable")).unwrap_err();
+        assert_eq!(error.code(), KrxErrorCode::CredentialReadFailed);
+        assert_eq!(error.message(), "credential read failed");
     }
 
     fn write_then_report_post_commit_failure(

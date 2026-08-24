@@ -32,15 +32,17 @@ current inventory. The frozen recursive inventory is
 
 ## Environment
 
-| Name                      | Meaning                                                                  |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `KRX_API_KEY`             | Runtime credential after an explicit SDK key and before the OS keychain. |
-| `KRX_CACHE_MAX_AGE_HOURS` | Preferred-cache maximum age, integer 0–8760.                             |
-| `XDG_CONFIG_HOME`         | Unix config/state-root override.                                         |
-| `LOCALAPPDATA`            | Windows config/state-root authority.                                     |
-| `NO_COLOR`                | Disables terminal color where supported.                                 |
+| Name                      | Meaning                                                                   |
+| ------------------------- | ------------------------------------------------------------------------- |
+| `KRX_API_KEY`             | Runtime credential after an explicit SDK key and before the OS keychain.  |
+| `KRX_CACHE_MAX_AGE_HOURS` | Preferred-cache maximum age, integer 0–8760.                              |
+| `HOME`                    | Unix home directory used for the fixed `${HOME}/.krx-cli` state root.     |
+| `USERPROFILE`             | Windows home directory used for the fixed `${USERPROFILE}/.krx-cli` root. |
+| `NO_COLOR`                | Disables terminal color where supported.                                  |
 
-No environment variable enables another server or protocol surface.
+The local state root is fixed at `.krx-cli` below the platform home directory;
+`XDG_CONFIG_HOME` and `LOCALAPPDATA` do not relocate it. No environment
+variable enables another server or protocol surface.
 
 ## Migration differences
 
