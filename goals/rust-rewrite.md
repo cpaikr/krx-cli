@@ -50,10 +50,9 @@ Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Next in-scope action
 
-Push the Blacksmith/Linux certification amendment to contract delivery PR #8,
-obtain exact-head Linux GNU x64/ARM64 evidence, refresh the complete feedback
-surface, and merge the reviewed contract authority. Production Rust remains
-blocked until that PR is complete.
+Refresh the complete feedback surface for contract delivery PR #8 and merge the
+reviewed contract authority. Production Rust remains blocked until that PR is
+complete.
 
 ### Evidence and blockers
 
@@ -64,8 +63,11 @@ blocked until that PR is complete.
   Node 22/24 certification subset. `pnpm verify` passes 48 files and 487 tests,
   the installed-package compatibility and package-smoke gates pass, and the
   Rust workspace passes formatting, 25 tests with two opt-in native checks
-  ignored locally, and strict Clippy. Exact-head hosted Blacksmith evidence is
-  pending the PR-branch push.
+  ignored locally, and strict Clippy. Exact implementation-head Blacksmith run
+  [32677073840](https://github.com/cpaikr/krx-cli/actions/runs/32677073840)
+  passes both Linux builds, all four unchanged-archive Node consumers, and the
+  Linux package-identity aggregator at `b9620e5`. No branch-push native run was
+  created.
 - Contract delivery PR
   [#8](https://github.com/cpaikr/krx-cli/pull/8) completed its initial
   13-job four-target matrix at `c085b94`; all native builds, eight Node
