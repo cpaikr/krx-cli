@@ -662,6 +662,14 @@ fn generate_local_state(product: &ProductContract, migrations: &Value, output: &
     let cache_entry_read_bytes = required(migrations, "/bounds/cacheEntryReadBytes")
         .as_u64()
         .expect("cache entry read bound integer");
+    let cache_lease_owner_dead_ms =
+        required(migrations, "/cacheRefresh/lease/stale/ownerDeadAfterMs")
+            .as_u64()
+            .expect("cache lease dead-owner duration integer");
+    let cache_lease_absolute_age_ms =
+        required(migrations, "/cacheRefresh/lease/stale/absoluteAgeMs")
+            .as_u64()
+            .expect("cache lease absolute-age duration integer");
     let migration = required(migrations, "/transitions")
         .as_array()
         .and_then(|transitions| {
@@ -683,6 +691,8 @@ fn generate_local_state(product: &ProductContract, migrations: &Value, output: &
     for (name, value) in [
         ("CACHE_ENTRY_READ_BYTES", cache_entry_read_bytes),
         ("CACHE_FUTURE_SKEW_SECONDS", 5 * 60),
+        ("CACHE_LEASE_OWNER_DEAD_MS", cache_lease_owner_dead_ms),
+        ("CACHE_LEASE_ABSOLUTE_AGE_MS", cache_lease_absolute_age_ms),
     ] {
         generated.push_str(&format!("pub(crate) const {name}: u64 = {value};\n"));
     }

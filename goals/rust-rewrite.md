@@ -52,13 +52,39 @@ Complete shared Rust SDK for all supported KRX behavior and local policy.
 ### Next in-scope action
 
 Complete the remaining frozen `crates/krx-sdk` surface in the same production
-SDK PR: add cross-process cache leases, in-process singleflight, offline/client
-orchestration, range orchestration, and public client handles over the completed
-private transport and cache core. Keep CLI and Node adapter implementation out
-of this slice.
+SDK PR: add range orchestration and the public `Client`, credential, cache, and
+watchlist handles over the completed private direct-query engine. Keep CLI and
+Node adapter implementation out of this slice.
 
 ### Evidence and blockers
 
+- The reviewed private direct-query checkpoint now composes validation,
+  credential resolution, transport, cache policy, offline behavior, and the
+  call-wide deadline without exposing a partial public client. Offline returns
+  valid stale v1/v2 entries without credential, quota, network, or refresh
+  lease effects; online probes are non-mutating until the lease owner rechecks;
+  bypass never touches cache state; and every blocking online mutation retains
+  the exact lease even if the awaiting caller is cancelled. State-root-scoped
+  singleflight shares the successful producer response by v2 key, including
+  empty or current/future responses that policy intentionally does not cache,
+  while waiter cancellation cannot cancel the producer. Cross-process waiters
+  accept a logical v2 generation published after their baseline even when the
+  lease is free before their first mkdir; v1-to-v2 promotion preserves the
+  generation and cannot satisfy network-forcing Refresh. Fresh v1 contention
+  waits for lease-owned promotion instead of returning without migration.
+  Unix stale recovery publishes one live exact claim in the observed lease,
+  revalidates pathname, owner, and claim before rename, and rejects claimed new
+  acquisitions, closing the paused two-stealer replacement race. Windows keeps
+  its exact-handle rename/delete protocol and bounded incomplete-owner
+  observation. The structural mutation gate rejects loss of state-root flight
+  isolation, shared-result publication, refresh-generation comparison, creator
+  claim checks, and exact claimant revalidation. Independent contract and
+  security/concurrency rereviews are clean. Workspace formatting, strict
+  all-target/all-feature Clippy, 130 Rust tests with one intentional
+  interoperability worker ignored, the seven-test SDK mutation/source gate,
+  and full `pnpm verify` with 49 files and 507 tests pass. Native Windows
+  cross-check remains unavailable on this macOS host because `aws-lc-sys`
+  requires absent Windows SDK headers; the Windows source mutation gate passes.
 - The reviewed private cache-core checkpoint derives canonical v1/v2 keys,
   paths, schema identities, size limits, and timestamp bounds from the frozen
   product contracts. It strictly decodes exact operation rows and parameters,

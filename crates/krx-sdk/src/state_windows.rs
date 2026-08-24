@@ -57,6 +57,7 @@ use crate::{KrxError, KrxErrorCode};
 
 const STEAL_CLAIM_FILE: &str = "steal";
 const PROTOCOL_FILE_MAXIMUM_BYTES: u64 = 128;
+const CACHE_LEASE_OWNER_MAXIMUM_BYTES: u64 = 1024;
 const SHARE_ALL: u32 = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -122,6 +123,55 @@ pub(crate) struct PlainDirectoryLock {
     published_owner: ProtocolFileObservation,
 }
 
+/// A cache lease is represented by an owned directory and an exact owner.json
+/// file inside it.  The handles are retained so release is never based on a
+/// pathname that may have been replaced by another process.
+#[derive(Debug)]
+pub(crate) struct CacheDirectoryLease {
+    parent: Dir,
+    leaf: OsString,
+    directory: Option<Dir>,
+    directory_identity: FileIdentity,
+    owner: CacheOwnerObservation,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ObservedCacheDirectoryLease {
+    directory_identity: FileIdentity,
+    owner: Option<CacheOwnerObservation>,
+    modified: SystemTime,
+}
+
+impl ObservedCacheDirectoryLease {
+    pub(crate) fn owner_bytes(&self) -> Option<&[u8]> {
+        self.owner
+            .as_ref()
+            .filter(|owner| owner.complete)
+            .map(|owner| owner.bytes.as_slice())
+    }
+
+    pub(crate) fn modified(&self) -> SystemTime {
+        self.modified
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct CacheOwnerObservation {
+    identity: FileIdentity,
+    bytes: Vec<u8>,
+    complete: bool,
+}
+
+fn same_cache_owner(left: &CacheOwnerObservation, right: &CacheOwnerObservation) -> bool {
+    left.complete == right.complete
+        && same_object_identity(&left.identity, &right.identity)
+        && left.bytes == right.bytes
+}
+
+fn same_cache_owner_identity(owner: &CacheOwnerObservation, identity: &FileIdentity) -> bool {
+    same_object_identity(&owner.identity, identity)
+}
+
 #[derive(Debug)]
 struct PlainLockObservation {
     directory: Dir,
@@ -171,6 +221,10 @@ impl StateRoot {
     pub(crate) fn new(path: PathBuf) -> Result<Self, KrxError> {
         validate_absolute_root(&path)?;
         Ok(Self { path })
+    }
+
+    pub(crate) fn flight_namespace(&self) -> &Path {
+        &self.path
     }
 
     pub(crate) fn read(
@@ -417,7 +471,7 @@ impl StateRoot {
     }
 
     #[cfg(test)]
-    fn atomic_write_with_post_commit_failure(
+    pub(crate) fn atomic_write_with_post_commit_failure(
         &self,
         relative: &str,
         bytes: &[u8],
@@ -436,6 +490,248 @@ impl StateRoot {
     ) -> Result<(), AtomicWriteFailure> {
         self.atomic_write_observed_inner(relative, bytes, error_code, true, false)
             .map_err(|(error, committed)| AtomicWriteFailure { error, committed })
+    }
+
+    pub(crate) fn try_acquire_cache_lease(
+        &self,
+        relative: &str,
+        owner_json: &[u8],
+        error_code: KrxErrorCode,
+    ) -> Result<Option<CacheDirectoryLease>, KrxError> {
+        if owner_json.is_empty() || owner_json.len() as u64 > CACHE_LEASE_OWNER_MAXIMUM_BYTES {
+            return Err(state_error(error_code, "cache lease owner is unsafe"));
+        }
+        let components = relative_components(relative)?;
+        let root = open_absolute_root(
+            &self.path,
+            true,
+            true,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        .ok_or_else(|| state_error(error_code, "local state root could not be created"))?;
+        let (parents, leaf) = components.split_at(components.len() - 1);
+        let parent = open_relative_directories(
+            &root,
+            parents,
+            true,
+            true,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        .ok_or_else(|| state_error(error_code, "cache lease parent could not be created"))?;
+        let directory = match create_child_directory(
+            &parent,
+            &leaf[0],
+            ReadSensitivity::NonSecret,
+            error_code,
+        )? {
+            Some(directory) => directory,
+            None => {
+                // Validate an existing directory without repairing it.  This
+                // keeps mkdir-as-the-lock atomic while rejecting reparse or
+                // foreign-ACL paths before returning contention.
+                let _ = open_child_directory(
+                    &parent,
+                    &leaf[0],
+                    true,
+                    ReadSensitivity::NonSecret,
+                    error_code,
+                )?;
+                return Ok(None);
+            }
+        };
+        let created_directory_identity = directory_identity(&directory, error_code)?;
+        let owner = match publish_cache_owner(&directory, owner_json, error_code) {
+            Ok(owner) => owner,
+            Err(error) => {
+                abandon_cache_lease(&parent, directory, None);
+                return Err(error);
+            }
+        };
+        if flush_directory(&parent, error_code, "cache lease parent sync failed").is_err() {
+            abandon_cache_lease(&parent, directory, Some(&owner));
+            return Err(state_error(error_code, "cache lease parent sync failed"));
+        }
+        if !path_matches_directory(&parent, &leaf[0], &created_directory_identity, error_code)? {
+            abandon_cache_lease(&parent, directory, Some(&owner));
+            return Ok(None);
+        }
+        Ok(Some(CacheDirectoryLease {
+            parent,
+            leaf: leaf[0].clone(),
+            directory: Some(directory),
+            directory_identity: created_directory_identity,
+            owner,
+        }))
+    }
+
+    pub(crate) fn observe_cache_lease(
+        &self,
+        relative: &str,
+        maximum_owner_bytes: u64,
+        error_code: KrxErrorCode,
+    ) -> Result<Option<ObservedCacheDirectoryLease>, KrxError> {
+        if maximum_owner_bytes > CACHE_LEASE_OWNER_MAXIMUM_BYTES {
+            return Err(state_error(error_code, "cache lease owner bound is unsafe"));
+        }
+        let components = relative_components(relative)?;
+        let Some(root) = open_absolute_root(
+            &self.path,
+            false,
+            false,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        else {
+            return Ok(None);
+        };
+        let (parents, leaf) = components.split_at(components.len() - 1);
+        let Some(parent) = open_relative_directories(
+            &root,
+            parents,
+            false,
+            false,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        else {
+            return Ok(None);
+        };
+        let Some(directory) = open_child_directory(
+            &parent,
+            &leaf[0],
+            false,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        else {
+            return Ok(None);
+        };
+        let observed_directory_identity = directory_identity(&directory, error_code)?;
+        let modified = directory
+            .dir_metadata()
+            .map_err(|_| state_error(error_code, "cache lease timestamp inspection failed"))?
+            .modified()
+            .map_err(|_| state_error(error_code, "cache lease timestamp is invalid"))?
+            .into_std();
+        let owner = read_cache_owner(&directory, maximum_owner_bytes, error_code)?;
+        let Some(current_directory) = open_child_directory(
+            &parent,
+            &leaf[0],
+            false,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        else {
+            return Ok(None);
+        };
+        if !same_object_identity(
+            &observed_directory_identity,
+            &directory_identity(&current_directory, error_code)?,
+        ) {
+            return Ok(None);
+        }
+        Ok(Some(ObservedCacheDirectoryLease {
+            directory_identity: observed_directory_identity,
+            owner,
+            modified,
+        }))
+    }
+
+    pub(crate) fn steal_cache_lease_if_unchanged(
+        &self,
+        relative: &str,
+        observed: &ObservedCacheDirectoryLease,
+        tombstone_leaf: &str,
+        error_code: KrxErrorCode,
+    ) -> Result<bool, KrxError> {
+        let tombstone = relative_components(tombstone_leaf)?;
+        if tombstone.len() != 1 {
+            return Err(invalid_state_path(
+                "cache lease tombstone must be one filename",
+            ));
+        }
+        let components = relative_components(relative)?;
+        let Some(root) = open_absolute_root(
+            &self.path,
+            false,
+            true,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        else {
+            return Ok(false);
+        };
+        let (parents, leaf) = components.split_at(components.len() - 1);
+        let Some(parent) = open_relative_directories(
+            &root,
+            parents,
+            false,
+            true,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        else {
+            return Ok(false);
+        };
+        let Some(directory) = open_child_directory(
+            &parent,
+            &leaf[0],
+            true,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        else {
+            return Ok(false);
+        };
+        if !same_object_identity(
+            &directory_identity(&directory, error_code)?,
+            &observed.directory_identity,
+        ) || !cache_lease_owner_matches(&directory, observed.owner.as_ref(), error_code)?
+        {
+            return Ok(false);
+        }
+        match rename_open_handle(&directory, &parent, &tombstone[0], false) {
+            Ok(()) => {}
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::AlreadyExists | io::ErrorKind::DirectoryNotEmpty
+                ) =>
+            {
+                return Ok(false);
+            }
+            Err(_) => return Err(state_error(error_code, "cache lease steal rename failed")),
+        }
+        flush_directory(&parent, error_code, "cache lease steal sync failed")?;
+        if !cache_lease_owner_matches(&directory, observed.owner.as_ref(), error_code)? {
+            // The tombstone is retained because its contents no longer match
+            // the observation.  In particular, never remove a replacement
+            // owner or a newly-created lock directory.
+            return Ok(false);
+        }
+        if let Some(owner) = observed.owner.as_ref() {
+            let Some((file, current)) =
+                open_cache_owner(&directory, owner.bytes.len() as u64, error_code)?
+            else {
+                return Ok(false);
+            };
+            if !same_cache_owner(&current, owner)
+                || delete_open_handle(file.as_raw_handle()).is_err()
+            {
+                return Ok(false);
+            }
+            drop(file);
+        }
+        if delete_open_directory(directory).is_err() {
+            return Err(state_error(
+                error_code,
+                "cache lease tombstone removal failed",
+            ));
+        }
+        flush_directory(&parent, error_code, "cache lease parent sync failed")?;
+        Ok(true)
     }
 
     pub(crate) fn try_acquire_plain_lock(
@@ -732,6 +1028,50 @@ impl Drop for PlainDirectoryLock {
                 &self.parent,
                 KrxErrorCode::InternalFailure,
                 "local lock parent sync failed",
+            );
+        }
+    }
+}
+
+impl Drop for CacheDirectoryLease {
+    fn drop(&mut self) {
+        let Some(directory) = self.directory.take() else {
+            return;
+        };
+        let Ok(Some(current_path)) = open_child_directory(
+            &self.parent,
+            &self.leaf,
+            true,
+            ReadSensitivity::NonSecret,
+            KrxErrorCode::InternalFailure,
+        ) else {
+            return;
+        };
+        let Ok(current_identity) = directory_identity(&current_path, KrxErrorCode::InternalFailure)
+        else {
+            return;
+        };
+        if !same_object_identity(&current_identity, &self.directory_identity) {
+            return;
+        }
+        let Ok(Some((owner_file, current_owner))) = open_cache_owner(
+            &directory,
+            self.owner.bytes.len() as u64,
+            KrxErrorCode::InternalFailure,
+        ) else {
+            return;
+        };
+        if !same_cache_owner(&current_owner, &self.owner)
+            || delete_open_handle(owner_file.as_raw_handle()).is_err()
+        {
+            return;
+        }
+        drop(owner_file);
+        if delete_open_directory(directory).is_ok() {
+            let _ = flush_directory(
+                &self.parent,
+                KrxErrorCode::InternalFailure,
+                "cache lease parent sync failed",
             );
         }
     }
@@ -1376,6 +1716,142 @@ fn publish_protocol_file(
     result
 }
 
+fn publish_cache_owner(
+    directory: &Dir,
+    bytes: &[u8],
+    error_code: KrxErrorCode,
+) -> Result<CacheOwnerObservation, KrxError> {
+    let mut file = create_secure_file(directory, OsStr::new("owner.json"), error_code)?;
+    file.write_all(bytes)
+        .map_err(|_| state_error(error_code, "cache lease owner write failed"))?;
+    file.sync_all()
+        .map_err(|_| state_error(error_code, "cache lease owner sync failed"))?;
+    let identity = file_metadata_identity(&file, error_code)?;
+    flush_directory(
+        directory,
+        error_code,
+        "cache lease owner directory sync failed",
+    )?;
+    drop(file);
+    let Some((_, observed)) = open_cache_owner(directory, bytes.len() as u64, error_code)? else {
+        return Err(state_error(
+            error_code,
+            "cache lease owner publication disappeared",
+        ));
+    };
+    if !same_cache_owner_identity(&observed, identity) || observed.bytes != bytes {
+        return Err(state_error(
+            error_code,
+            "cache lease owner publication identity changed",
+        ));
+    }
+    Ok(observed)
+}
+
+fn read_cache_owner(
+    directory: &Dir,
+    maximum_bytes: u64,
+    error_code: KrxErrorCode,
+) -> Result<Option<CacheOwnerObservation>, KrxError> {
+    Ok(open_cache_owner(directory, maximum_bytes, error_code)?.map(|(_, owner)| owner))
+}
+
+fn open_cache_owner(
+    directory: &Dir,
+    maximum_bytes: u64,
+    error_code: KrxErrorCode,
+) -> Result<Option<(File, CacheOwnerObservation)>, KrxError> {
+    let Some(mut file) = open_secure_file(
+        directory,
+        OsStr::new("owner.json"),
+        false,
+        false,
+        true,
+        error_code,
+    )?
+    else {
+        return Ok(None);
+    };
+    let identity = file_metadata_identity(&file, error_code)?;
+    if identity.size > maximum_bytes {
+        // Keep the exact file identity without reading attacker-controlled
+        // oversized contents.  Stale recovery may compare and remove only
+        // this still-matching object, while callers treat its payload as
+        // malformed rather than allocating an unbounded buffer.
+        return Ok(Some((
+            file,
+            CacheOwnerObservation {
+                identity,
+                bytes: Vec::new(),
+                complete: false,
+            },
+        )));
+    }
+    let mut bytes = Vec::with_capacity(identity.size as usize);
+    Read::by_ref(&mut file)
+        .take(maximum_bytes.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .map_err(|_| state_error(error_code, "cache lease owner read failed"))?;
+    let after = file_metadata_identity(&file, error_code)?;
+    if identity != after || bytes.len() as u64 > maximum_bytes {
+        return Err(state_error(
+            error_code,
+            "cache lease owner changed during read",
+        ));
+    }
+    Ok(Some((
+        file,
+        CacheOwnerObservation {
+            identity,
+            bytes,
+            complete: true,
+        },
+    )))
+}
+
+fn cache_lease_owner_matches(
+    directory: &Dir,
+    observed: Option<&CacheOwnerObservation>,
+    error_code: KrxErrorCode,
+) -> Result<bool, KrxError> {
+    match observed {
+        Some(expected) => Ok(
+            open_cache_owner(directory, expected.bytes.len() as u64, error_code)?
+                .is_some_and(|(_, current)| same_cache_owner(&current, expected)),
+        ),
+        None => Ok(open_secure_file(
+            directory,
+            OsStr::new("owner.json"),
+            false,
+            false,
+            false,
+            error_code,
+        )?
+        .is_none()),
+    }
+}
+
+fn abandon_cache_lease(parent: &Dir, directory: Dir, owner: Option<&CacheOwnerObservation>) {
+    if let Some(owner) = owner
+        && let Ok(Some((file, current))) = open_cache_owner(
+            &directory,
+            owner.bytes.len() as u64,
+            KrxErrorCode::InternalFailure,
+        )
+        && same_cache_owner(&current, owner)
+    {
+        let _ = delete_open_handle(file.as_raw_handle());
+        drop(file);
+    }
+    if delete_open_directory(directory).is_ok() {
+        let _ = flush_directory(
+            parent,
+            KrxErrorCode::InternalFailure,
+            "cache lease parent sync failed",
+        );
+    }
+}
+
 fn read_protocol_file(
     directory: &Dir,
     leaf: &str,
@@ -1565,6 +2041,13 @@ fn plain_lock_owner_is_alive(owner: Option<&str>) -> bool {
     let Some(pid) = pid.parse::<u32>().ok().filter(|pid| *pid > 0) else {
         return false;
     };
+    process_is_alive(pid)
+}
+
+pub(crate) fn process_is_alive(pid: u32) -> bool {
+    if pid == 0 {
+        return false;
+    }
     // SAFETY: OpenProcess is called with a PID parsed from the validated owner
     // grammar. A returned handle is closed by the guard.
     let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };

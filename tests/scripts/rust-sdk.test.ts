@@ -438,6 +438,140 @@ function assertWindowsStateProtocolSource(source: string): void {
   }
 }
 
+function assertWindowsCacheLeaseProtocolSource(source: string): void {
+  const acquisitionStart = source.indexOf(
+    "pub(crate) fn try_acquire_cache_lease(",
+  );
+  const observationStart = source.indexOf(
+    "pub(crate) fn observe_cache_lease(",
+    acquisitionStart,
+  );
+  const stealStart = source.indexOf(
+    "pub(crate) fn steal_cache_lease_if_unchanged(",
+    observationStart,
+  );
+  const stealEnd = source.indexOf(
+    "pub(crate) fn try_acquire_plain_lock(",
+    stealStart,
+  );
+  const acquisition = source.slice(acquisitionStart, observationStart);
+  const observation = source.slice(observationStart, stealStart);
+  const steal = source.slice(stealStart, stealEnd);
+  const ownerStart = source.indexOf("fn open_cache_owner(");
+  const ownerEnd = source.indexOf("fn cache_lease_owner_matches(", ownerStart);
+  const boundedOwner = source.slice(ownerStart, ownerEnd);
+  const releaseStart = source.indexOf("impl Drop for CacheDirectoryLease {");
+  const releaseEnd = source.indexOf("fn state_error(", releaseStart);
+  const release = source.slice(releaseStart, releaseEnd);
+  const livenessStart = source.indexOf("pub(crate) fn process_is_alive(");
+  const livenessEnd = source.indexOf(
+    "fn move_plain_lock_to_tombstone(",
+    livenessStart,
+  );
+  const liveness = source.slice(livenessStart, livenessEnd);
+  const stealRevalidations =
+    steal.match(/cache_lease_owner_matches\(/gu)?.length ?? 0;
+
+  if (
+    acquisitionStart < 0 ||
+    observationStart < 0 ||
+    stealStart < 0 ||
+    stealEnd < 0 ||
+    !source.includes("struct CacheDirectoryLease") ||
+    !source.includes("struct ObservedCacheDirectoryLease") ||
+    !source.includes("const CACHE_LEASE_OWNER_MAXIMUM_BYTES: u64 = 1024;") ||
+    !acquisition.includes("create_child_directory(") ||
+    !acquisition.includes("publish_cache_owner(") ||
+    !acquisition.includes("path_matches_directory(") ||
+    !observation.includes("open_child_directory(") ||
+    !observation.includes("read_cache_owner(") ||
+    !observation.includes("same_object_identity(") ||
+    ownerStart < 0 ||
+    ownerEnd < 0 ||
+    boundedOwner.indexOf("if identity.size > maximum_bytes") < 0 ||
+    boundedOwner.indexOf("complete: false") < 0 ||
+    boundedOwner.indexOf(".read_to_end(&mut bytes)") < 0 ||
+    boundedOwner.indexOf("let after = file_metadata_identity") < 0 ||
+    boundedOwner.indexOf("if identity != after") < 0 ||
+    boundedOwner.indexOf("complete: false") <=
+      boundedOwner.indexOf("if identity.size > maximum_bytes") ||
+    boundedOwner.indexOf(".read_to_end(&mut bytes)") <=
+      boundedOwner.indexOf("complete: false") ||
+    !steal.includes("rename_open_handle(&directory, &parent") ||
+    stealRevalidations < 2 ||
+    !steal.includes("delete_open_handle(file.as_raw_handle())") ||
+    !steal.includes("delete_open_directory(directory)") ||
+    releaseStart < 0 ||
+    releaseEnd < 0 ||
+    !release.includes("same_object_identity(") ||
+    !release.includes("same_cache_owner(") ||
+    !release.includes("delete_open_handle(owner_file.as_raw_handle())") ||
+    !release.includes("delete_open_directory(directory)") ||
+    livenessStart < 0 ||
+    livenessEnd < 0 ||
+    !liveness.includes("OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION") ||
+    !liveness.includes("GetLastError() == ERROR_ACCESS_DENIED")
+  ) {
+    throw new Error(
+      "Windows cache leases must preserve bounded exact-handle acquisition, recovery, and release",
+    );
+  }
+}
+
+function assertCacheCoordinationProtocolSources(sources: {
+  readonly cache: string;
+  readonly client: string;
+  readonly state: string;
+}): void {
+  const acquisitionStart = sources.state.indexOf(
+    "pub(crate) fn try_acquire_cache_lease(",
+  );
+  const observationStart = sources.state.indexOf(
+    "pub(crate) fn observe_cache_lease(",
+    acquisitionStart,
+  );
+  const acquisition = sources.state.slice(acquisitionStart, observationStart);
+  const stealStart = sources.state.indexOf(
+    "pub(crate) fn steal_cache_lease_if_unchanged(",
+    observationStart,
+  );
+  const stealEnd = sources.state.indexOf(
+    "pub(crate) fn try_acquire_legacy_secret_plain_lock(",
+    stealStart,
+  );
+  const steal = sources.state.slice(stealStart, stealEnd);
+  const required = [
+    [sources.cache, "struct CacheFlightKey"],
+    [sources.cache, "state_root: self.state.flight_namespace().to_path_buf()"],
+    [sources.cache, "network_result: Mutex<Option<QueryResult>>"],
+    [sources.cache, "pub(crate) fn shared_network_result(&self)"],
+    [
+      sources.cache,
+      "canonical_cache_timestamp(self.result.provenance.fetched_at)",
+    ],
+    [sources.client, "if let Some(result) = flight.shared_network_result()"],
+    [sources.client, "flight.publish_network_result(result.clone())"],
+    [sources.client, "!hit.same_refresh_generation(baseline)"],
+    [acquisition, "if read_steal_claim(&directory, error_code)?.is_some()"],
+    [steal, "plain_lock_owner_is_alive(Some(&existing.owner))"],
+    [steal, "release_steal_claim(&observed.directory, &existing)"],
+    [steal, "publish_steal_claim(&observed.directory, &claimant, error_code)"],
+    [steal, "current.owner == claim.owner"],
+    [steal, "same_object_identity(&current.identity, &claim.identity)"],
+  ] as const;
+  if (
+    acquisitionStart < 0 ||
+    observationStart < 0 ||
+    stealStart < 0 ||
+    stealEnd < 0 ||
+    required.some(([source, marker]) => !source.includes(marker))
+  ) {
+    throw new Error(
+      "Rust cache coordination must preserve scoped result sharing, refresh generations, and claimant-fenced leases",
+    );
+  }
+}
+
 function assertNodeQuotaStateProtocolSource(source: string): void {
   const ownerStart = source.indexOf("function publishLockOwner(");
   const ownerEnd = source.indexOf("function publishStealClaim(", ownerStart);
@@ -985,6 +1119,71 @@ describe("production Rust SDK gate", () => {
       ),
     ).toThrow(/owner\/claim publication protocol/u);
 
+    const rustCache = read("crates/krx-sdk/src/cache.rs");
+    const rustClient = read("crates/krx-sdk/src/client.rs");
+    const cacheCoordination = {
+      cache: rustCache,
+      client: rustClient,
+      state: rustState,
+    };
+    expect(() =>
+      assertCacheCoordinationProtocolSources(cacheCoordination),
+    ).not.toThrow();
+    expect(() =>
+      assertCacheCoordinationProtocolSources({
+        ...cacheCoordination,
+        cache: rustCache.replace(
+          "state_root: self.state.flight_namespace().to_path_buf()",
+          'state_root: PathBuf::from("global")',
+        ),
+      }),
+    ).toThrow(/Rust cache coordination/u);
+    expect(() =>
+      assertCacheCoordinationProtocolSources({
+        ...cacheCoordination,
+        cache: rustCache.replace(
+          "canonical_cache_timestamp(self.result.provenance.fetched_at)",
+          "Some(jiff::Timestamp::MAX)",
+        ),
+      }),
+    ).toThrow(/Rust cache coordination/u);
+    expect(() =>
+      assertCacheCoordinationProtocolSources({
+        ...cacheCoordination,
+        client: rustClient.replace(
+          "flight.publish_network_result(result.clone())",
+          "drop(result.clone())",
+        ),
+      }),
+    ).toThrow(/Rust cache coordination/u);
+    expect(() =>
+      assertCacheCoordinationProtocolSources({
+        ...cacheCoordination,
+        client: rustClient.replace(
+          "!hit.same_refresh_generation(baseline)",
+          "true",
+        ),
+      }),
+    ).toThrow(/Rust cache coordination/u);
+    expect(() =>
+      assertCacheCoordinationProtocolSources({
+        ...cacheCoordination,
+        state: rustState.replace(
+          "if read_steal_claim(&directory, error_code)?.is_some()",
+          "if false",
+        ),
+      }),
+    ).toThrow(/Rust cache coordination/u);
+    expect(() =>
+      assertCacheCoordinationProtocolSources({
+        ...cacheCoordination,
+        state: rustState.replace(
+          "current.owner == claim.owner",
+          "current.owner != claim.owner",
+        ),
+      }),
+    ).toThrow(/Rust cache coordination/u);
+
     const windowsState = read("crates/krx-sdk/src/state_windows.rs");
     const sdkRoot = read("crates/krx-sdk/src/lib.rs");
     expect(sdkRoot).toContain("#[cfg(any(unix, windows))]\nmod quota;");
@@ -992,6 +1191,41 @@ describe("production Rust SDK gate", () => {
       '#[cfg(windows)]\n#[path = "state_windows.rs"]\nmod state;',
     );
     expect(() => assertWindowsStateProtocolSource(windowsState)).not.toThrow();
+    expect(() =>
+      assertWindowsCacheLeaseProtocolSource(windowsState),
+    ).not.toThrow();
+    expect(() =>
+      assertWindowsCacheLeaseProtocolSource(
+        windowsState.replace(
+          "bytes: Vec::new(),\n                complete: false,",
+          "bytes: Vec::new(),\n                complete: true,",
+        ),
+      ),
+    ).toThrow(/Windows cache leases/u);
+    expect(() =>
+      assertWindowsCacheLeaseProtocolSource(
+        windowsState.replace(
+          "rename_open_handle(&directory, &parent, &tombstone[0], false)",
+          "parent.rename(&leaf[0], &parent, &tombstone[0])",
+        ),
+      ),
+    ).toThrow(/Windows cache leases/u);
+    expect(() =>
+      assertWindowsCacheLeaseProtocolSource(
+        windowsState.replace(
+          "delete_open_handle(owner_file.as_raw_handle())",
+          "Ok(())",
+        ),
+      ),
+    ).toThrow(/Windows cache leases/u);
+    expect(() =>
+      assertWindowsCacheLeaseProtocolSource(
+        windowsState.replace(
+          "OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid)",
+          "OpenProcess(PROCESS_QUERY_INFORMATION, 0, pid)",
+        ),
+      ),
+    ).toThrow(/Windows cache leases/u);
     expect(() =>
       assertWindowsStateProtocolSource(
         windowsState.replace(

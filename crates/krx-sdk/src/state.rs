@@ -78,10 +78,44 @@ pub(crate) struct PlainDirectoryLock {
     owner: String,
 }
 
+#[derive(Debug)]
+pub(crate) struct CacheDirectoryLease {
+    parent: OwnedFd,
+    leaf: OsString,
+    directory: OwnedFd,
+    identity: FileIdentity,
+    owner: ObservedFile,
+}
+
+#[derive(Debug)]
+pub(crate) struct ObservedCacheDirectoryLease {
+    directory: OwnedFd,
+    identity: FileIdentity,
+    modified: SystemTime,
+    owner: Option<ObservedFile>,
+}
+
+impl ObservedCacheDirectoryLease {
+    pub(crate) fn owner_bytes(&self) -> Option<&[u8]> {
+        self.owner
+            .as_ref()
+            .filter(|owner| owner.is_complete())
+            .map(ObservedFile::bytes)
+    }
+
+    pub(crate) fn modified(&self) -> SystemTime {
+        self.modified
+    }
+}
+
 impl StateRoot {
     pub(crate) fn new(path: PathBuf) -> Result<Self, KrxError> {
         validate_absolute_root(&path)?;
         Ok(Self { path })
+    }
+
+    pub(crate) fn flight_namespace(&self) -> &Path {
+        &self.path
     }
 
     pub(crate) fn read(
@@ -319,7 +353,7 @@ impl StateRoot {
     }
 
     #[cfg(test)]
-    fn atomic_write_with_post_commit_failure(
+    pub(crate) fn atomic_write_with_post_commit_failure(
         &self,
         relative: &str,
         bytes: &[u8],
@@ -352,6 +386,202 @@ impl StateRoot {
             ReadSensitivity::NonSecret,
             error_code,
         )
+    }
+
+    pub(crate) fn try_acquire_cache_lease(
+        &self,
+        relative: &str,
+        owner_json: &[u8],
+        error_code: KrxErrorCode,
+    ) -> Result<Option<CacheDirectoryLease>, KrxError> {
+        if owner_json.is_empty() || owner_json.len() > 1024 {
+            return Err(invalid_state_path("cache lease owner is malformed"));
+        }
+        let components = relative_components(relative)?;
+        let root = open_absolute_root(&self.path, true, ReadSensitivity::NonSecret, error_code)?
+            .ok_or_else(|| state_error(error_code, "local state root could not be created"))?;
+        let (parents, leaf) = components.split_at(components.len() - 1);
+        let parent = open_relative_directories(&root, parents, true, error_code)?
+            .ok_or_else(|| state_error(error_code, "cache lease parent could not be created"))?;
+        match rustix::fs::mkdirat(&parent, &leaf[0], DIRECTORY_MODE) {
+            Ok(()) => {}
+            Err(error) if error == rustix::io::Errno::EXIST => {
+                validate_lock_directory(&parent, &leaf[0], error_code)?;
+                return Ok(None);
+            }
+            Err(_) => return Err(state_error(error_code, "cache lease creation failed")),
+        }
+        let directory = rustix::fs::openat(
+            &parent,
+            &leaf[0],
+            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            Mode::empty(),
+        )
+        .map_err(|_| state_error(error_code, "cache lease open failed"))?;
+        let identity = file_identity(
+            &rustix::fs::fstat(&directory)
+                .map_err(|_| state_error(error_code, "cache lease inspection failed"))?,
+        );
+        let owner = match write_cache_lease_owner(&directory, owner_json, error_code) {
+            Ok(owner) => owner,
+            Err(error) => {
+                abandon_new_cache_lease(&directory);
+                return Err(error);
+            }
+        };
+        if rustix::fs::fsync(&parent).is_err() {
+            abandon_new_cache_lease(&directory);
+            return Err(state_error(error_code, "cache lease parent sync failed"));
+        }
+        if read_steal_claim(&directory, error_code)?.is_some() {
+            abandon_new_cache_lease(&directory);
+            return Ok(None);
+        }
+        if !path_matches_directory(&parent, &leaf[0], &identity, error_code)? {
+            abandon_new_cache_lease(&directory);
+            return Ok(None);
+        }
+        Ok(Some(CacheDirectoryLease {
+            parent,
+            leaf: leaf[0].clone(),
+            directory,
+            identity,
+            owner,
+        }))
+    }
+
+    pub(crate) fn observe_cache_lease(
+        &self,
+        relative: &str,
+        maximum_owner_bytes: u64,
+        error_code: KrxErrorCode,
+    ) -> Result<Option<ObservedCacheDirectoryLease>, KrxError> {
+        let components = relative_components(relative)?;
+        let Some(root) =
+            open_absolute_root(&self.path, false, ReadSensitivity::NonSecret, error_code)?
+        else {
+            return Ok(None);
+        };
+        let (parents, leaf) = components.split_at(components.len() - 1);
+        let Some(parent) = open_relative_directories(&root, parents, false, error_code)? else {
+            return Ok(None);
+        };
+        if !validate_lock_directory(&parent, &leaf[0], error_code)? {
+            return Ok(None);
+        }
+        let directory = match rustix::fs::openat(
+            &parent,
+            &leaf[0],
+            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            Mode::empty(),
+        ) {
+            Ok(directory) => directory,
+            Err(error) if error == rustix::io::Errno::NOENT => return Ok(None),
+            Err(_) => return Err(state_error(error_code, "cache lease open failed")),
+        };
+        inspect_open_cache_lease(&directory, maximum_owner_bytes, error_code)
+    }
+
+    pub(crate) fn steal_cache_lease_if_unchanged(
+        &self,
+        relative: &str,
+        observed: &ObservedCacheDirectoryLease,
+        tombstone_leaf: &str,
+        error_code: KrxErrorCode,
+    ) -> Result<bool, KrxError> {
+        let components = relative_components(relative)?;
+        let tombstone = relative_components(tombstone_leaf)?;
+        if tombstone.len() != 1 {
+            return Err(invalid_state_path(
+                "cache lease tombstone must be one filename",
+            ));
+        }
+        let Some(root) =
+            open_absolute_root(&self.path, false, ReadSensitivity::NonSecret, error_code)?
+        else {
+            return Ok(false);
+        };
+        let (parents, leaf) = components.split_at(components.len() - 1);
+        let Some(parent) = open_relative_directories(&root, parents, false, error_code)? else {
+            return Ok(false);
+        };
+        if !path_matches_directory(&parent, &leaf[0], &observed.identity, error_code)?
+            || !cache_lease_owner_matches(
+                &observed.directory,
+                observed.owner.as_ref(),
+                1024,
+                error_code,
+            )?
+        {
+            return Ok(false);
+        }
+
+        let claimant = format!("{}-{}", std::process::id(), Uuid::new_v4());
+        if let Some(existing) = read_steal_claim(&observed.directory, error_code)? {
+            if plain_lock_owner_is_alive(Some(&existing.owner)) {
+                return Ok(false);
+            }
+            release_steal_claim(&observed.directory, &existing);
+            if read_steal_claim(&observed.directory, error_code)?.is_some() {
+                return Ok(false);
+            }
+        }
+        let Some(claim) = publish_steal_claim(&observed.directory, &claimant, error_code)? else {
+            return Ok(false);
+        };
+        let revalidated = (|| {
+            Ok(
+                path_matches_directory(&parent, &leaf[0], &observed.identity, error_code)?
+                    && cache_lease_owner_matches(
+                        &observed.directory,
+                        observed.owner.as_ref(),
+                        1024,
+                        error_code,
+                    )?
+                    && read_steal_claim(&observed.directory, error_code)?.is_some_and(|current| {
+                        current.owner == claim.owner
+                            && same_object_identity(&current.identity, &claim.identity)
+                    }),
+            )
+        })();
+        match revalidated {
+            Ok(true) => {}
+            Ok(false) => {
+                release_steal_claim(&observed.directory, &claim);
+                return Ok(false);
+            }
+            Err(error) => {
+                release_steal_claim(&observed.directory, &claim);
+                return Err(error);
+            }
+        }
+        match rustix::fs::renameat(&parent, &leaf[0], &parent, &tombstone[0]) {
+            Ok(()) => {}
+            Err(error)
+                if error == rustix::io::Errno::NOENT
+                    || error == rustix::io::Errno::EXIST
+                    || error == rustix::io::Errno::NOTEMPTY =>
+            {
+                release_steal_claim(&observed.directory, &claim);
+                return Ok(false);
+            }
+            Err(_) => {
+                release_steal_claim(&observed.directory, &claim);
+                return Err(state_error(error_code, "stale cache lease rename failed"));
+            }
+        }
+        if rustix::fs::fsync(&parent).is_err() {
+            return Err(state_error(error_code, "stale cache lease sync failed"));
+        }
+        release_steal_claim(&observed.directory, &claim);
+        cleanup_cache_lease_directory(
+            &parent,
+            &tombstone[0],
+            &observed.directory,
+            &observed.identity,
+            observed.owner.as_ref(),
+        );
+        Ok(true)
     }
 
     pub(crate) fn try_acquire_legacy_secret_plain_lock(
@@ -567,6 +797,18 @@ impl Drop for PlainDirectoryLock {
         if rustix::fs::unlinkat(&self.parent, &self.leaf, AtFlags::REMOVEDIR).is_ok() {
             let _ = rustix::fs::fsync(&self.parent);
         }
+    }
+}
+
+impl Drop for CacheDirectoryLease {
+    fn drop(&mut self) {
+        cleanup_cache_lease_directory(
+            &self.parent,
+            &self.leaf,
+            &self.directory,
+            &self.identity,
+            Some(&self.owner),
+        );
     }
 }
 
@@ -1037,6 +1279,136 @@ fn plain_file_identity(
     }
 }
 
+fn write_cache_lease_owner(
+    directory: &OwnedFd,
+    bytes: &[u8],
+    error_code: KrxErrorCode,
+) -> Result<ObservedFile, KrxError> {
+    let descriptor = rustix::fs::openat(
+        directory,
+        "owner.json",
+        OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        FILE_MODE,
+    )
+    .map_err(|_| state_error(error_code, "cache lease owner creation failed"))?;
+    let mut file = File::from(descriptor);
+    file.write_all(bytes)
+        .map_err(|_| state_error(error_code, "cache lease owner write failed"))?;
+    rustix::fs::fchmod(&file, FILE_MODE)
+        .map_err(|_| state_error(error_code, "cache lease owner permission repair failed"))?;
+    file.sync_all()
+        .map_err(|_| state_error(error_code, "cache lease owner sync failed"))?;
+    let identity = file_identity(
+        &rustix::fs::fstat(&file)
+            .map_err(|_| state_error(error_code, "cache lease owner inspection failed"))?,
+    );
+    rustix::fs::fsync(directory)
+        .map_err(|_| state_error(error_code, "cache lease directory sync failed"))?;
+    let observed = read_cache_lease_owner(directory, bytes.len() as u64, error_code, false)?
+        .ok_or_else(|| state_error(error_code, "cache lease owner disappeared"))?;
+    if observed.bytes != bytes || !same_object_identity(&observed.identity, &identity) {
+        return Err(state_error(error_code, "cache lease owner changed"));
+    }
+    Ok(observed)
+}
+
+fn read_cache_lease_owner(
+    directory: &OwnedFd,
+    maximum_bytes: u64,
+    error_code: KrxErrorCode,
+    observe_oversized: bool,
+) -> Result<Option<ObservedFile>, KrxError> {
+    read_from_parent(
+        directory,
+        OsStr::new("owner.json"),
+        maximum_bytes,
+        ReadSensitivity::NonSecret,
+        error_code,
+        observe_oversized,
+    )
+}
+
+fn inspect_open_cache_lease(
+    directory: &OwnedFd,
+    maximum_owner_bytes: u64,
+    error_code: KrxErrorCode,
+) -> Result<Option<ObservedCacheDirectoryLease>, KrxError> {
+    let Some(stat) = classify_lock_directory_stat(rustix::fs::fstat(directory), error_code)? else {
+        return Ok(None);
+    };
+    validate_directory_stat(
+        directory,
+        &stat,
+        false,
+        ReadSensitivity::NonSecret,
+        error_code,
+    )?;
+    let seconds = u64::try_from(stat.st_mtime)
+        .map_err(|_| state_error(error_code, "cache lease timestamp is invalid"))?;
+    let nanoseconds = u32::try_from(stat.st_mtime_nsec)
+        .ok()
+        .filter(|value| *value < 1_000_000_000)
+        .ok_or_else(|| state_error(error_code, "cache lease timestamp is invalid"))?;
+    let modified = UNIX_EPOCH
+        .checked_add(Duration::new(seconds, nanoseconds))
+        .ok_or_else(|| state_error(error_code, "cache lease timestamp is invalid"))?;
+    Ok(Some(ObservedCacheDirectoryLease {
+        directory: rustix::io::dup(directory)
+            .map_err(|_| state_error(error_code, "cache lease duplication failed"))?,
+        identity: file_identity(&stat),
+        modified,
+        owner: read_cache_lease_owner(directory, maximum_owner_bytes, error_code, true)?,
+    }))
+}
+
+fn cache_lease_owner_matches(
+    directory: &OwnedFd,
+    expected: Option<&ObservedFile>,
+    maximum_bytes: u64,
+    error_code: KrxErrorCode,
+) -> Result<bool, KrxError> {
+    let current = read_cache_lease_owner(directory, maximum_bytes, error_code, true)?;
+    Ok(match (current, expected) {
+        (None, None) => true,
+        (Some(current), Some(expected)) => {
+            current.complete == expected.complete
+                && current.bytes == expected.bytes
+                && same_object_identity(&current.identity, &expected.identity)
+        }
+        _ => false,
+    })
+}
+
+fn cleanup_cache_lease_directory(
+    parent: &OwnedFd,
+    leaf: &OsStr,
+    directory: &OwnedFd,
+    identity: &FileIdentity,
+    owner: Option<&ObservedFile>,
+) {
+    let error_code = KrxErrorCode::InternalFailure;
+    if !path_matches_directory(parent, leaf, identity, error_code).unwrap_or(false)
+        || !cache_lease_owner_matches(directory, owner, 1024, error_code).unwrap_or(false)
+    {
+        return;
+    }
+    if owner.is_some() && rustix::fs::unlinkat(directory, "owner.json", AtFlags::empty()).is_err() {
+        return;
+    }
+    let _ = rustix::fs::fsync(directory);
+    if !path_matches_directory(parent, leaf, identity, error_code).unwrap_or(false) {
+        return;
+    }
+    if rustix::fs::unlinkat(parent, leaf, AtFlags::REMOVEDIR).is_ok() {
+        let _ = rustix::fs::fsync(parent);
+    }
+}
+
+fn abandon_new_cache_lease(directory: &OwnedFd) {
+    let _ = rustix::fs::unlinkat(directory, "owner.json", AtFlags::empty());
+    let _ = rustix::fs::fsync(directory);
+}
+
 fn plain_lock_owner_is_alive(owner: Option<&str>) -> bool {
     let Some(owner) = owner else {
         return false;
@@ -1046,6 +1418,19 @@ fn plain_lock_owner_is_alive(owner: Option<&str>) -> bool {
     };
     let Some(pid) = pid
         .parse::<i32>()
+        .ok()
+        .and_then(rustix::process::Pid::from_raw)
+    else {
+        return false;
+    };
+    match rustix::process::test_kill_process(pid) {
+        Ok(()) => true,
+        Err(error) => error == rustix::io::Errno::PERM,
+    }
+}
+
+pub(crate) fn process_is_alive(pid: u32) -> bool {
+    let Some(pid) = i32::try_from(pid)
         .ok()
         .and_then(rustix::process::Pid::from_raw)
     else {
@@ -1622,6 +2007,114 @@ mod tests {
             fs::read(fixture.path("cache/entry.json")).unwrap(),
             b"replacement"
         );
+    }
+
+    #[test]
+    fn cache_lease_acquisition_is_exclusive_and_release_matches_owner() {
+        let fixture = TestRoot::new();
+        let relative = "cache/.leases/key.lock";
+        let owner = br#"{"version":1,"pid":1,"nonce":"00000000-0000-4000-8000-000000000001","createdAt":"2026-01-01T00:00:00.000Z"}"#;
+        let lease = fixture
+            .state
+            .try_acquire_cache_lease(relative, owner, KrxErrorCode::CacheWriteFailed)
+            .unwrap()
+            .expect("first lease");
+        assert!(
+            fixture
+                .state
+                .try_acquire_cache_lease(relative, owner, KrxErrorCode::CacheWriteFailed)
+                .unwrap()
+                .is_none()
+        );
+        let observed = fixture
+            .state
+            .observe_cache_lease(relative, 1024, KrxErrorCode::CacheWriteFailed)
+            .unwrap()
+            .expect("observed lease");
+        assert_eq!(observed.owner_bytes(), Some(owner.as_slice()));
+        drop(lease);
+        assert!(
+            fixture
+                .state
+                .observe_cache_lease(relative, 1024, KrxErrorCode::CacheWriteFailed)
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn stale_cache_lease_tombstone_never_deletes_replacement() {
+        let fixture = TestRoot::new();
+        let relative = "cache/.leases/key.lock";
+        let old_owner = b"old-owner";
+        let old = fixture
+            .state
+            .try_acquire_cache_lease(relative, old_owner, KrxErrorCode::CacheWriteFailed)
+            .unwrap()
+            .expect("old lease");
+        let observed = fixture
+            .state
+            .observe_cache_lease(relative, 1024, KrxErrorCode::CacheWriteFailed)
+            .unwrap()
+            .expect("observed lease");
+        assert!(
+            fixture
+                .state
+                .steal_cache_lease_if_unchanged(
+                    relative,
+                    &observed,
+                    "key.lock.stale-test",
+                    KrxErrorCode::CacheWriteFailed,
+                )
+                .unwrap()
+        );
+        let new_owner = b"new-owner";
+        let replacement = fixture
+            .state
+            .try_acquire_cache_lease(relative, new_owner, KrxErrorCode::CacheWriteFailed)
+            .unwrap()
+            .expect("replacement lease");
+        assert!(
+            !fixture
+                .state
+                .steal_cache_lease_if_unchanged(
+                    relative,
+                    &observed,
+                    "key.lock.stale-paused",
+                    KrxErrorCode::CacheWriteFailed,
+                )
+                .unwrap()
+        );
+        drop(old);
+        assert_eq!(
+            fs::read(fixture.path("cache/.leases/key.lock/owner.json")).unwrap(),
+            new_owner
+        );
+        drop(replacement);
+    }
+
+    #[test]
+    fn oversized_cache_lease_owner_is_observed_without_unbounded_read() {
+        let fixture = TestRoot::new();
+        let relative = "cache/.leases/key.lock";
+        let lease = fixture
+            .state
+            .try_acquire_cache_lease(relative, b"owner", KrxErrorCode::CacheWriteFailed)
+            .unwrap()
+            .expect("lease");
+        fs::write(
+            fixture.path("cache/.leases/key.lock/owner.json"),
+            vec![b'x'; 2048],
+        )
+        .unwrap();
+        let observed = fixture
+            .state
+            .observe_cache_lease(relative, 1024, KrxErrorCode::CacheWriteFailed)
+            .unwrap()
+            .expect("observed lease");
+        assert!(observed.owner_bytes().is_none());
+        drop(lease);
+        assert!(fixture.path("cache/.leases/key.lock").exists());
     }
 
     #[test]

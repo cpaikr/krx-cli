@@ -30,6 +30,14 @@ mod cache;
     )
 )]
 mod calendar;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "direct query orchestration is exposed by the complete public Client in this SDK PR"
+    )
+)]
+mod client;
 mod completeness;
 #[cfg_attr(
     not(test),
