@@ -83,6 +83,11 @@ try {
     await readFile(resolve(packageRoot, "package.json")),
   );
   await assertPackageLayout(packageRoot, target, packageJson);
+  assert.equal(
+    await readFile(resolve(packageRoot, "LICENSE"), "utf8"),
+    await readFile(resolve(repository, "LICENSE"), "utf8"),
+    "installed package license must exactly match the repository license",
+  );
   for (const skillPath of [
     "skills/krx-cli/SKILL.md",
     "skills/krx-cli/references/cli-usage.md",
@@ -265,6 +270,13 @@ async function portableDigest(packageRoot) {
       hash.update("\0");
     }
   }
+  const license = await readFile(resolve(packageRoot, "LICENSE"));
+  hash.update("LICENSE");
+  hash.update("\0");
+  hash.update(String(license.length));
+  hash.update("\0");
+  hash.update(license);
+  hash.update("\0");
   return hash.digest("hex");
 }
 

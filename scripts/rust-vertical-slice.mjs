@@ -365,6 +365,11 @@ invariant(
   "clean-install certification must assert the native CLI package version",
 );
 invariant(
+  certifier.includes('readFile(resolve(packageRoot, "LICENSE"), "utf8")') &&
+    certifier.includes('readFile(resolve(repository, "LICENSE"), "utf8")'),
+  "clean-install certification must assert the exact repository license",
+);
+invariant(
   certifier.includes("assertPackageLayout") &&
     certifier.includes("assertRuntimeCompatibility") &&
     certifier.includes("runtime.mjs"),
@@ -372,9 +377,10 @@ invariant(
 );
 invariant(
   assembler.includes('resolve(repository, "packages/node")') &&
+    assembler.includes('resolve(repository, "LICENSE")') &&
     assembler.includes('resolve(repository, "skills/krx-cli")') &&
     !assembler.includes("probes/rust-vertical-slice"),
-  "package assembly must copy the production Node facade and skill without probe runtime reuse",
+  "package assembly must copy the production Node facade, license, and skill without probe runtime reuse",
 );
 invariant(
   runtime.includes("client.capabilities()") &&
@@ -447,6 +453,10 @@ invariant(
 invariant(
   packageJson.files?.includes("skills"),
   "production native package must include the portable skill directory",
+);
+invariant(
+  packageJson.files?.includes("LICENSE"),
+  "production native package must include the MIT license file",
 );
 invariant(
   !Object.keys(packageJson.exports).some((key) => key.includes("native")),

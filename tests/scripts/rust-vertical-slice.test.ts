@@ -105,6 +105,39 @@ describe("production native package gate", () => {
     expect(result.status, result.stderr).toBe(0);
   });
 
+  it("rejects native assembly that omits the repository license", () => {
+    const path = replacedText(
+      "scripts/native-package/assemble.mjs",
+      'resolve(repository, "LICENSE")',
+      'resolve(repository, "README.md")',
+    );
+    const result = run("--assembler", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/copy the production Node facade, license/u);
+  });
+
+  it("rejects native certification that omits exact license verification", () => {
+    const path = replacedText(
+      "scripts/native-package/certify.mjs",
+      'resolve(repository, "LICENSE")',
+      'resolve(repository, "README.md")',
+    );
+    const result = run("--certifier", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/exact repository license/u);
+  });
+
+  it("rejects a native package manifest that omits its license file", () => {
+    const path = mutatedJson("packages/node/package.json", (document) => {
+      document.files = document.files.filter(
+        (file: string) => file !== "LICENSE",
+      );
+    });
+    const result = run("--package", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/include the MIT license file/u);
+  });
+
   it("rejects a missing supported target", () => {
     const path = mutatedJson(
       "contracts/product/v1/native-targets.json",

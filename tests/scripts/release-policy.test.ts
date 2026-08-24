@@ -161,6 +161,9 @@ describe("private Git release policy", () => {
 
   it("certifies tagged private native archives without source installation", () => {
     const workflow = readRepositoryFile(".github/workflows/release.yml");
+    const nativePackage = JSON.parse(
+      readRepositoryFile("packages/node/package.json"),
+    );
 
     expect(workflow).toContain("name: Tagged native release certification");
     expect(workflow).toContain('tags:\n      - "v*"');
@@ -175,6 +178,7 @@ describe("private Git release policy", () => {
     expect(workflow).not.toContain("allow-build");
     expect(workflow).not.toContain("npm publish");
     expect(workflow).not.toContain("registry.npmjs.org");
+    expect(nativePackage.files).toContain("LICENSE");
   });
 
   it("runs general CI only for pull requests or manual dispatch", () => {

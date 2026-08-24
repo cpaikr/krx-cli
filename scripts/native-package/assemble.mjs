@@ -108,6 +108,14 @@ for (const [kind, destination] of [
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await cp(resolve(repository, "packages/node"), output, { recursive: true });
+const licenseDestination = resolve(output, "LICENSE");
+if (
+  licenseDestination === output ||
+  !isPathInside(output, licenseDestination)
+) {
+  throw new Error("license path must remain inside the assembled package");
+}
+await cp(resolve(repository, "LICENSE"), licenseDestination);
 await cp(
   resolve(repository, "skills/krx-cli"),
   resolve(output, "skills/krx-cli"),

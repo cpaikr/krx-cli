@@ -92,6 +92,10 @@ invariant(
   nodePackage.dependencies === undefined && nodePackage.scripts === undefined,
   "native package must be dependency-free and install-script-free",
 );
+invariant(
+  nodePackage.files?.includes("LICENSE"),
+  "native package must explicitly ship the MIT license file",
+);
 
 const cliCargo = await readFile(
   resolve(repository, "crates/krx-cli/Cargo.toml"),
