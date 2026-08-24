@@ -78,6 +78,14 @@ impl Client {
         ClientBuilder { api_key: None }
     }
 
+    /// Resolve the SDK-owned default trading date using the frozen KRX
+    /// calendar and Korea Standard Time. Frontends must not duplicate this
+    /// policy because fallback coverage is part of the shared contract.
+    pub fn recent_trading_date(&self) -> Result<crate::TradingDate, KrxError> {
+        let today = crate::transport::kst_date(SystemTime::now())?;
+        Ok(crate::calendar::resolve_recent(&today)?.date)
+    }
+
     pub async fn query(&self, request: DirectRequest) -> Result<QueryResult, KrxError> {
         self.inner.direct.query(request).await
     }
@@ -260,6 +268,34 @@ impl CredentialHandle {
         category: ApprovalCategory,
         cancellation: Cancellation,
     ) -> Result<ApprovalObservation, KrxError> {
+        self.check_approval_at(category, cancellation, SystemTime::now())
+            .await
+    }
+
+    /// Actively probe every frozen service category concurrently and return
+    /// observations in the canonical category order. A shared observation
+    /// timestamp preserves the public status-envelope contract.
+    pub async fn check_all_approvals(
+        &self,
+        cancellation: Cancellation,
+    ) -> Result<Vec<ApprovalObservation>, KrxError> {
+        let checked_at = SystemTime::now();
+        join_all(
+            ApprovalCategory::ALL
+                .into_iter()
+                .map(|category| self.check_approval_at(category, cancellation.clone(), checked_at)),
+        )
+        .await
+        .into_iter()
+        .collect()
+    }
+
+    async fn check_approval_at(
+        &self,
+        category: ApprovalCategory,
+        cancellation: Cancellation,
+        checked_at: SystemTime,
+    ) -> Result<ApprovalObservation, KrxError> {
         let operation = crate::credential::APPROVAL_PROBES
             .iter()
             .find_map(|(candidate, operation)| (*candidate == category).then_some(*operation))
@@ -313,7 +349,6 @@ impl CredentialHandle {
             }
             Err(error) => ApprovalOutcome::Inconclusive(Some(error)),
         };
-        let checked_at = SystemTime::now();
         self.approvals
             .record(&credential.api_key, category, outcome, checked_at)
             .await
@@ -1334,6 +1369,15 @@ mod tests {
             .unwrap_err();
         assert_eq!(search_error.code(), KrxErrorCode::InvalidArgument);
 
+        let unsafe_search_error = client
+            .search_stocks(StockSearchRequest {
+                query: "../stock".to_owned(),
+                options: CallOptions::default(),
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(unsafe_search_error.code(), KrxErrorCode::InvalidArgument);
+
         let prices_error = client
             .watchlist_prices(WatchlistPricesRequest {
                 date: TradingDate::parse("20260102").unwrap(),
@@ -1759,5 +1803,13 @@ mod tests {
             Some(ApiKey::parse("test-placeholder").unwrap()),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn public_client_owns_recent_trading_date_selection() {
+        let fixture = Fixture::new();
+        let client = Client::builder().build_at(fixture.root.clone()).unwrap();
+        let date = client.recent_trading_date().unwrap();
+        assert!(TradingDate::parse(date.as_str()).is_ok());
     }
 }

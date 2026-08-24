@@ -547,15 +547,39 @@ fn generate_operations(document: &Value, product: &ProductContract, output: &Pat
         generated.push_str("];\n");
     }
 
+    let adjusted_operations = product
+        .operation_sets
+        .adjusted_daily_stock
+        .iter()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    generated.push_str("pub(crate) static ADJUSTED_DAILY_STOCK_PATHS: &[&str] = &[\n");
+    for operation in &operations {
+        if adjusted_operations.contains(operation.product.operation_id.as_str()) {
+            generated.push_str(&format!("    {},\n", literal(&operation.product.path)));
+        }
+    }
+    generated.push_str("];\n");
+
     generated.push_str("pub(crate) static GENERATED_CAPABILITIES: &[OperationDescription] = &[\n");
     for (index, operation) in operations.iter().enumerate() {
+        let derived_output =
+            if adjusted_operations.contains(operation.product.operation_id.as_str()) {
+                "Some(&ADJUSTED_DAILY_STOCK_OUTPUT)"
+            } else {
+                "None"
+            };
         generated.push_str(&format!(
-            "    OperationDescription {{ operation_id: OperationId::{variant}, category: ApprovalCategory::{category}, description: {description}, description_ko: {description_ko}, contract_id: {contract}, request_fields: REQUEST_FIELDS_{index}, response_fields: RESPONSE_FIELDS_{index} }},\n",
+            "    OperationDescription {{ operation_id: OperationId::{variant}, category: ApprovalCategory::{category}, method: {method}, path: {path}, auth_header: AUTH_HEADER, request_field: {request}, description: {description}, description_ko: {description_ko}, contract_id: {contract}, request_fields: REQUEST_FIELDS_{index}, response_fields: RESPONSE_FIELDS_{index}, derived_output: {derived_output} }},\n",
             variant = rust_variant(&operation.product.operation_id),
             category = rust_variant(&operation.product.category),
+            method = literal(&operation.method.to_ascii_uppercase()),
+            path = literal(&operation.product.path),
+            request = literal(operation.request_field),
             description = literal(&operation.product.description),
             description_ko = literal(&operation.product.description_ko),
             contract = literal(&operation.product.contract_id),
+            derived_output = derived_output,
         ));
     }
     generated.push_str("];\n");

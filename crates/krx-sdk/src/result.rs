@@ -96,6 +96,7 @@ pub struct CalendarSelection {
     pub source: String,
     pub retrieved_at: CalendarDate,
     pub coverage: CalendarCoverage,
+    pub fallback_years: Vec<i16>,
     pub unverified_dates: Vec<TradingDate>,
 }
 

@@ -196,6 +196,7 @@ fn selection(
         } else {
             CalendarCoverage::Fallback
         },
+        fallback_years: fallback_years.iter().copied().collect(),
         unverified_dates,
     })
 }
