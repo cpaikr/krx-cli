@@ -212,6 +212,15 @@ pub async fn native_range(
         let client = native_client.client()?;
         let operation = parse_operation(&operation)?;
         let range = DateRange::new(TradingDate::parse(&from)?, TradingDate::parse(&to)?)?;
+        // Raw ranges are full-market responses. Preserve the public
+        // `securityCode` selector by applying it after the shared range
+        // reducer, just as the native CLI filters its raw rows. Adjusted
+        // ranges already select the security as part of adjustment.
+        let raw_security_code = if adjusted {
+            None
+        } else {
+            security_code.clone()
+        };
         let mode = if adjusted {
             let security_code = security_code.ok_or_else(|| {
                 invalid(
@@ -226,7 +235,7 @@ pub async fn native_range(
             RangeMode::Raw
         };
         let options = call_options(cache_mode, cache_max_age_hours, retries, cancellation)?;
-        let result = client
+        let mut result = client
             .range(RangeRequest {
                 operation,
                 range,
@@ -234,6 +243,12 @@ pub async fn native_range(
                 options,
             })
             .await?;
+        if let Some(security_code) = raw_security_code.as_deref() {
+            result
+                .result
+                .data
+                .retain(|row| row_matches_security_code(row, security_code));
+        }
         Ok(range_result_value(&result))
     })
     .await)
@@ -819,6 +834,20 @@ fn row_value(row: &Row) -> Value {
     )
 }
 
+fn row_matches_security_code(row: &Row, security_code: &str) -> bool {
+    security_code_matches([row.get("ISU_CD"), row.get("ISU_SRT_CD")], security_code)
+}
+
+fn security_code_matches<'a>(
+    fields: impl IntoIterator<Item = Option<&'a str>>,
+    security_code: &str,
+) -> bool {
+    fields
+        .into_iter()
+        .flatten()
+        .any(|value| value == security_code)
+}
+
 fn provenance_value(provenance: &ResultProvenance) -> Value {
     json!({
         "source": match provenance.source { ResultSource::Network => "network", ResultSource::Cache => "cache" },
@@ -1115,6 +1144,30 @@ mod tests {
         );
         assert!(system_time_from_timestamp("01/02/2026").is_err());
         assert!(system_time_from_timestamp("0").is_err());
+    }
+
+    #[test]
+    fn raw_range_security_code_matches_either_frozen_stock_identifier() {
+        assert!(security_code_matches(
+            [Some("KR7005930003"), Some("005930")],
+            "KR7005930003"
+        ));
+        assert!(security_code_matches(
+            [Some("KR7005930003"), Some("005930")],
+            "005930"
+        ));
+        assert!(!security_code_matches(
+            [Some("KR7005930003"), Some("005930")],
+            "000660"
+        ));
+        assert!(security_code_matches(
+            [Some("KR7005930003"), None],
+            "KR7005930003"
+        ));
+        assert!(!security_code_matches(
+            [Some("KR7005930003"), None],
+            "005930"
+        ));
     }
 
     #[test]

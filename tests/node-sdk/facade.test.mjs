@@ -205,9 +205,11 @@ test("forwards the frozen adjusted-range argument shape", async () => {
 
 test("enforces the frozen range security-code union for JavaScript callers", async () => {
   let rangeCalls = 0;
+  let rawRangeArguments;
   const fixture = fixtureBinding({
-    nativeRange: async () => {
+    nativeRange: async (...arguments_) => {
       rangeCalls += 1;
+      rawRangeArguments = arguments_;
       return ok({ success: true, data: [], fetchedDays: 0 });
     },
   });
@@ -233,6 +235,13 @@ test("enforces the frozen range security-code union for JavaScript callers", asy
     securityCode: "005930",
   });
   assert.equal(rangeCalls, 1);
+  assert.deepEqual(rawRangeArguments.slice(1, 6), [
+    "stock_stk_bydd_trd",
+    "20260102",
+    "20260103",
+    false,
+    "005930",
+  ]);
 });
 
 test("removes AbortSignal listeners after resolve and reject", async () => {
