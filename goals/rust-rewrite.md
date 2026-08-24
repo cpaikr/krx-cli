@@ -44,25 +44,78 @@ Goal contract
 
 - Green frozen legacy baseline and mutation-tested compatibility judge.
 - Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
+- Complete shared Rust SDK for all supported KRX behavior and local policy.
 
 ### Current in-scope result
 
-Complete shared Rust SDK for all supported KRX behavior and local policy. The
-implementation is complete locally; its production PR delivery lifecycle is
-active.
+Deliver the locally complete native Clap CLI and public Node SDK over the
+merged shared Rust SDK. This adapter slice keeps the legacy JavaScript CLI and
+MCP runnable until the separate atomic cutover result, while preventing either
+candidate adapter from acquiring a second transport, policy implementation, or
+MCP compatibility surface.
 
 ### Next in-scope action
 
-Push the reviewed PR #9 feedback remediation, resolve every verified review
-thread, complete automatic follow-up review and exact-head Blacksmith
-validation, then merge the production SDK PR while preserving its commits.
-Keep CLI and Node adapter implementation out of this slice until that PR is
-complete.
+Commit and deliver one reviewable adapter PR containing `crates/krx-cli`, the
+private `crates/krx-node` napi-rs boundary, the typed `packages/node` facade,
+and production packaging. Complete exact-head hosted Linux GNU x64/ARM64
+certification under Node 22 and 24, close review feedback, and merge it. Then
+deliver parity promotion, secure-state migration, package-export cutover,
+legacy TypeScript deletion, and MCP removal in the final atomic-cutover PR.
 
 ### Evidence and blockers
 
-- Production SDK PR [#9](https://github.com/cpaikr/krx-cli/pull/9) is open and
-  its original implementation head `1471622` passed both Blacksmith SDK jobs,
+- The adapter implementation and review remediation are locally complete, and
+  the final CLI, Node, and artifact rereviews are clean. The native CLI drives
+  every supported command through `krx-sdk`, preserves the frozen rendering,
+  validation, core diagnostic grammar, and exit behavior, and uses pinned
+  `rpassword` 7.4.0 solely for cross-platform
+  no-echo credential input; credential-bearing argv remains forbidden. The
+  public Node facade owns one reusable native client, validates the frozen
+  request policy strictly, contains synchronous and asynchronous Rust panics,
+  and cleans up cancellation listeners. Production package assembly enforces
+  path containment and certifies the native executable, binding, metadata,
+  schema output, and portable identity. The heavy workflow runs only for pull
+  requests or manual dispatch on `blacksmith-2vcpu-ubuntu-2404` and
+  `blacksmith-2vcpu-ubuntu-2404-arm`; comments record that macOS ARM64 and
+  Windows x64 remain supported but are omitted from continuous CI to reduce
+  compute cost. Full dynamic verbose observations for cache, quota, retry,
+  request timing, and range/calendar decisions require a shared SDK observation
+  seam and remain explicitly assigned to the final black-box parity result;
+  cutover remains blocked until those differences are fixed or classified.
+  Adapter PR #10's initial exact head passed both Blacksmith Linux builds, all
+  four Node 22/24 consumers, and the identity aggregator. Its 18 review threads
+  are locally remediated or contract-disposed; the new exact head and hosted
+  rerun remain pending.
+- The final local adapter-remediation checkpoint passes workspace formatting,
+  locked all-target/all-feature check, strict Clippy, 20 native CLI tests,
+  eight native Node-boundary tests, and 150 SDK tests with the one intentional
+  interoperability worker ignored. The public Node facade passes 14 tests and
+  the focused SDK/artifact mutation gate passes 38 tests. Full `pnpm verify`
+  passes 49 files and 516 tests, contract generation and types, lint,
+  TypeScript checking, production audit, 13 installed-package scenarios, and
+  packed-package smoke. A fresh release build, assembly, pack, and clean-install
+  certification passes for the host `darwin-arm64` target under Node 24 with
+  portable SHA-256
+  `904b24002be491fdf4774da948c412218a665a6b59cdf02c6e4c0f1b804dfb9a`.
+- The configured origin is the transferred private `cpaikr/krx-cli`
+  repository. Its retained branch and PR history remain the delivery
+  authority.
+- Production SDK PR [#9](https://github.com/cpaikr/krx-cli/pull/9) merged as
+  `9f11cda` with all eleven reviewed commits preserved. Its final feedback
+  collection covered exact head `3bb5397`, found all 21 threads resolved with
+  no outside-diff findings, and confirmed the PR mergeable. Exact-head Rust SDK
+  run [32708825108](https://github.com/cpaikr/krx-cli/actions/runs/32708825108)
+  passed Blacksmith Linux x64/ARM64. Native certification run
+  [32708825088](https://github.com/cpaikr/krx-cli/actions/runs/32708825088)
+  passed both Linux builds, all four Node 22/24 clean-install consumers, and the
+  Linux package-identity aggregator. CodeRabbit accepted the reviewed
+  compatibility and CI-cost dispositions; its exact-head status was successful
+  with incremental review intentionally skipped by repository policy. The
+  delivery had no GitHub Actions quota failure.
+- Before its merge, production SDK PR
+  [#9](https://github.com/cpaikr/krx-cli/pull/9) original implementation head
+  `1471622` passed both Blacksmith SDK jobs,
   both Linux native builds, all four Node 22/24 consumers, and the identity
   aggregator. Codex and CodeRabbit completed reviews on that exact head. The
   checked remediation accepts the valid public-request, watchlist, workflow,
@@ -461,6 +514,7 @@ complete.
   no Actions `KRX_API_KEY` secret. Deterministic calendar and dry-run contract
   validation remain separate and do not require that credential; provisioning
   the live secret requires external authority.
-- Current boundary classification: contract authority is merged. Production
-  `crates/krx-sdk` implementation is active; native CLI, Node binding/facade,
-  parity cutover, and legacy removal remain later semantic results.
+- Current boundary classification: contract authority and the production
+  `crates/krx-sdk` are merged. Native CLI, Node binding/facade, and production
+  packaging are locally implemented and awaiting PR delivery; parity cutover,
+  secure migration, and legacy removal remain the final semantic result.

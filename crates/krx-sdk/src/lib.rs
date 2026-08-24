@@ -88,12 +88,13 @@ pub use client::{CacheHandle, Client, ClientBuilder, CredentialHandle, Watchlist
 pub use credential::{CredentialMigrationResult, CredentialSource, CredentialStatus};
 pub use error::{KrxError, KrxErrorCode, KrxErrorKind};
 pub use operation::{
-    ApprovalCategory, OperationDescription, OperationFieldDescription, OperationId,
+    ApprovalCategory, DerivedOutputDescription, DerivedOutputFieldDescription,
+    OperationDescription, OperationFieldDescription, OperationId,
 };
 pub use request::{
     ApiKey, CachePolicy, CalendarDate, CallOptions, Cancellation, DateRange, DirectRequest,
     MarketSummaryRequest, RangeMode, RangeRequest, SecurityCode, StockSearchRequest, TradingDate,
-    WatchlistPricesRequest,
+    WatchlistPricesRequest, validate_local_input,
 };
 pub use result::{
     AdjustmentFactorField, AdjustmentMetadata, CalendarCoverage, CalendarSelection,

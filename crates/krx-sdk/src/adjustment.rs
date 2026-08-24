@@ -6,11 +6,18 @@ use crate::{
 };
 
 const RAW_PRICE_FIELDS: [&str; 4] = ["TDD_OPNPRC", "TDD_HGPRC", "TDD_LWPRC", "TDD_CLSPRC"];
-const ADJUSTED_PRICE_FIELDS: [&str; 4] = [
+pub(crate) const ADJUSTED_OUTPUT_FIELDS: [&str; 5] = [
     "ADJ_TDD_OPNPRC",
     "ADJ_TDD_HGPRC",
     "ADJ_TDD_LWPRC",
     "ADJ_TDD_CLSPRC",
+    "ADJ_FACTOR",
+];
+const ADJUSTED_PRICE_FIELDS: [&str; 4] = [
+    ADJUSTED_OUTPUT_FIELDS[0],
+    ADJUSTED_OUTPUT_FIELDS[1],
+    ADJUSTED_OUTPUT_FIELDS[2],
+    ADJUSTED_OUTPUT_FIELDS[3],
 ];
 
 #[derive(Clone, Debug)]
@@ -389,12 +396,12 @@ pub(crate) fn adjust_stock_rows(
             &format!("{} adjusted", entry.date.as_str()),
         )?;
         let mut row = entry.row;
-        row.insert("ADJ_TDD_OPNPRC", open.to_string());
-        row.insert("ADJ_TDD_HGPRC", high.to_string());
-        row.insert("ADJ_TDD_LWPRC", low.to_string());
-        row.insert("ADJ_TDD_CLSPRC", close.to_string());
+        row.insert(ADJUSTED_OUTPUT_FIELDS[0], open.to_string());
+        row.insert(ADJUSTED_OUTPUT_FIELDS[1], high.to_string());
+        row.insert(ADJUSTED_OUTPUT_FIELDS[2], low.to_string());
+        row.insert(ADJUSTED_OUTPUT_FIELDS[3], close.to_string());
         row.insert(
-            "ADJ_FACTOR",
+            ADJUSTED_OUTPUT_FIELDS[4],
             format!("{}/{}", factor.numerator, factor.denominator),
         );
         adjusted.push(row);

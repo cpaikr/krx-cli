@@ -22,6 +22,16 @@ publication decision.
 
 ## Current state
 
+- Contract PR #8 and production SDK PR #9 are merged. The shared Rust SDK now
+  implements every supported KRX operation plus the frozen domain, credential,
+  quota, cache, offline, and local-state policy.
+- The production adapter slice is implemented locally: `crates/krx-cli` is the
+  native Clap CLI, `crates/krx-node` is the private napi-rs boundary, and
+  `packages/node` is the public typed facade. Production archive assembly and
+  clean-install certification cover all four supported target definitions;
+  continuous Blacksmith certification covers Linux GNU x64/ARM64 under Node 22
+  and 24. Local review and validation are green; hosted PR certification and
+  delivery remain pending.
 - The released implementation is a TypeScript/Node CLI and MCP server. Its
   source owns 31 KRX endpoints, composites, trading-calendar behavior,
   adjusted prices, caching, quota accounting, credentials, output rendering,
@@ -44,7 +54,7 @@ publication decision.
   installed-package judge rejects three independent compatibility mutations.
   Credentialed live drift remains separately blocked because the repository
   has no Actions `KRX_API_KEY` secret.
-- The current contract branch establishes `contracts/krx/openapi.yaml` as the
+- The merged contract authority establishes `contracts/krx/openapi.yaml` as the
   validated sole provider-wire authority for all 31 operations and freezes the
   project-owned Rust, Node, CLI, error, package, target, and persisted-state
   boundaries under `contracts/product/v1`. Checked projections include the
@@ -54,7 +64,8 @@ publication decision.
   and watchlist migration. The full deterministic gate passes 48 test files
   and 487 tests, including the targeted authority, product, and vertical-slice
   gate tests.
-- The disposable workspace compiles the frozen Rust consumer and proves one
+- The historical disposable workspace compiled the frozen Rust consumer and
+  proved one
   OpenAPI-derived operation through reqwest/Rustls, a native Clap executable,
   and a private napi-rs binding. Before the 2026-08-24 CI-cost amendment,
   macOS ARM64 clean-install certification passed the same private tarball under
@@ -182,13 +193,19 @@ crates/krx-cli   crates/krx-node
   Clap 4.6.6, reqwest 0.13.4, Tokio 1.53.1, tokio-util 0.7.19, napi-rs 3.12.2,
   napi-derive 3.6.3, napi-build 2.4.1, keyring-rs 4.1.6, serde 1.0.229,
   serde_json 1.0.151, serde-saphyr 1.1.0, thiserror 2.0.20, url 2.5.8,
-  zeroize 1.9.0, futures-util 0.3.34, sha2 0.11.0, uuid 1.25.0, jiff 0.2.35,
-  num-bigint 0.5.1, Unix-only rustix 1.1.4, and Windows-only cap-std 4.0.3 and
+  zeroize 1.9.0, rpassword 7.4.0, futures-util 0.3.34, sha2 0.11.0,
+  uuid 1.25.0, jiff 0.2.35, ICU4X `icu_collator` 2.3.1 and `icu_locale`
+  2.3.1, num-bigint 0.5.1, Unix-only rustix 1.1.4, and Windows-only cap-std 4.0.3 and
   windows-sys 0.61.2. SHA-256 identity, OS-random UUID-v4 lock identities,
   canonical UTC/KST time handling, unbounded exact adjustment factors, and
   descriptor-relative no-follow state traversal use those maintained crates
   rather than project-owned cryptography, randomness, timestamp parsing,
-  big-integer arithmetic, or unsafe syscall bindings. On Windows, cap-std's
+  big-integer arithmetic, or unsafe syscall bindings. The exact `rpassword`
+  pin supplies cross-platform no-echo input for interactive credential entry,
+  while secret-bearing argv remains forbidden. The ICU4X pins supply compiled
+  Korean collation data so native CLI text
+  sorting preserves the frozen `localeCompare(..., "ko")` behavior without
+  depending on the host locale installation. On Windows, cap-std's
   `NtCreateFile`-backed directory capabilities keep traversal relative to open
   handles. The narrow windows-sys surface validates reparse attributes, handle
   identity, current-user ownership, and every effective ACL writer; native
@@ -526,8 +543,8 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Deliver the complete frozen `crates/krx-sdk` surface in one production SDK PR,
-using reviewable commits for the all-operation catalog and strict conformer,
-transport/retry/cancellation/quota and domain behavior, then credential,
-cache/offline, local-state, and migration policy. Do not begin the native CLI
-or Node adapter implementation until the SDK PR completes feedback and merge.
+Deliver the implemented native CLI, public Node SDK, and production artifact
+slice through review, exact-head hosted Linux certification, feedback closure,
+and merge. Then deliver the final parity and secure-state migration work with
+the atomic package-export cutover, legacy TypeScript/JavaScript deletion, and
+MCP removal in the remaining PR.

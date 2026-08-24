@@ -38,6 +38,28 @@ pub(crate) fn valid_api_key_value(value: &str) -> bool {
         && HeaderValue::from_str(value).is_ok()
 }
 
+/// Validate text that can be echoed by local adapters or used as a local
+/// selector. This preserves the frozen CLI's terminal-control and traversal
+/// rejection while letting every SDK adapter share the same policy.
+pub fn validate_local_input(value: &str) -> Result<(), KrxError> {
+    if value
+        .chars()
+        .any(|character| character <= '\u{1f}' || character == '\u{7f}')
+    {
+        return Err(KrxError::new(
+            KrxErrorCode::InvalidArgument,
+            "Input contains control characters",
+        ));
+    }
+    if value.contains("../") || value.contains("..\\") {
+        return Err(KrxError::new(
+            KrxErrorCode::InvalidArgument,
+            "Input contains path traversal",
+        ));
+    }
+    Ok(())
+}
+
 impl fmt::Debug for ApiKey {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("ApiKey([REDACTED])")
@@ -258,6 +280,7 @@ pub struct StockSearchRequest {
 
 impl StockSearchRequest {
     pub fn new(query: &str, options: CallOptions) -> Result<Self, KrxError> {
+        validate_local_input(query)?;
         let query = query.trim();
         if query.is_empty() {
             return Err(KrxError::new(
@@ -326,6 +349,13 @@ mod tests {
         assert!(CalendarDate::parse("2é6-08-24").is_err());
         assert!(SecurityCode::parse("005930").is_ok());
         assert!(SecurityCode::parse("5930").is_err());
+        for unsafe_value in ["name\nvalue", "../watchlist", "..\\watchlist"] {
+            assert_eq!(
+                validate_local_input(unsafe_value).unwrap_err().code(),
+                KrxErrorCode::InvalidArgument
+            );
+            assert!(StockSearchRequest::new(unsafe_value, CallOptions::default()).is_err());
+        }
     }
 
     #[test]

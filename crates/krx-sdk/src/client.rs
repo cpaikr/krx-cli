@@ -21,9 +21,9 @@ use crate::watchlist::{WatchlistEntry, WatchlistStore};
 use crate::{
     ApiKey, ApprovalCategory, ApprovalObservation, CachePolicy, CallOptions, Cancellation,
     DirectRequest, Freshness, KrxError, KrxErrorCode, MarketComponent, MarketSummaryRequest,
-    MarketSummaryResult, OperationDescription, QueryResult, RangeMode, RangeRequest, RangeResult,
-    ResultProvenance, ResultSource, Row, SearchMarket, StockSearchRequest, StockSearchResult,
-    WatchlistMarket, WatchlistPricesRequest, WatchlistPricesResult,
+    MarketSummaryResult, OperationDescription, OperationId, QueryResult, RangeMode, RangeRequest,
+    RangeResult, ResultProvenance, ResultSource, Row, SearchMarket, StockSearchRequest,
+    StockSearchResult, WatchlistMarket, WatchlistPricesRequest, WatchlistPricesResult,
 };
 
 type TransportFuture<'a> = Pin<Box<dyn Future<Output = Result<Vec<Row>, KrxError>> + Send + 'a>>;
@@ -76,6 +76,14 @@ impl ClientBuilder {
 impl Client {
     pub fn builder() -> ClientBuilder {
         ClientBuilder { api_key: None }
+    }
+
+    /// Resolve the SDK-owned default trading date using the frozen KRX
+    /// calendar and Korea Standard Time. Frontends must not duplicate this
+    /// policy because fallback coverage is part of the shared contract.
+    pub fn recent_trading_date(&self) -> Result<crate::TradingDate, KrxError> {
+        let today = crate::transport::kst_date(SystemTime::now())?;
+        Ok(crate::calendar::resolve_recent(&today)?.date)
     }
 
     pub async fn query(&self, request: DirectRequest) -> Result<QueryResult, KrxError> {
@@ -260,6 +268,38 @@ impl CredentialHandle {
         category: ApprovalCategory,
         cancellation: Cancellation,
     ) -> Result<ApprovalObservation, KrxError> {
+        self.check_approval_at(category, cancellation, SystemTime::now())
+            .await
+    }
+
+    /// Actively probe every frozen service category concurrently and return
+    /// observations in the canonical category order. A shared observation
+    /// timestamp preserves the public status-envelope contract.
+    pub async fn check_all_approvals(
+        &self,
+        cancellation: Cancellation,
+    ) -> Result<Vec<ApprovalObservation>, KrxError> {
+        let checked_at = SystemTime::now();
+        let results =
+            join_all(ApprovalCategory::ALL.into_iter().map(|category| {
+                self.check_approval_at(category, cancellation.clone(), checked_at)
+            }))
+            .await;
+        if cancellation.is_cancelled() {
+            return Err(KrxError::new(
+                KrxErrorCode::RequestCancelled,
+                "request was cancelled",
+            ));
+        }
+        results.into_iter().collect()
+    }
+
+    async fn check_approval_at(
+        &self,
+        category: ApprovalCategory,
+        cancellation: Cancellation,
+        checked_at: SystemTime,
+    ) -> Result<ApprovalObservation, KrxError> {
         let operation = crate::credential::APPROVAL_PROBES
             .iter()
             .find_map(|(candidate, operation)| (*candidate == category).then_some(*operation))
@@ -289,6 +329,7 @@ impl CredentialHandle {
         };
         let today = crate::transport::kst_date(SystemTime::now())?;
         let date = crate::calendar::resolve_recent(&today)?.date;
+        let request_cancellation = cancellation.clone();
         let result = self
             .direct
             .query_bypass_until(
@@ -305,18 +346,17 @@ impl CredentialHandle {
                 deadline,
             )
             .await;
-        let outcome = match result {
-            Ok(result) if result.rows.is_empty() => ApprovalOutcome::NoData,
-            Ok(_) => ApprovalOutcome::Approved,
-            Err(error) if error.code() == KrxErrorCode::ServiceNotApproved => {
-                ApprovalOutcome::Rejected(error)
-            }
-            Err(error) => ApprovalOutcome::Inconclusive(Some(error)),
-        };
-        let checked_at = SystemTime::now();
-        self.approvals
-            .record(&credential.api_key, category, outcome, checked_at)
-            .await
+        let outcome = classify_approval_result(result);
+        record_approval_outcome(
+            &self.approvals,
+            &credential.api_key,
+            category,
+            outcome,
+            checked_at,
+            &request_cancellation,
+            operation,
+        )
+        .await
     }
 
     pub async fn set(&self, api_key: ApiKey) -> Result<(), KrxError> {
@@ -330,6 +370,39 @@ impl CredentialHandle {
     pub async fn migrate_legacy(&self) -> Result<CredentialMigrationResult, KrxError> {
         self.manager.migrate_legacy().await
     }
+}
+
+fn classify_approval_result(result: Result<QueryResult, KrxError>) -> ApprovalOutcome {
+    match result {
+        Ok(result) if result.rows.is_empty() => ApprovalOutcome::NoData,
+        Ok(_) => ApprovalOutcome::Approved,
+        Err(error) if error.code() == KrxErrorCode::ServiceNotApproved => {
+            ApprovalOutcome::Rejected(error)
+        }
+        Err(error) => ApprovalOutcome::Inconclusive(Some(error)),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn record_approval_outcome(
+    approvals: &ApprovalStore,
+    api_key: &ApiKey,
+    category: ApprovalCategory,
+    outcome: ApprovalOutcome,
+    checked_at: SystemTime,
+    cancellation: &Cancellation,
+    operation: OperationId,
+) -> Result<ApprovalObservation, KrxError> {
+    let recorded = approvals
+        .record(api_key, category, outcome, checked_at)
+        .await;
+    if cancellation.is_cancelled() {
+        return Err(
+            KrxError::new(KrxErrorCode::RequestCancelled, "request was cancelled")
+                .for_operation(operation),
+        );
+    }
+    recorded
 }
 
 #[derive(Clone)]
@@ -1222,6 +1295,50 @@ mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn approval_probe_cancellation_is_persisted_but_dominates_the_call() {
+        let fixture = Fixture::new();
+        let operation = OperationId::StockStkByddTrd;
+        let category = ApprovalCategory::Stock;
+        let api_key = ApiKey::parse("test-placeholder").unwrap();
+        let approvals = ApprovalStore::new(fixture.root.clone()).unwrap();
+        let cancellation = Cancellation::new();
+        cancellation.cancel();
+        let outcome = classify_approval_result(Err(KrxError::new(
+            KrxErrorCode::RequestCancelled,
+            "request was cancelled",
+        )));
+        let error = record_approval_outcome(
+            &approvals,
+            &api_key,
+            category,
+            outcome,
+            SystemTime::now(),
+            &cancellation,
+            operation,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(error.code(), KrxErrorCode::RequestCancelled);
+        assert_eq!(error.operation_id(), Some(operation));
+
+        let observation = approvals
+            .status(&api_key, category, SystemTime::now())
+            .await
+            .unwrap()
+            .expect("cancelled probe observation");
+        assert_eq!(observation.state, crate::ApprovalState::Inconclusive);
+        assert!(observation.error.is_none());
+        let persisted: serde_json::Value = serde_json::from_slice(
+            &fs::read(fixture.root.join("config.json")).expect("persisted approval config"),
+        )
+        .expect("valid approval config");
+        assert_eq!(
+            persisted["serviceStatus"]["stock"]["failureType"],
+            "cancelled"
+        );
+    }
+
     fn write_v1(fixture: &Fixture, request: &DirectRequest, fetched_at: &str) -> CacheKey {
         let cache = CacheStore::new(StateRoot::new(fixture.root.clone()).unwrap());
         let key = cache.key(request.operation, request.date.clone()).unwrap();
@@ -1333,6 +1450,15 @@ mod tests {
             .await
             .unwrap_err();
         assert_eq!(search_error.code(), KrxErrorCode::InvalidArgument);
+
+        let unsafe_search_error = client
+            .search_stocks(StockSearchRequest {
+                query: "../stock".to_owned(),
+                options: CallOptions::default(),
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(unsafe_search_error.code(), KrxErrorCode::InvalidArgument);
 
         let prices_error = client
             .watchlist_prices(WatchlistPricesRequest {
@@ -1759,5 +1885,13 @@ mod tests {
             Some(ApiKey::parse("test-placeholder").unwrap()),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn public_client_owns_recent_trading_date_selection() {
+        let fixture = Fixture::new();
+        let client = Client::builder().build_at(fixture.root.clone()).unwrap();
+        let date = client.recent_trading_date().unwrap();
+        assert!(TradingDate::parse(date.as_str()).is_ok());
     }
 }

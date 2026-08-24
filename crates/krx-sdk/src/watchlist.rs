@@ -123,6 +123,7 @@ fn add_blocking(state: &StateRoot, entry: WatchlistEntry) -> Result<bool, KrxErr
 }
 
 fn remove_blocking(state: &StateRoot, selector: &str) -> Result<bool, KrxError> {
+    crate::request::validate_local_input(selector)?;
     let _lock = acquire_lock(state)?;
     let (entries, source) = read_locked(state)?;
     let mut removed = false;
@@ -541,6 +542,17 @@ mod tests {
         assert!(store.remove("005930").await.unwrap());
         assert!(store.list().await.unwrap().is_empty());
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[tokio::test]
+    async fn unsafe_selectors_are_rejected_before_state_access() {
+        let root = test_root();
+        let store = WatchlistStore::new(root.clone()).unwrap();
+        for selector in ["name\nvalue", "../watchlist", "..\\watchlist"] {
+            let error = store.remove(selector).await.unwrap_err();
+            assert_eq!(error.code(), KrxErrorCode::InvalidArgument);
+        }
+        assert!(!root.exists());
     }
 
     #[tokio::test]

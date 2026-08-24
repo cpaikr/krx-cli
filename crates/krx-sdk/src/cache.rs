@@ -57,6 +57,8 @@ pub struct CacheEntryDescription {
 pub struct CacheInspection {
     pub entries: Vec<CacheEntryDescription>,
     pub total_entries: usize,
+    /// Number of distinct trading dates across all matching entries.
+    pub total_dates: usize,
     pub total_size_bytes: u64,
     pub truncated: bool,
 }
@@ -377,6 +379,11 @@ impl CacheStore {
                 .collect::<Vec<_>>();
             matching.sort_by(|left, right| left.relative.cmp(&right.relative));
             let total_entries = matching.len();
+            let total_dates = matching
+                .iter()
+                .map(|entry| entry.description.date.as_str())
+                .collect::<HashSet<_>>()
+                .len();
             let total_size_bytes = matching
                 .iter()
                 .map(|entry| entry.description.size_bytes)
@@ -389,6 +396,7 @@ impl CacheStore {
             Ok(CacheInspection {
                 entries,
                 total_entries,
+                total_dates,
                 total_size_bytes,
                 truncated,
             })
@@ -1487,6 +1495,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(inspection.total_entries, 2);
+        // Aggregate status must remain exact even when the entry listing is
+        // bounded for CLI and SDK consumers.
+        assert_eq!(inspection.total_dates, 1);
         assert_eq!(inspection.entries.len(), 2);
         assert_eq!(
             inspection.total_size_bytes as usize,

@@ -43,16 +43,16 @@ excludes cash dividends and is not a total-return series.
 Root options are inherited syntactically, but their behavioral scope is
 deliberate:
 
-| Option family                                                  | Active command scope                                                        |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `--output`                                                     | Endpoint row commands and `auth status`; composite results remain JSON.     |
-| `--verbose`                                                    | Endpoint row commands.                                                      |
-| `--fields`                                                     | Endpoint row commands, date ranges, and stock search.                       |
-| `--code`, `--sort`, `--asc`, `--offset`, `--limit`, `--filter` | Endpoint row commands and date ranges.                                      |
-| `--from`, `--to`, `--save`, `--dry-run`                        | Endpoint row commands.                                                      |
-| `--no-cache`, `--refresh`                                      | Endpoint row commands, market summary, and watchlist prices.                |
-| `--retries`                                                    | Direct single-endpoint row requests; composites retain the bounded default. |
-| `stock list --no-adjusted`                                     | Eligible exact-code KOSPI/KOSDAQ/KONEX date ranges only.                    |
+| Option family                                                  | Active command scope                                                                                   |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `--output`                                                     | Endpoint row commands, `auth status`, and `cache status` (`json` only); composite results remain JSON. |
+| `--verbose`                                                    | Endpoint row commands.                                                                                 |
+| `--fields`                                                     | Endpoint row commands, date ranges, and stock search.                                                  |
+| `--code`, `--sort`, `--asc`, `--offset`, `--limit`, `--filter` | Endpoint row commands and date ranges.                                                                 |
+| `--from`, `--to`, `--save`, `--dry-run`                        | Endpoint row commands.                                                                                 |
+| `--no-cache`, `--refresh`                                      | Endpoint row commands, market summary, and watchlist prices.                                           |
+| `--retries`                                                    | Direct single-endpoint row requests; composites retain the bounded default.                            |
+| `stock list --no-adjusted`                                     | Eligible exact-code KOSPI/KOSDAQ/KONEX date ranges only.                                               |
 
 The legacy executable accepts a root option outside its active scope without
 changing that command. The native candidate rejects the same ineffective use
@@ -67,6 +67,13 @@ Candidate-only command syntax is frozen as follows:
 `auth migrate` is the only plaintext-credential migration trigger. Cache
 inspection and pruning remain bounded by the local-state contract; exceeding a
 command bound is invalid input and exits `2` before traversal.
+
+The native `cache clear` operation removes only revalidated entries, exact
+stale temporary files, and securely observed stale leases. It preserves
+unrecognized children instead of recursively deleting the cache tree, and its
+legacy-shaped `directories` field is therefore always `0`; `files` reports the
+entries actually removed. This is the classified
+`bounded-cache-clear-targets` security fix.
 
 ## Environment
 

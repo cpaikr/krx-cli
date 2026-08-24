@@ -1,24 +1,33 @@
-name: Rust vertical-slice certification
+name: Native package certification
 
 on:
   pull_request:
     paths:
       - ".gitattributes"
       - ".github/workflows/rust-vertical-slice.yml"
+      - "Cargo.lock"
+      - "Cargo.toml"
       - "contracts/**"
+      - "crates/krx-cli/**"
+      - "crates/krx-node/**"
+      - "crates/krx-sdk/**"
       - "package.json"
+      - "packages/node/**"
       - "pnpm-lock.yaml"
-      - "probes/rust-vertical-slice/**"
+      - "rust-toolchain.toml"
+      - "scripts/native-package/**"
       - "scripts/package-smoke-command.mjs"
       - "scripts/rust-vertical-slice.mjs"
       - "src/calendar/krx-closures.json"
+      - "tests/scripts/release-policy.test.ts"
+      - "tests/scripts/rust-vertical-slice.test.ts"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: rust-vertical-slice-${{ github.ref }}
+  group: native-package-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -36,18 +45,14 @@ jobs:
             runner: blacksmith-2vcpu-ubuntu-2404
             rust-target: x86_64-unknown-linux-gnu
             node-arch: x64
-            binding: target/x86_64-unknown-linux-gnu/release/libkrx_node_probe.so
+            binding: target/x86_64-unknown-linux-gnu/release/libkrx_node.so
             executable: target/x86_64-unknown-linux-gnu/release/krx
           - id: linux-arm64-gnu
             runner: blacksmith-2vcpu-ubuntu-2404-arm
             rust-target: aarch64-unknown-linux-gnu
             node-arch: arm64
-            binding: target/aarch64-unknown-linux-gnu/release/libkrx_node_probe.so
+            binding: target/aarch64-unknown-linux-gnu/release/libkrx_node.so
             executable: target/aarch64-unknown-linux-gnu/release/krx
-
-    defaults:
-      run:
-        working-directory: probes/rust-vertical-slice
 
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -69,53 +74,39 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all --check
 
-      - name: Compile the complete probe workspace
+      - name: Compile the production workspace
         run: cargo check --locked --workspace --all-targets --all-features
 
-      - name: Lint the complete probe workspace
+      - name: Lint the production workspace
         run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 
-      - name: Test the host-native probe workspace
+      - name: Test the host-native production workspace
         run: cargo test --locked --workspace --all-features
 
-      - name: Verify official Rustls handshake without credentials
-        env:
-          KRX_PROBE_LIVE_TLS: "1"
-        run: >-
-          cargo test --locked -p krx-sdk
-          tests::official_endpoint_accepts_a_rustls_handshake_without_retaining_payloads
-          -- --ignored --exact --nocapture
-
-      - name: Verify native keyring behavior
-        env:
-          KRX_PROBE_NATIVE_KEYRING: "1"
-        run: >-
-          cargo test --locked -p krx-sdk
-          tests::native_keyring_round_trip_or_typed_headless_failure
-          -- --ignored --exact --nocapture
-
       - name: Build the native package members once
-        run: cargo build --locked --release --target ${{ matrix.rust-target }} -p krx-cli-probe -p krx-node-probe
+        run: >-
+          cargo build --locked --release --target ${{ matrix.rust-target }}
+          -p krx-cli -p krx-node
 
       - name: Assemble the manifest-certified package
         run: >-
-          node node/scripts/assemble.mjs
+          node scripts/native-package/assemble.mjs
           --target ${{ matrix.id }}
           --binding ${{ matrix.binding }}
           --executable ${{ matrix.executable }}
-          --out target/package
+          --out target/native-package/${{ matrix.id }}/package
 
       - name: Pack the private target archive
         run: >-
-          node node/scripts/pack.mjs
-          --package target/package
+          node scripts/native-package/pack.mjs
+          --package target/native-package/${{ matrix.id }}/package
           --target ${{ matrix.id }}
-          --artifacts target/artifacts
+          --artifacts target/native-package/${{ matrix.id }}/artifacts
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: rust-probe-${{ matrix.id }}
-          path: probes/rust-vertical-slice/target/artifacts/*.tgz
+          name: krx-native-${{ matrix.id }}
+          path: target/native-package/${{ matrix.id }}/artifacts/*.tgz
           if-no-files-found: error
           retention-days: 14
 
@@ -150,25 +141,25 @@ jobs:
           architecture: ${{ matrix.target.node-arch }}
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
 
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          name: rust-probe-${{ matrix.target.id }}
-          path: probes/rust-vertical-slice/target/download
+          name: krx-native-${{ matrix.target.id }}
+          path: target/native-package/download/${{ matrix.target.id }}
 
       - name: Certify the exact packed artifact
         shell: bash
         run: >-
-          node probes/rust-vertical-slice/node/scripts/certify.mjs
-          --tarball probes/rust-vertical-slice/target/download/*.tgz
+          node scripts/native-package/certify.mjs
+          --tarball target/native-package/download/${{ matrix.target.id }}/*.tgz
           --target ${{ matrix.target.id }}
-          --report probes/rust-vertical-slice/target/certification/${{ matrix.target.id }}-node${{ matrix.node }}.json
+          --report target/native-package/certification/${{ matrix.target.id }}-node${{ matrix.node }}.json
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: rust-probe-report-${{ matrix.target.id }}-node${{ matrix.node }}
-          path: probes/rust-vertical-slice/target/certification/*.json
+          name: krx-native-report-${{ matrix.target.id }}-node${{ matrix.node }}
+          path: target/native-package/certification/*.json
           if-no-files-found: error
           retention-days: 14
 
@@ -192,11 +183,11 @@ jobs:
 
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          pattern: rust-probe-report-*
-          path: probes/rust-vertical-slice/target/reports
+          pattern: krx-native-report-*
+          path: target/native-package/reports
           merge-multiple: true
 
       - name: Compare target-independent package identity
         run: >-
-          node probes/rust-vertical-slice/node/scripts/compare-reports.mjs
-          --reports probes/rust-vertical-slice/target/reports
+          node scripts/native-package/compare-reports.mjs
+          --reports target/native-package/reports

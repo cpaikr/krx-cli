@@ -236,6 +236,7 @@ mod tests {
                 source: "fixture".to_owned(),
                 retrieved_at: crate::CalendarDate::parse("2026-08-22").expect("calendar date"),
                 coverage: CalendarCoverage::Official,
+                fallback_years: Vec::new(),
                 unverified_dates: Vec::new(),
             },
         }

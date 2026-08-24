@@ -184,6 +184,31 @@
       }
     },
     {
+      "id": "cache-clear-removes-only-recognized-targets",
+      "coversBehavior": "bounded-cache-clear-targets",
+      "polarity": "positive",
+      "args": ["cache", "clear"],
+      "setup": "recognized-cache-entries-and-unrecognized-child",
+      "expect": {
+        "code": 0,
+        "stdoutJsonSubset": { "cleared": true, "files": 2, "directories": 0 },
+        "unrecognizedBytesUnchanged": true
+      }
+    },
+    {
+      "id": "cache-clear-refuses-unsafe-children",
+      "coversBehavior": "bounded-cache-clear-targets",
+      "polarity": "rejection",
+      "args": ["cache", "clear"],
+      "setup": "cache-with-symlink-and-live-lease",
+      "expect": {
+        "code": 0,
+        "stdoutJsonSubset": { "directories": 0 },
+        "symlinkTargetBytesUnchanged": true,
+        "liveLeaseBytesUnchanged": true
+      }
+    },
+    {
       "id": "removed-serve-help-exclusion",
       "coversInventory": "remove-command:[]:serve",
       "polarity": "positive",

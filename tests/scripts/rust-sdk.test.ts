@@ -906,12 +906,14 @@ function assertCredentialApprovalProtocolSources(sources: {
 }
 
 describe("production Rust SDK gate", () => {
-  it("owns a pinned workspace without probe or adapter dependencies", () => {
+  it("owns a pinned workspace while keeping adapter dependencies out of the SDK", () => {
     const workspace = read("Cargo.toml");
     const sdk = read("crates/krx-sdk/Cargo.toml");
     const lock = read("Cargo.lock");
 
-    expect(workspace).toContain('members = ["crates/krx-sdk"]');
+    expect(workspace).toContain(
+      'members = ["crates/krx-sdk", "crates/krx-cli", "crates/krx-node"]',
+    );
     expect(workspace).toContain('rust-version = "1.92"');
     expect(sdk).not.toMatch(/probes|clap|napi/u);
     assertWorkspaceDependencyPins(workspace);
