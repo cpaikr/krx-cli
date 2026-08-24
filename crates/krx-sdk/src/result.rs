@@ -20,7 +20,7 @@ pub struct ResultProvenance {
     pub source: ResultSource,
     pub fetched_at: SystemTime,
     pub freshness: Freshness,
-    pub contract_id: String,
+    pub contract_id: &'static str,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

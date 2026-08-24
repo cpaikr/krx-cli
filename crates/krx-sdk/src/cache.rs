@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, Weak};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use jiff::{RoundMode, Timestamp, TimestampRound, Unit};
 use serde::{Deserialize, Serialize};
@@ -11,11 +11,15 @@ use uuid::{Uuid, Variant};
 
 use crate::conformer::decode_cached_rows;
 use crate::credential::{
-    CACHE_ENTRY_READ_BYTES, CACHE_FUTURE_SKEW_SECONDS, CACHE_LEASE_ABSOLUTE_AGE_MS,
-    CACHE_LEASE_OWNER_DEAD_MS,
+    CACHE_ENTRY_READ_BYTES, CACHE_FUTURE_SKEW_SECONDS, CACHE_INSPECT_DEFAULT_ENTRIES,
+    CACHE_INSPECT_MAXIMUM_ENTRIES, CACHE_LEASE_ABSOLUTE_AGE_MS, CACHE_LEASE_OWNER_DEAD_MS,
+    CACHE_PRUNE_DELETE_BATCH_MAXIMUM, CACHE_PRUNE_SCAN_MAXIMUM_FILES,
+    CACHE_PRUNE_SCAN_MAXIMUM_METADATA_BYTES,
 };
-use crate::operation::{operation_spec, parse_operation_id};
-use crate::state::{CacheDirectoryLease, ObservedFile, StateRoot, process_is_alive};
+use crate::operation::{DEFAULT_CACHE_MAX_AGE_HOURS, operation_spec, parse_operation_id};
+use crate::state::{
+    CacheDirectoryLease, ObservedCacheDirectoryLease, ObservedFile, StateRoot, process_is_alive,
+};
 use crate::{
     Cancellation, Freshness, KrxError, KrxErrorCode, OperationId, QueryResult, ResultProvenance,
     ResultSource, Row, TradingDate,
@@ -350,6 +354,133 @@ impl CacheStore {
             .map_err(|error| error.for_operation(key.operation))
     }
 
+    pub(crate) async fn inspect(
+        &self,
+        options: CacheInspectOptions,
+    ) -> Result<CacheInspection, KrxError> {
+        let limit = validate_inspect_limit(options.limit)?;
+        let state = self.state.clone();
+        tokio::task::spawn_blocking(move || {
+            let scan = scan_admin_entries(&state, SystemTime::now())?;
+            let mut matching = scan
+                .entries
+                .into_iter()
+                .filter(|entry| {
+                    options
+                        .operation
+                        .is_none_or(|operation| entry.description.operation == operation)
+                        && options
+                            .date
+                            .as_ref()
+                            .is_none_or(|date| &entry.description.date == date)
+                })
+                .collect::<Vec<_>>();
+            matching.sort_by(|left, right| left.relative.cmp(&right.relative));
+            let total_entries = matching.len();
+            let total_size_bytes = matching
+                .iter()
+                .map(|entry| entry.description.size_bytes)
+                .sum();
+            let truncated = total_entries > limit;
+            let entries = matching
+                .drain(..total_entries.min(limit))
+                .map(|entry| entry.description)
+                .collect();
+            Ok(CacheInspection {
+                entries,
+                total_entries,
+                total_size_bytes,
+                truncated,
+            })
+        })
+        .await
+        .map_err(|_| {
+            KrxError::new(
+                KrxErrorCode::CacheReadFailed,
+                "cache inspection task failed",
+            )
+        })?
+    }
+
+    pub(crate) async fn prune(
+        &self,
+        options: CachePruneOptions,
+    ) -> Result<CachePruneResult, KrxError> {
+        if options
+            .max_entries
+            .is_some_and(|maximum| maximum > CACHE_PRUNE_DELETE_BATCH_MAXIMUM as usize)
+        {
+            return Err(KrxError::new(
+                KrxErrorCode::InvalidArgument,
+                format!(
+                    "cache prune maximum entries must not exceed {}",
+                    CACHE_PRUNE_DELETE_BATCH_MAXIMUM
+                ),
+            ));
+        }
+        let state = self.state.clone();
+        tokio::task::spawn_blocking(move || {
+            let scan = scan_admin_entries(&state, SystemTime::now())?;
+            let entries = scan.entries;
+            let mut remove = HashSet::new();
+            if let Some(older_than) = options.older_than {
+                remove.extend(
+                    entries
+                        .iter()
+                        .filter(|entry| entry.description.fetched_at < older_than)
+                        .map(|entry| entry.relative.clone()),
+                );
+            }
+            if let Some(max_entries) = options.max_entries {
+                let mut order = (0..entries.len()).collect::<Vec<_>>();
+                order.sort_by(|left, right| {
+                    entries[*right]
+                        .description
+                        .fetched_at
+                        .partial_cmp(&entries[*left].description.fetched_at)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then_with(|| {
+                            is_v2_cache_path(&entries[*right].relative)
+                                .cmp(&is_v2_cache_path(&entries[*left].relative))
+                        })
+                        .then_with(|| entries[*left].relative.cmp(&entries[*right].relative))
+                });
+                remove.extend(
+                    order
+                        .into_iter()
+                        .skip(max_entries)
+                        .map(|index| entries[index].relative.clone()),
+                );
+            }
+            let mut result = delete_admin_entries(&state, entries, &remove)?;
+            result = delete_stale_artifacts(&state, scan.artifacts, result)?;
+            delete_stale_leases(&state, scan.leases, result)
+        })
+        .await
+        .map_err(|_| KrxError::new(KrxErrorCode::CacheWriteFailed, "cache prune task failed"))?
+    }
+
+    pub(crate) async fn clear(&self) -> Result<CachePruneResult, KrxError> {
+        let state = self.state.clone();
+        tokio::task::spawn_blocking(move || {
+            let scan = scan_admin_entries(&state, SystemTime::now())?;
+            let entries = scan.entries;
+            let remove = entries
+                .iter()
+                .map(|entry| entry.relative.clone())
+                .collect::<HashSet<_>>();
+            // Deliberately do not remove arbitrary cache children, quarantine
+            // files, or live/unrecognized leases: only revalidated entries,
+            // exact stale atomic temporaries, and securely observed stale
+            // leases are safe administration targets.
+            let result = delete_admin_entries(&state, entries, &remove)?;
+            let result = delete_stale_artifacts(&state, scan.artifacts, result)?;
+            delete_stale_leases(&state, scan.leases, result)
+        })
+        .await
+        .map_err(|_| KrxError::new(KrxErrorCode::CacheWriteFailed, "cache clear task failed"))?
+    }
+
     pub(crate) fn write_v2(
         &self,
         key: &CacheKey,
@@ -639,6 +770,253 @@ impl CacheStore {
     }
 }
 
+fn is_v2_cache_path(relative: &str) -> bool {
+    relative.starts_with("cache/v2/")
+}
+
+#[derive(Debug)]
+struct CacheAdminEntry {
+    relative: String,
+    observed: ObservedFile,
+    description: CacheEntryDescription,
+}
+
+struct CacheAdminScan {
+    entries: Vec<CacheAdminEntry>,
+    artifacts: Vec<CacheAdminEntry>,
+    leases: Vec<CacheLeaseTarget>,
+}
+
+struct CacheLeaseTarget {
+    relative: String,
+    observed: ObservedCacheDirectoryLease,
+}
+
+fn validate_inspect_limit(limit: Option<usize>) -> Result<usize, KrxError> {
+    let limit = limit.unwrap_or(CACHE_INSPECT_DEFAULT_ENTRIES as usize);
+    if limit == 0 || limit > CACHE_INSPECT_MAXIMUM_ENTRIES as usize {
+        return Err(KrxError::new(
+            KrxErrorCode::InvalidArgument,
+            format!(
+                "cache inspection limit must be between one and {}",
+                CACHE_INSPECT_MAXIMUM_ENTRIES
+            ),
+        ));
+    }
+    Ok(limit)
+}
+
+fn scan_admin_entries(state: &StateRoot, now: SystemTime) -> Result<CacheAdminScan, KrxError> {
+    let enumeration = state.enumerate_cache_paths(
+        CACHE_PRUNE_SCAN_MAXIMUM_FILES,
+        CACHE_PRUNE_SCAN_MAXIMUM_METADATA_BYTES,
+        KrxErrorCode::CacheReadFailed,
+    )?;
+    let max_age = Duration::from_secs(DEFAULT_CACHE_MAX_AGE_HOURS * 60 * 60);
+    let mut entries = Vec::new();
+    let mut artifacts = Vec::new();
+    for path in enumeration.paths {
+        let Some(observed) = state.read_cache(
+            &path.relative,
+            CACHE_ENTRY_READ_BYTES,
+            KrxErrorCode::CacheReadFailed,
+        )?
+        else {
+            continue;
+        };
+        if !observed.is_complete() {
+            continue;
+        }
+        if let Some(description) = recognize_cache_entry(&path.relative, &observed, max_age, now) {
+            entries.push(CacheAdminEntry {
+                relative: path.relative,
+                observed,
+                description,
+            });
+        } else if is_stale_cache_temporary(&path.relative, observed.modified(), now) {
+            let size_bytes = observed.bytes().len() as u64;
+            artifacts.push(CacheAdminEntry {
+                relative: path.relative,
+                observed,
+                description: CacheEntryDescription {
+                    operation: OperationId::StockStkByddTrd,
+                    date: TradingDate::parse("19000101").expect("valid artifact placeholder date"),
+                    fetched_at: UNIX_EPOCH,
+                    freshness: Freshness::Stale,
+                    size_bytes,
+                    contract_id: String::new(),
+                },
+            });
+        }
+    }
+    let mut leases = Vec::new();
+    for relative in enumeration.leases {
+        let Some(observed) = state.observe_cache_lease(
+            &relative,
+            CACHE_LEASE_OWNER_BYTES,
+            KrxErrorCode::CacheReadFailed,
+        )?
+        else {
+            continue;
+        };
+        if cache_lease_is_stale(&observed, now) {
+            leases.push(CacheLeaseTarget { relative, observed });
+        }
+    }
+    Ok(CacheAdminScan {
+        entries,
+        artifacts,
+        leases,
+    })
+}
+
+fn recognize_cache_entry(
+    relative: &str,
+    observed: &ObservedFile,
+    max_age: Duration,
+    now: SystemTime,
+) -> Option<CacheEntryDescription> {
+    let parts = relative.split('/').collect::<Vec<_>>();
+    match parts.as_slice() {
+        ["cache", date, filename] if filename.ends_with(".json") => {
+            let date = TradingDate::parse(date).ok()?;
+            let entry: CacheV1Read = serde_json::from_slice(observed.bytes()).ok()?;
+            let operation = OperationId::ALL
+                .into_iter()
+                .find(|operation| operation_spec(*operation).path == entry.endpoint)?;
+            let key = CacheKey::new(operation, date).ok()?;
+            if key.v1_path != relative {
+                return None;
+            }
+            let result = decode_v1(&key, observed, max_age, now).ok()?;
+            Some(CacheEntryDescription {
+                operation,
+                date: key.date,
+                fetched_at: result.provenance.fetched_at,
+                freshness: result.provenance.freshness,
+                size_bytes: observed.bytes().len() as u64,
+                contract_id: result.provenance.contract_id.to_owned(),
+            })
+        }
+        ["cache", "v2", date, filename] if filename.ends_with(".json") => {
+            let date = TradingDate::parse(date).ok()?;
+            let entry: CacheV2Read = serde_json::from_slice(observed.bytes()).ok()?;
+            let operation = parse_operation_id(&entry.operation_id)?;
+            let key = CacheKey::new(operation, date).ok()?;
+            if key.v2_path != relative {
+                return None;
+            }
+            let result = decode_v2(&key, observed, max_age, now).ok()?;
+            Some(CacheEntryDescription {
+                operation,
+                date: key.date,
+                fetched_at: result.provenance.fetched_at,
+                freshness: result.provenance.freshness,
+                size_bytes: observed.bytes().len() as u64,
+                contract_id: result.provenance.contract_id.to_owned(),
+            })
+        }
+        _ => None,
+    }
+}
+
+fn delete_admin_entries(
+    state: &StateRoot,
+    entries: Vec<CacheAdminEntry>,
+    remove: &HashSet<String>,
+) -> Result<CachePruneResult, KrxError> {
+    let mut result = CachePruneResult::default();
+    let targets = entries
+        .into_iter()
+        .filter(|entry| remove.contains(&entry.relative))
+        .collect::<Vec<_>>();
+    for batch in targets.chunks(CACHE_PRUNE_DELETE_BATCH_MAXIMUM as usize) {
+        for entry in batch {
+            if state.remove_if_unchanged(
+                &entry.relative,
+                &entry.observed,
+                KrxErrorCode::CacheWriteFailed,
+            )? {
+                result.removed_entries += 1;
+                result.removed_bytes += entry.description.size_bytes;
+            }
+        }
+    }
+    Ok(result)
+}
+
+fn delete_stale_artifacts(
+    state: &StateRoot,
+    artifacts: Vec<CacheAdminEntry>,
+    mut result: CachePruneResult,
+) -> Result<CachePruneResult, KrxError> {
+    let remove = artifacts
+        .iter()
+        .map(|entry| entry.relative.clone())
+        .collect::<HashSet<_>>();
+    let deleted = delete_admin_entries(state, artifacts, &remove)?;
+    result.removed_entries += deleted.removed_entries;
+    result.removed_bytes += deleted.removed_bytes;
+    Ok(result)
+}
+
+fn delete_stale_leases(
+    state: &StateRoot,
+    leases: Vec<CacheLeaseTarget>,
+    mut result: CachePruneResult,
+) -> Result<CachePruneResult, KrxError> {
+    for lease in leases {
+        let tombstone = format!(".stale-admin-{}", Uuid::new_v4());
+        if state.steal_cache_lease_if_unchanged(
+            &lease.relative,
+            &lease.observed,
+            &tombstone,
+            KrxErrorCode::CacheWriteFailed,
+        )? {
+            result.removed_entries += 1;
+        }
+    }
+    Ok(result)
+}
+
+fn is_stale_cache_temporary(relative: &str, modified: SystemTime, now: SystemTime) -> bool {
+    let parts = relative.split('/').collect::<Vec<_>>();
+    let (filename, digest_length) = match parts.as_slice() {
+        ["cache", date, filename] if TradingDate::parse(date).is_ok() => (filename, 16),
+        ["cache", "v2", date, filename] if TradingDate::parse(date).is_ok() => (filename, 64),
+        _ => return false,
+    };
+    if !filename.starts_with('.') || !filename.ends_with(".tmp") {
+        return false;
+    }
+    let body = &filename[1..filename.len() - 4];
+    let Some((prefix, uuid_text)) = body.rsplit_once('.') else {
+        return false;
+    };
+    let target = prefix
+        .rsplit_once('.')
+        .filter(|(_, candidate)| candidate.parse::<u32>().is_ok_and(|pid| pid > 0))
+        .map_or(prefix, |(target, _)| target);
+    if !target.ends_with(".json") || target.len() != digest_length + ".json".len() {
+        return false;
+    }
+    let stem = target.strip_suffix(".json").unwrap_or_default();
+    if stem.len() != digest_length
+        || !stem
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    {
+        return false;
+    }
+    let valid_uuid = Uuid::parse_str(uuid_text).ok().is_some_and(|uuid| {
+        uuid.get_version_num() == 4
+            && uuid.get_variant() == Variant::RFC4122
+            && uuid.to_string() == uuid_text
+    });
+    valid_uuid
+        && now.duration_since(modified).unwrap_or(Duration::ZERO) >= Duration::from_secs(60 * 60)
+}
+
 pub(crate) struct CacheRefreshLease {
     _lease: CacheDirectoryLease,
 }
@@ -829,7 +1207,7 @@ fn decode_v2(
 
 fn cache_result(
     operation: OperationId,
-    contract_id: &str,
+    contract_id: &'static str,
     fetched_at: String,
     rows: Vec<Value>,
     max_age: Duration,
@@ -856,7 +1234,7 @@ fn cache_result(
             source: ResultSource::Cache,
             fetched_at,
             freshness,
-            contract_id: contract_id.to_owned(),
+            contract_id,
         },
     })
 }
@@ -1087,6 +1465,216 @@ mod tests {
             "/../../contracts/product/v1/fixtures/cache-v2-full.json"
         ))
         .to_vec()
+    }
+
+    #[tokio::test]
+    async fn administration_is_strict_and_preserves_unrecognized_bytes() {
+        let fixture = Fixture::new();
+        let key = key(&fixture.store);
+        fixture
+            .store
+            .state
+            .atomic_write(&key.v1_path, &v1_fixture(), KrxErrorCode::CacheWriteFailed)
+            .unwrap();
+        fixture
+            .store
+            .state
+            .atomic_write(&key.v2_path, &v2_fixture(), KrxErrorCode::CacheWriteFailed)
+            .unwrap();
+        let unknown = fixture.root().join("cache/20260102/unknown.json");
+        fs::write(&unknown, b"preserve me").unwrap();
+
+        let inspection = fixture
+            .store
+            .inspect(CacheInspectOptions::default())
+            .await
+            .unwrap();
+        assert_eq!(inspection.total_entries, 2);
+        assert_eq!(inspection.entries.len(), 2);
+        assert_eq!(
+            inspection.total_size_bytes as usize,
+            v1_fixture().len() + v2_fixture().len()
+        );
+        assert!(!inspection.truncated);
+
+        let result = fixture
+            .store
+            .prune(CachePruneOptions {
+                older_than: Some(at("2026-01-04T00:00:00Z")),
+                max_entries: None,
+            })
+            .await
+            .unwrap();
+        assert_eq!(result.removed_entries, 2);
+        assert!(!fixture.root().join(&key.v1_path).exists());
+        assert!(!fixture.root().join(&key.v2_path).exists());
+        assert_eq!(fs::read(&unknown).unwrap(), b"preserve me");
+    }
+
+    #[tokio::test]
+    async fn administration_limit_is_typed_and_clear_is_conditional() {
+        let fixture = Fixture::new();
+        let key = key(&fixture.store);
+        fixture
+            .store
+            .state
+            .atomic_write(&key.v1_path, &v1_fixture(), KrxErrorCode::CacheWriteFailed)
+            .unwrap();
+        let error = fixture
+            .store
+            .inspect(CacheInspectOptions {
+                limit: Some(CACHE_INSPECT_MAXIMUM_ENTRIES as usize + 1),
+                ..CacheInspectOptions::default()
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(error.code(), KrxErrorCode::InvalidArgument);
+
+        let replacement = b"replacement";
+        fixture
+            .store
+            .state
+            .atomic_write(&key.v1_path, replacement, KrxErrorCode::CacheWriteFailed)
+            .unwrap();
+        let result = fixture.store.clear().await.unwrap();
+        assert_eq!(result.removed_entries, 0);
+        assert_eq!(
+            fs::read(fixture.root().join(&key.v1_path)).unwrap(),
+            replacement
+        );
+    }
+
+    #[tokio::test]
+    async fn prune_rejects_an_oversized_batch_before_traversal() {
+        let fixture = Fixture::new();
+        fs::create_dir_all(fixture.root()).unwrap();
+        fs::write(fixture.root().join("cache"), b"not a directory").unwrap();
+
+        let error = fixture
+            .store
+            .prune(CachePruneOptions {
+                max_entries: Some(CACHE_PRUNE_DELETE_BATCH_MAXIMUM as usize + 1),
+                ..CachePruneOptions::default()
+            })
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), KrxErrorCode::InvalidArgument);
+    }
+
+    #[tokio::test]
+    async fn max_entry_pruning_prefers_v2_when_timestamps_match() {
+        let fixture = Fixture::new();
+        let key = key(&fixture.store);
+        fixture
+            .store
+            .state
+            .atomic_write(&key.v1_path, &v1_fixture(), KrxErrorCode::CacheWriteFailed)
+            .unwrap();
+        fixture
+            .store
+            .state
+            .atomic_write(&key.v2_path, &v2_fixture(), KrxErrorCode::CacheWriteFailed)
+            .unwrap();
+
+        let result = fixture
+            .store
+            .prune(CachePruneOptions {
+                max_entries: Some(1),
+                ..CachePruneOptions::default()
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(result.removed_entries, 1);
+        assert!(!fixture.root().join(&key.v1_path).exists());
+        assert!(fixture.root().join(&key.v2_path).exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn administration_never_traverses_symlinked_cache_directories() {
+        use std::os::unix::fs::symlink;
+
+        let fixture = Fixture::new();
+        let outside = fixture.parent.join("outside");
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("secret.json"), b"outside").unwrap();
+        fs::create_dir_all(fixture.root().join("cache")).unwrap();
+        symlink(&outside, fixture.root().join("cache/20260102")).unwrap();
+
+        let inspection = fixture
+            .store
+            .inspect(CacheInspectOptions::default())
+            .await
+            .unwrap();
+
+        assert_eq!(inspection.total_entries, 0);
+        assert_eq!(fs::read(outside.join("secret.json")).unwrap(), b"outside");
+    }
+
+    #[tokio::test]
+    async fn administration_removes_stale_leases_but_preserves_live_leases() {
+        let fixture = Fixture::new();
+        let stale_key = fixture
+            .store
+            .key(
+                OperationId::StockStkByddTrd,
+                TradingDate::parse("20260102").unwrap(),
+            )
+            .unwrap();
+        let stale_owner = CacheLeaseOwner {
+            version: 1,
+            pid: u32::MAX,
+            nonce: Uuid::new_v4().to_string(),
+            created_at: format_timestamp(at("2020-01-01T00:00:00Z")).unwrap(),
+        };
+        let stale_owner_bytes = serde_json::to_vec(&stale_owner).unwrap();
+        let stale_lease = fixture
+            .store
+            .state
+            .try_acquire_cache_lease(
+                &stale_key.lease_path(),
+                &stale_owner_bytes,
+                KrxErrorCode::CacheWriteFailed,
+            )
+            .unwrap()
+            .expect("stale lease setup");
+
+        let live_key = fixture
+            .store
+            .key(
+                OperationId::StockStkByddTrd,
+                TradingDate::parse("20260103").unwrap(),
+            )
+            .unwrap();
+        let live_lease = fixture
+            .store
+            .try_acquire_refresh_lease(&live_key)
+            .await
+            .unwrap()
+            .expect("live lease setup");
+        let observed_stale = fixture
+            .store
+            .state
+            .observe_cache_lease(
+                &stale_key.lease_path(),
+                CACHE_LEASE_OWNER_BYTES,
+                KrxErrorCode::CacheReadFailed,
+            )
+            .unwrap()
+            .unwrap();
+        assert!(cache_lease_is_stale(&observed_stale, SystemTime::now()));
+        let result = fixture
+            .store
+            .prune(CachePruneOptions::default())
+            .await
+            .unwrap();
+        assert_eq!(result.removed_entries, 1);
+        assert!(!fixture.root().join(stale_key.lease_path()).exists());
+        assert!(fixture.root().join(live_key.lease_path()).exists());
+        drop(stale_lease);
+        drop(live_lease);
     }
 
     #[test]
@@ -1333,6 +1921,32 @@ mod tests {
             fs::read(fixture.root().join(&key.v1_path)).unwrap(),
             v1_fixture()
         );
+    }
+
+    #[test]
+    fn stale_temporary_recognition_is_exact_for_each_platform_layout() {
+        let now = SystemTime::now();
+        let stale = now.checked_sub(Duration::from_secs(7_200)).unwrap();
+        let uuid = "abcdefab-cdef-4abc-8abc-abcdefabcdef";
+        let v1 = format!("cache/20260102/.{}.json.123.{uuid}.tmp", "a".repeat(16));
+        let v2 = format!("cache/v2/20260102/.{}.json.{uuid}.tmp", "b".repeat(64));
+        assert!(is_stale_cache_temporary(&v1, stale, now));
+        assert!(is_stale_cache_temporary(&v2, stale, now));
+        assert!(!is_stale_cache_temporary(
+            &v1.replace(&"a".repeat(16), &"a".repeat(64)),
+            stale,
+            now,
+        ));
+        assert!(!is_stale_cache_temporary(
+            &v2.replace(&"b".repeat(64), &"b".repeat(16)),
+            stale,
+            now,
+        ));
+        assert!(!is_stale_cache_temporary(
+            &v2.replace(uuid, &uuid.to_uppercase()),
+            stale,
+            now,
+        ));
     }
 
     #[test]

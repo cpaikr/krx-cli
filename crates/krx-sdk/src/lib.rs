@@ -30,22 +30,8 @@ mod cache;
     )
 )]
 mod calendar;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "direct query orchestration is exposed by the complete public Client in this SDK PR"
-    )
-)]
 mod client;
 mod completeness;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "composite reducers are consumed by the private client engine"
-    )
-)]
 mod composites;
 mod conformer;
 #[cfg_attr(
@@ -74,13 +60,6 @@ mod operation;
 )]
 #[cfg(any(unix, windows))]
 mod quota;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "range reduction is consumed by the private client engine"
-    )
-)]
 mod range;
 mod request;
 mod result;
@@ -98,12 +77,14 @@ mod state;
 )]
 #[cfg_attr(test, allow(dead_code))]
 mod transport;
+mod watchlist;
 
 pub use approval::{ApprovalObservation, ApprovalState};
 pub use cache::{
     CacheEntryDescription, CacheInspectOptions, CacheInspection, CachePruneOptions,
     CachePruneResult,
 };
+pub use client::{CacheHandle, Client, ClientBuilder, CredentialHandle, WatchlistHandle};
 pub use credential::{CredentialMigrationResult, CredentialSource, CredentialStatus};
 pub use error::{KrxError, KrxErrorCode, KrxErrorKind};
 pub use operation::{
@@ -121,3 +102,4 @@ pub use result::{
     ResultProvenance, ResultSource, Row, SearchMarket, StockSearchMatch, StockSearchResult,
     StockStats, WatchlistMarket, WatchlistPrices, WatchlistPricesResult,
 };
+pub use watchlist::WatchlistEntry;

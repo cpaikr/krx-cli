@@ -36,6 +36,18 @@ pub(crate) struct ObservedFile {
     complete: bool,
 }
 
+/// A pathname found by the bounded cache walk.  The walk intentionally only
+/// returns regular, non-symlink entries; callers still re-open each path
+/// through the capability-checked state root before acting on it.
+pub(crate) struct CachePath {
+    pub(crate) relative: String,
+}
+
+pub(crate) struct CacheEnumeration {
+    pub(crate) paths: Vec<CachePath>,
+    pub(crate) leases: Vec<String>,
+}
+
 impl ObservedFile {
     pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
@@ -47,6 +59,21 @@ impl ObservedFile {
 
     pub(crate) fn is_complete(&self) -> bool {
         self.complete
+    }
+
+    pub(crate) fn modified(&self) -> SystemTime {
+        let Ok(seconds) = u64::try_from(self.identity.modified_seconds) else {
+            return UNIX_EPOCH;
+        };
+        let Ok(nanoseconds) = u32::try_from(self.identity.modified_nanoseconds) else {
+            return UNIX_EPOCH;
+        };
+        if nanoseconds >= 1_000_000_000 {
+            return UNIX_EPOCH;
+        }
+        UNIX_EPOCH
+            .checked_add(Duration::new(seconds, nanoseconds))
+            .unwrap_or(UNIX_EPOCH)
     }
 }
 
@@ -141,6 +168,47 @@ impl StateRoot {
             error_code,
             true,
         )
+    }
+
+    pub(crate) fn enumerate_cache_paths(
+        &self,
+        maximum_files: u64,
+        maximum_metadata_bytes: u64,
+        error_code: KrxErrorCode,
+    ) -> Result<CacheEnumeration, KrxError> {
+        let Some(root) =
+            open_absolute_root(&self.path, false, ReadSensitivity::NonSecret, error_code)?
+        else {
+            return Ok(CacheEnumeration {
+                paths: Vec::new(),
+                leases: Vec::new(),
+            });
+        };
+        let Some(cache) =
+            open_relative_directories(&root, &[OsString::from("cache")], false, error_code)?
+        else {
+            return Ok(CacheEnumeration {
+                paths: Vec::new(),
+                leases: Vec::new(),
+            });
+        };
+        let mut paths = Vec::new();
+        let mut leases = Vec::new();
+        let mut metadata_bytes = 0u64;
+        let mut child_count = 0u64;
+        enumerate_cache_directory(
+            &cache,
+            "cache",
+            &mut paths,
+            &mut leases,
+            &mut child_count,
+            &mut metadata_bytes,
+            maximum_files,
+            maximum_metadata_bytes,
+            error_code,
+            false,
+        )?;
+        Ok(CacheEnumeration { paths, leases })
     }
 
     fn read_internal(
@@ -772,6 +840,145 @@ impl StateRoot {
             }
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn enumerate_cache_directory(
+    directory: &OwnedFd,
+    relative: &str,
+    paths: &mut Vec<CachePath>,
+    leases: &mut Vec<String>,
+    child_count: &mut u64,
+    metadata_bytes: &mut u64,
+    maximum_files: u64,
+    maximum_metadata_bytes: u64,
+    error_code: KrxErrorCode,
+    only_files: bool,
+) -> Result<(), KrxError> {
+    let mut entries = Dir::read_from(directory)
+        .map_err(|_| state_error(error_code, "cache directory enumeration failed"))?;
+    let mut names = Vec::new();
+    for entry in &mut entries {
+        let entry =
+            entry.map_err(|_| state_error(error_code, "cache directory enumeration failed"))?;
+        let name = entry.file_name().to_bytes();
+        if matches!(name, b"." | b"..") {
+            continue;
+        }
+        *child_count = child_count.checked_add(1).ok_or_else(|| {
+            KrxError::new(
+                KrxErrorCode::CacheScanLimit,
+                "cache scan exceeded its file bound",
+            )
+        })?;
+        if *child_count > maximum_files {
+            return Err(KrxError::new(
+                KrxErrorCode::CacheScanLimit,
+                "cache scan exceeded its file bound",
+            ));
+        }
+        let name = std::str::from_utf8(name)
+            .map_err(|_| state_error(error_code, "cache filename is not valid UTF-8"))?;
+        names.push(name.to_owned());
+    }
+    names.sort();
+    for name in names {
+        let metadata = match rustix::fs::statat(directory, &name, AtFlags::SYMLINK_NOFOLLOW) {
+            Ok(metadata) => metadata,
+            Err(error) if error == rustix::io::Errno::NOENT => continue,
+            Err(_) => return Err(state_error(error_code, "cache entry inspection failed")),
+        };
+        let file_type = FileType::from_raw_mode(metadata.st_mode);
+        if file_type == FileType::Symlink {
+            continue;
+        }
+        let child_relative = format!("{relative}/{name}");
+        if file_type == FileType::Directory {
+            if relative == "cache/.leases" && is_cache_lease_directory(&name) {
+                leases.push(child_relative);
+                continue;
+            }
+            let is_v2_root = relative == "cache" && name == "v2";
+            let is_leases_root = relative == "cache" && name == ".leases";
+            if only_files || (!is_v2_root && !is_leases_root && !is_cache_date_directory(&name)) {
+                continue;
+            }
+            let child = match rustix::fs::openat(
+                directory,
+                &name,
+                OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+                Mode::empty(),
+            ) {
+                Ok(child) => child,
+                Err(error) if error == rustix::io::Errno::NOENT => continue,
+                Err(_) => {
+                    return Err(state_error(
+                        error_code,
+                        "cache directory contains an unsafe component",
+                    ));
+                }
+            };
+            validate_directory(&child, false, ReadSensitivity::NonSecret, error_code)?;
+            enumerate_cache_directory(
+                &child,
+                &child_relative,
+                paths,
+                leases,
+                child_count,
+                metadata_bytes,
+                maximum_files,
+                maximum_metadata_bytes,
+                error_code,
+                !is_v2_root && !is_leases_root,
+            )?;
+            continue;
+        }
+        if file_type != FileType::RegularFile {
+            continue;
+        }
+        if paths.len() as u64 >= maximum_files {
+            return Err(KrxError::new(
+                KrxErrorCode::CacheScanLimit,
+                "cache scan exceeded its file bound",
+            ));
+        }
+        let file_size = u64::try_from(metadata.st_size).map_err(|_| {
+            KrxError::new(
+                KrxErrorCode::CacheScanLimit,
+                "cache scan encountered an invalid file size",
+            )
+        })?;
+        *metadata_bytes = metadata_bytes.checked_add(file_size).ok_or_else(|| {
+            KrxError::new(
+                KrxErrorCode::CacheScanLimit,
+                "cache scan exceeded its metadata bound",
+            )
+        })?;
+        if *metadata_bytes > maximum_metadata_bytes {
+            return Err(KrxError::new(
+                KrxErrorCode::CacheScanLimit,
+                "cache scan exceeded its metadata bound",
+            ));
+        }
+        paths.push(CachePath {
+            relative: child_relative,
+        });
+    }
+    Ok(())
+}
+
+fn is_cache_lease_directory(value: &str) -> bool {
+    let Some(stem) = value.strip_suffix(".lock") else {
+        return false;
+    };
+    stem.len() == 64
+        && stem
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+}
+
+fn is_cache_date_directory(value: &str) -> bool {
+    value.len() == 8 && value.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 impl Drop for PlainDirectoryLock {

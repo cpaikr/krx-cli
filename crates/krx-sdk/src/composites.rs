@@ -296,7 +296,7 @@ mod tests {
                 source: ResultSource::Network,
                 fetched_at: SystemTime::UNIX_EPOCH,
                 freshness: Freshness::Fresh,
-                contract_id: "fixture".to_owned(),
+                contract_id: "fixture",
             },
         })
     }

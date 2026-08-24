@@ -47,17 +47,45 @@ Goal contract
 
 ### Current in-scope result
 
-Complete shared Rust SDK for all supported KRX behavior and local policy.
+Complete shared Rust SDK for all supported KRX behavior and local policy. The
+implementation is complete locally; its production PR delivery lifecycle is
+active.
 
 ### Next in-scope action
 
-Complete the remaining frozen `crates/krx-sdk` surface in the same production
-SDK PR: add range orchestration and the public `Client`, credential, cache, and
-watchlist handles over the completed private direct-query engine. Keep CLI and
-Node adapter implementation out of this slice.
+Commit the reviewed public-SDK checkpoint, create the single production SDK PR,
+and complete its review, feedback, exact-head validation, and merge lifecycle.
+Keep CLI and Node adapter implementation out of this slice until that PR is
+complete.
 
 ### Evidence and blockers
 
+- The complete shared Rust SDK now exposes the frozen concrete `Client`,
+  builder, direct and range queries, generated composites, capabilities,
+  credential and approval operations, bounded cache administration, and
+  strict watchlist administration over the single private direct-query engine.
+  Composite and range fan-out share one 45-second call deadline; ranges retain
+  deterministic date order with concurrency five; KONEX remains present; and
+  the unchanged frozen external Rust consumer compiles directly against the
+  public crate. Cache administration derives every limit from the migration
+  contract, prefers v2 on equal-time retention, rejects an oversized prune
+  request before traversal, recognizes only exact platform temporary names,
+  and bases conditional deletion, age, and byte accounting on the securely
+  observed object. Unix and Windows cache enumeration is capability-rooted and
+  never follows symlink or reparse children. Watchlist reads are strict and
+  bounded, first mutation migrates v0 to v1 under the shared lock, concurrent
+  writers preserve order, and invalid public arguments remain typed as
+  `invalid_argument`. Three independent public/range, cache/security, and
+  watchlist/migration reviews are clean after applying the cache parser,
+  Windows recursion, descriptor-time/accounting, prune-bound, v2-preference,
+  and traversal fixes. Workspace formatting, locked all-target/all-feature
+  check and strict Clippy pass; 144 Rust tests pass with the one intentional
+  interoperability worker ignored; all eight SDK mutation/interoperability
+  tests pass; and full `pnpm verify` passes 49 files and 508 tests, production
+  audit, 13 installed-package scenarios, and package smoke. Native Windows
+  cross-check remains unavailable on this macOS host because `aws-lc-sys`
+  requires absent Windows SDK headers; the Windows source mutation gate passes
+  under the approved reduced-CI policy.
 - The reviewed private direct-query checkpoint now composes validation,
   credential resolution, transport, cache policy, offline behavior, and the
   call-wide deadline without exposing a partial public client. Offline returns

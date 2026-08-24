@@ -488,7 +488,7 @@ fn auth_header_value(api_key: &ApiKey) -> Result<HeaderValue, AttemptFailure> {
     Ok(value)
 }
 
-fn kst_date(now: SystemTime) -> Result<TradingDate, KrxError> {
+pub(crate) fn kst_date(now: SystemTime) -> Result<TradingDate, KrxError> {
     let shifted = now
         .checked_add(Duration::from_secs(9 * 60 * 60))
         .ok_or_else(|| {

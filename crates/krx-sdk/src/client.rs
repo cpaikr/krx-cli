@@ -4,19 +4,365 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
+use futures_util::future::join_all;
+use futures_util::stream::{self, StreamExt};
+
+use crate::approval::{ApprovalOutcome, ApprovalStore};
 use crate::cache::{
-    CACHE_LEASE_POLL, CacheHit, CacheKey, CacheRead, CacheRefreshLease, CacheStore, CacheVersion,
+    CACHE_LEASE_POLL, CacheHit, CacheInspectOptions, CacheInspection, CacheKey, CachePruneOptions,
+    CachePruneResult, CacheRead, CacheRefreshLease, CacheStore, CacheVersion,
 };
-use crate::credential::CredentialManager;
+use crate::composites::ComponentOutcome;
+use crate::credential::{CredentialManager, CredentialMigrationResult, CredentialStatus};
 use crate::operation::{DEFAULT_CACHE_MAX_AGE_HOURS, DEFAULT_RETRIES, OVERALL_TIMEOUT_MS};
 use crate::state::StateRoot;
 use crate::transport::DirectTransport;
+use crate::watchlist::{WatchlistEntry, WatchlistStore};
 use crate::{
-    ApiKey, CachePolicy, DirectRequest, Freshness, KrxError, KrxErrorCode, QueryResult,
-    ResultProvenance, ResultSource, Row,
+    ApiKey, ApprovalCategory, ApprovalObservation, CachePolicy, CallOptions, Cancellation,
+    DirectRequest, Freshness, KrxError, KrxErrorCode, MarketComponent, MarketSummaryRequest,
+    MarketSummaryResult, OperationDescription, QueryResult, RangeMode, RangeRequest, RangeResult,
+    ResultProvenance, ResultSource, Row, SearchMarket, StockSearchRequest, StockSearchResult,
+    WatchlistMarket, WatchlistPricesRequest, WatchlistPricesResult,
 };
 
 type TransportFuture<'a> = Pin<Box<dyn Future<Output = Result<Vec<Row>, KrxError>> + Send + 'a>>;
+
+const RANGE_CONCURRENCY: usize = 5;
+
+#[derive(Clone)]
+pub struct Client {
+    inner: Arc<ClientInner>,
+}
+
+struct ClientInner {
+    direct: DirectQueryClient,
+    credentials: CredentialManager,
+    approvals: ApprovalStore,
+    cache: CacheStore,
+    watchlist: WatchlistStore,
+    state_root: PathBuf,
+}
+
+pub struct ClientBuilder {
+    api_key: Option<ApiKey>,
+}
+
+impl ClientBuilder {
+    pub fn api_key(mut self, api_key: ApiKey) -> Self {
+        self.api_key = Some(api_key);
+        self
+    }
+
+    pub fn build(self) -> Result<Client, KrxError> {
+        self.build_at(default_state_root()?)
+    }
+
+    fn build_at(self, state_root: PathBuf) -> Result<Client, KrxError> {
+        let direct = DirectQueryClient::native(state_root.clone(), self.api_key)?;
+        let credentials = direct.credentials.clone();
+        let cache = direct.cache.clone();
+        Ok(Client {
+            inner: Arc::new(ClientInner {
+                direct,
+                credentials,
+                approvals: ApprovalStore::new(state_root.clone())?,
+                cache,
+                watchlist: WatchlistStore::new(state_root.clone())?,
+                state_root,
+            }),
+        })
+    }
+}
+
+impl Client {
+    pub fn builder() -> ClientBuilder {
+        ClientBuilder { api_key: None }
+    }
+
+    pub async fn query(&self, request: DirectRequest) -> Result<QueryResult, KrxError> {
+        self.inner.direct.query(request).await
+    }
+
+    pub async fn range(&self, request: RangeRequest) -> Result<RangeResult, KrxError> {
+        self.inner.direct.range(request).await
+    }
+
+    pub async fn search_stocks(
+        &self,
+        request: StockSearchRequest,
+    ) -> Result<StockSearchResult, KrxError> {
+        validate_options(&request.options, None)?;
+        check_composite_cancellation(&request.options)?;
+        let deadline = Instant::now() + Duration::from_millis(OVERALL_TIMEOUT_MS);
+        let today = crate::transport::kst_date(SystemTime::now())?;
+        let date = crate::calendar::resolve_recent(&today)?.date;
+        check_composite_cancellation(&request.options)?;
+        let components = crate::operation::STOCK_SEARCH_COMPONENTS
+            .iter()
+            .map(|(label, operation)| {
+                let market = match *label {
+                    "KOSPI" => SearchMarket::Kospi,
+                    "KOSDAQ" => SearchMarket::Kosdaq,
+                    _ => return Err(invalid_component_contract()),
+                };
+                Ok((market, *operation))
+            })
+            .collect::<Result<Vec<_>, KrxError>>()?;
+        let outcomes = join_all(components.into_iter().map(|(id, operation)| {
+            let direct = DirectRequest {
+                operation,
+                date: date.clone(),
+                options: request.options.clone(),
+            };
+            async move {
+                ComponentOutcome {
+                    id,
+                    result: self.inner.direct.query_until(direct, deadline).await,
+                }
+            }
+        }))
+        .await;
+        check_composite_cancellation(&request.options)?;
+        crate::composites::reduce_stock_search(&request.query, outcomes)
+    }
+
+    pub async fn market_summary(
+        &self,
+        request: MarketSummaryRequest,
+    ) -> Result<MarketSummaryResult, KrxError> {
+        validate_options(&request.options, None)?;
+        check_composite_cancellation(&request.options)?;
+        let deadline = Instant::now() + Duration::from_millis(OVERALL_TIMEOUT_MS);
+        let components = crate::operation::MARKET_SUMMARY_COMPONENTS
+            .iter()
+            .map(|(label, operation)| {
+                let component = match *label {
+                    "kospiIndex" => MarketComponent::KospiIndex,
+                    "kosdaqIndex" => MarketComponent::KosdaqIndex,
+                    "kospiStocks" => MarketComponent::KospiStocks,
+                    "kosdaqStocks" => MarketComponent::KosdaqStocks,
+                    _ => return Err(invalid_component_contract()),
+                };
+                Ok((component, *operation))
+            })
+            .collect::<Result<Vec<_>, KrxError>>()?;
+        let outcomes = join_all(components.into_iter().map(|(id, operation)| {
+            let direct = DirectRequest {
+                operation,
+                date: request.date.clone(),
+                options: request.options.clone(),
+            };
+            async move {
+                ComponentOutcome {
+                    id,
+                    result: self.inner.direct.query_until(direct, deadline).await,
+                }
+            }
+        }))
+        .await;
+        check_composite_cancellation(&request.options)?;
+        crate::composites::reduce_market_summary(request.date, outcomes)
+    }
+
+    pub async fn watchlist_prices(
+        &self,
+        request: WatchlistPricesRequest,
+    ) -> Result<WatchlistPricesResult, KrxError> {
+        validate_options(&request.options, None)?;
+        check_composite_cancellation(&request.options)?;
+        let deadline = Instant::now() + Duration::from_millis(OVERALL_TIMEOUT_MS);
+        let components = crate::operation::WATCHLIST_PRICE_COMPONENTS
+            .iter()
+            .map(|(label, operation)| {
+                let market = match *label {
+                    "KOSPI" => WatchlistMarket::Kospi,
+                    "KOSDAQ" => WatchlistMarket::Kosdaq,
+                    "KONEX" => WatchlistMarket::Konex,
+                    _ => return Err(invalid_component_contract()),
+                };
+                Ok((market, *operation))
+            })
+            .collect::<Result<Vec<_>, KrxError>>()?;
+        let outcomes = join_all(components.into_iter().map(|(id, operation)| {
+            let direct = DirectRequest {
+                operation,
+                date: request.date.clone(),
+                options: request.options.clone(),
+            };
+            async move {
+                ComponentOutcome {
+                    id,
+                    result: self.inner.direct.query_until(direct, deadline).await,
+                }
+            }
+        }))
+        .await;
+        check_composite_cancellation(&request.options)?;
+        crate::composites::reduce_watchlist_prices(request.date, &request.security_codes, outcomes)
+    }
+
+    pub fn capabilities(&self) -> &'static [OperationDescription] {
+        crate::operation::capabilities()
+    }
+
+    pub fn credentials(&self) -> CredentialHandle {
+        CredentialHandle {
+            manager: self.inner.credentials.clone(),
+            approvals: self.inner.approvals.clone(),
+            state_root: self.inner.state_root.clone(),
+        }
+    }
+
+    pub fn cache(&self) -> CacheHandle {
+        CacheHandle {
+            store: self.inner.cache.clone(),
+        }
+    }
+
+    pub fn watchlist(&self) -> WatchlistHandle {
+        WatchlistHandle {
+            store: self.inner.watchlist.clone(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct CredentialHandle {
+    manager: CredentialManager,
+    approvals: ApprovalStore,
+    state_root: PathBuf,
+}
+
+impl CredentialHandle {
+    pub async fn status(&self) -> Result<CredentialStatus, KrxError> {
+        self.manager.status().await
+    }
+
+    pub async fn approval_status(
+        &self,
+        category: ApprovalCategory,
+    ) -> Result<Option<ApprovalObservation>, KrxError> {
+        let credential = self.manager.resolve_required().await?;
+        self.approvals
+            .status(&credential.api_key, category, SystemTime::now())
+            .await
+    }
+
+    pub async fn check_approval(
+        &self,
+        category: ApprovalCategory,
+        cancellation: Cancellation,
+    ) -> Result<ApprovalObservation, KrxError> {
+        let operation = crate::credential::APPROVAL_PROBES
+            .iter()
+            .find_map(|(candidate, operation)| (*candidate == category).then_some(*operation))
+            .ok_or_else(invalid_component_contract)?;
+        let deadline = Instant::now() + Duration::from_millis(OVERALL_TIMEOUT_MS);
+        if cancellation.is_cancelled() {
+            return Err(
+                KrxError::new(KrxErrorCode::RequestCancelled, "request was cancelled")
+                    .for_operation(operation),
+            );
+        }
+        let credential = tokio::select! {
+            biased;
+            _ = cancellation.cancelled() => {
+                return Err(KrxError::new(
+                    KrxErrorCode::RequestCancelled,
+                    "request was cancelled",
+                ).for_operation(operation));
+            }
+            _ = tokio::time::sleep_until(tokio::time::Instant::from_std(deadline)) => {
+                return Err(KrxError::new(
+                    KrxErrorCode::DeadlineExceeded,
+                    "request exceeded its overall deadline",
+                ).for_operation(operation));
+            }
+            credential = self.manager.resolve_required() => credential?,
+        };
+        let today = crate::transport::kst_date(SystemTime::now())?;
+        let date = crate::calendar::resolve_recent(&today)?.date;
+        let direct =
+            DirectQueryClient::native(self.state_root.clone(), Some(credential.api_key.clone()))?;
+        let result = direct
+            .query_until(
+                DirectRequest {
+                    operation,
+                    date,
+                    options: CallOptions {
+                        cache: CachePolicy::Bypass,
+                        retries: DEFAULT_RETRIES,
+                        cancellation,
+                    },
+                },
+                deadline,
+            )
+            .await;
+        let outcome = match result {
+            Ok(result) if result.rows.is_empty() => ApprovalOutcome::NoData,
+            Ok(_) => ApprovalOutcome::Approved,
+            Err(error) if error.code() == KrxErrorCode::ServiceNotApproved => {
+                ApprovalOutcome::Rejected(error)
+            }
+            Err(error) => ApprovalOutcome::Inconclusive(Some(error)),
+        };
+        let checked_at = SystemTime::now();
+        self.approvals
+            .record(&credential.api_key, category, outcome, checked_at)
+            .await
+    }
+
+    pub async fn set(&self, api_key: ApiKey) -> Result<(), KrxError> {
+        self.manager.set(api_key).await
+    }
+
+    pub async fn remove(&self) -> Result<bool, KrxError> {
+        self.manager.remove().await
+    }
+
+    pub async fn migrate_legacy(&self) -> Result<CredentialMigrationResult, KrxError> {
+        self.manager.migrate_legacy().await
+    }
+}
+
+#[derive(Clone)]
+pub struct CacheHandle {
+    store: CacheStore,
+}
+
+impl CacheHandle {
+    pub async fn inspect(&self, options: CacheInspectOptions) -> Result<CacheInspection, KrxError> {
+        self.store.inspect(options).await
+    }
+
+    pub async fn prune(&self, options: CachePruneOptions) -> Result<CachePruneResult, KrxError> {
+        self.store.prune(options).await
+    }
+
+    pub async fn clear(&self) -> Result<CachePruneResult, KrxError> {
+        self.store.clear().await
+    }
+}
+
+#[derive(Clone)]
+pub struct WatchlistHandle {
+    store: WatchlistStore,
+}
+
+impl WatchlistHandle {
+    pub async fn list(&self) -> Result<Vec<WatchlistEntry>, KrxError> {
+        self.store.list().await
+    }
+
+    pub async fn add(&self, entry: WatchlistEntry) -> Result<bool, KrxError> {
+        self.store.add(entry).await
+    }
+
+    pub async fn remove(&self, security_code_or_name: &str) -> Result<bool, KrxError> {
+        self.store.remove(security_code_or_name).await
+    }
+}
 
 pub(crate) trait ClientTransport: Send + Sync + 'static {
     fn execute_until<'a>(
@@ -90,6 +436,14 @@ where
     pub(crate) async fn query(&self, request: DirectRequest) -> Result<QueryResult, KrxError> {
         validate_request(&request)?;
         let deadline = Instant::now() + Duration::from_millis(OVERALL_TIMEOUT_MS);
+        self.query_until(request, deadline).await
+    }
+
+    async fn query_until(
+        &self,
+        request: DirectRequest,
+        deadline: Instant,
+    ) -> Result<QueryResult, KrxError> {
         check_request_budget(&request, deadline)?;
         let key = self.cache.key(request.operation, request.date.clone())?;
 
@@ -144,6 +498,43 @@ where
                     .await
             }
         }
+    }
+
+    pub(crate) async fn range(&self, request: RangeRequest) -> Result<RangeResult, KrxError> {
+        validate_options(&request.options, Some(request.operation))?;
+        if matches!(request.mode, RangeMode::Adjusted { .. })
+            && !crate::operation::supports_adjustment(request.operation)
+        {
+            return Err(KrxError::new(
+                KrxErrorCode::InvalidOperation,
+                "adjusted ranges require a daily stock operation",
+            )
+            .for_operation(request.operation));
+        }
+        let deadline = Instant::now() + Duration::from_millis(OVERALL_TIMEOUT_MS);
+        check_options_budget(&request.options, request.operation, deadline)?;
+
+        let selection = crate::calendar::select_range(&request.range)?;
+        check_options_budget(&request.options, request.operation, deadline)?;
+        let outcomes = stream::iter(selection.trading_days.iter().cloned())
+            .map(|date| {
+                let direct = DirectRequest {
+                    operation: request.operation,
+                    date: date.clone(),
+                    options: request.options.clone(),
+                };
+                async move {
+                    crate::range::RangeOutcome {
+                        date,
+                        result: self.query_until(direct, deadline).await,
+                    }
+                }
+            })
+            .buffered(RANGE_CONCURRENCY)
+            .collect::<Vec<_>>()
+            .await;
+        check_composite_cancellation(&request.options)?;
+        crate::range::reduce(selection, outcomes, &request.mode)
     }
 
     async fn offline_query(
@@ -340,9 +731,7 @@ where
                 source: ResultSource::Network,
                 fetched_at,
                 freshness: Freshness::Fresh,
-                contract_id: crate::operation::operation_spec(request.operation)
-                    .contract_id
-                    .to_owned(),
+                contract_id: crate::operation::operation_spec(request.operation).contract_id,
             },
         })
     }
@@ -526,22 +915,47 @@ fn initial_hit(read: CacheRead) -> Box<CacheHit> {
 }
 
 fn validate_request(request: &DirectRequest) -> Result<(), KrxError> {
-    if request.options.retries > DEFAULT_RETRIES {
-        return Err(KrxError::new(
+    validate_options(&request.options, Some(request.operation))
+}
+
+fn validate_options(
+    options: &crate::CallOptions,
+    operation: Option<crate::OperationId>,
+) -> Result<(), KrxError> {
+    if options.retries > DEFAULT_RETRIES {
+        let error = KrxError::new(
             KrxErrorCode::InvalidArgument,
             "retry count must be between zero and three",
-        )
-        .for_operation(request.operation));
+        );
+        return Err(match operation {
+            Some(operation) => error.for_operation(operation),
+            None => error,
+        });
     }
     Ok(())
 }
 
 fn check_request_budget(request: &DirectRequest, deadline: Instant) -> Result<(), KrxError> {
-    if request.options.cancellation.is_cancelled() {
-        return Err(cancelled(request));
+    check_options_budget(&request.options, request.operation, deadline)
+}
+
+fn check_options_budget(
+    options: &crate::CallOptions,
+    operation: crate::OperationId,
+    deadline: Instant,
+) -> Result<(), KrxError> {
+    if options.cancellation.is_cancelled() {
+        return Err(
+            KrxError::new(KrxErrorCode::RequestCancelled, "request was cancelled")
+                .for_operation(operation),
+        );
     }
     if Instant::now() >= deadline {
-        return Err(deadline_error(request));
+        return Err(KrxError::new(
+            KrxErrorCode::DeadlineExceeded,
+            "request exceeded its overall deadline",
+        )
+        .for_operation(operation));
     }
     Ok(())
 }
@@ -567,6 +981,44 @@ fn default_cache_age() -> Duration {
     Duration::from_secs(DEFAULT_CACHE_MAX_AGE_HOURS * 60 * 60)
 }
 
+fn check_composite_cancellation(options: &CallOptions) -> Result<(), KrxError> {
+    if options.cancellation.is_cancelled() {
+        return Err(KrxError::new(
+            KrxErrorCode::RequestCancelled,
+            "request was cancelled",
+        ));
+    }
+    Ok(())
+}
+
+fn invalid_component_contract() -> KrxError {
+    KrxError::new(
+        KrxErrorCode::InternalFailure,
+        "generated component catalog is inconsistent",
+    )
+}
+
+fn default_state_root() -> Result<PathBuf, KrxError> {
+    #[cfg(unix)]
+    let home = std::env::var_os("HOME");
+    #[cfg(windows)]
+    let home = std::env::var_os("USERPROFILE");
+    #[cfg(not(any(unix, windows)))]
+    let home: Option<std::ffi::OsString> = None;
+
+    let home = home
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .ok_or_else(|| {
+            KrxError::new(
+                KrxErrorCode::UnsupportedPlatform,
+                "a secure user home directory is unavailable",
+            )
+        })?;
+    Ok(home.join(".krx-cli"))
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -577,7 +1029,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::*;
-    use crate::{CallOptions, OperationId, TradingDate};
+    use crate::{CallOptions, DateRange, OperationId, TradingDate};
 
     #[derive(Clone)]
     struct MockTransport {
@@ -585,6 +1037,43 @@ mod tests {
         delay: Duration,
         rows: Vec<Row>,
         failure: Option<KrxErrorCode>,
+    }
+
+    #[derive(Clone)]
+    struct RangeTransport {
+        calls: Arc<std::sync::Mutex<Vec<String>>>,
+        deadlines: Arc<std::sync::Mutex<Vec<Instant>>>,
+        active: Arc<AtomicUsize>,
+        max_active: Arc<AtomicUsize>,
+        delay: Duration,
+    }
+
+    impl ClientTransport for RangeTransport {
+        fn execute_until<'a>(
+            &'a self,
+            request: &'a DirectRequest,
+            _api_key: &'a ApiKey,
+            deadline: Instant,
+        ) -> TransportFuture<'a> {
+            Box::pin(async move {
+                self.calls
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .push(request.date.as_str().to_owned());
+                self.deadlines
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .push(deadline);
+                let active = self.active.fetch_add(1, Ordering::SeqCst) + 1;
+                self.max_active.fetch_max(active, Ordering::SeqCst);
+                tokio::time::sleep(self.delay).await;
+                self.active.fetch_sub(1, Ordering::SeqCst);
+                Ok(vec![Row::new(BTreeMap::from([(
+                    "BAS_DD".to_owned(),
+                    request.date.as_str().to_owned(),
+                )]))])
+            })
+        }
     }
 
     impl ClientTransport for MockTransport {
@@ -619,6 +1108,14 @@ mod tests {
             fs::create_dir_all(&parent).unwrap();
             let root = parent.join(".krx-cli");
             Self { parent, root }
+        }
+
+        fn range_client(&self, transport: RangeTransport) -> DirectQueryClient<RangeTransport> {
+            DirectQueryClient::with_transport(
+                self.root.clone(),
+                Some(ApiKey::parse("test-placeholder").unwrap()),
+                transport,
+            )
         }
 
         fn client(&self, transport: MockTransport) -> DirectQueryClient<MockTransport> {
@@ -1062,6 +1559,129 @@ mod tests {
             ResultSource::Network
         );
         assert_eq!(calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn range_preserves_date_order_and_caps_fanout_at_five() {
+        let fixture = Fixture::new();
+        let transport = RangeTransport {
+            calls: Arc::new(std::sync::Mutex::new(Vec::new())),
+            deadlines: Arc::new(std::sync::Mutex::new(Vec::new())),
+            active: Arc::new(AtomicUsize::new(0)),
+            max_active: Arc::new(AtomicUsize::new(0)),
+            delay: Duration::from_millis(25),
+        };
+        let max_active = Arc::clone(&transport.max_active);
+        let deadlines = Arc::clone(&transport.deadlines);
+        let client = fixture.range_client(transport);
+        let output = client
+            .range(RangeRequest {
+                operation: OperationId::StockStkByddTrd,
+                range: DateRange::new(
+                    TradingDate::parse("20260105").unwrap(),
+                    TradingDate::parse("20260112").unwrap(),
+                )
+                .unwrap(),
+                mode: RangeMode::Raw,
+                options: CallOptions {
+                    cache: CachePolicy::Bypass,
+                    ..CallOptions::default()
+                },
+            })
+            .await
+            .unwrap();
+
+        let row_dates = output
+            .result
+            .data
+            .iter()
+            .map(|row| row.get("BAS_DD").unwrap())
+            .collect::<Vec<_>>();
+        let succeeded = output
+            .result
+            .completeness
+            .succeeded
+            .iter()
+            .map(TradingDate::as_str)
+            .collect::<Vec<_>>();
+        assert_eq!(row_dates, succeeded);
+        assert_eq!(output.fetched_days, 6);
+        assert_eq!(max_active.load(Ordering::SeqCst), RANGE_CONCURRENCY);
+        let deadlines = deadlines.lock().unwrap();
+        assert_eq!(deadlines.len(), 6);
+        assert!(deadlines.iter().all(|deadline| *deadline == deadlines[0]));
+    }
+
+    #[tokio::test]
+    async fn range_skips_known_closures_without_transport_effects() {
+        let fixture = Fixture::new();
+        let transport = RangeTransport {
+            calls: Arc::new(std::sync::Mutex::new(Vec::new())),
+            deadlines: Arc::new(std::sync::Mutex::new(Vec::new())),
+            active: Arc::new(AtomicUsize::new(0)),
+            max_active: Arc::new(AtomicUsize::new(0)),
+            delay: Duration::ZERO,
+        };
+        let calls = Arc::clone(&transport.calls);
+        let output = fixture
+            .range_client(transport)
+            .range(RangeRequest {
+                operation: OperationId::StockStkByddTrd,
+                range: DateRange::new(
+                    TradingDate::parse("20260924").unwrap(),
+                    TradingDate::parse("20260924").unwrap(),
+                )
+                .unwrap(),
+                mode: RangeMode::Raw,
+                options: CallOptions {
+                    cache: CachePolicy::Bypass,
+                    ..CallOptions::default()
+                },
+            })
+            .await
+            .unwrap();
+
+        assert!(calls.lock().unwrap().is_empty());
+        assert_eq!(
+            output.result.completeness.state,
+            crate::CompletenessState::Empty
+        );
+        assert_eq!(output.fetched_days, 0);
+    }
+
+    #[tokio::test]
+    async fn adjusted_range_rejects_nonstock_operations_before_transport() {
+        let fixture = Fixture::new();
+        let transport = RangeTransport {
+            calls: Arc::new(std::sync::Mutex::new(Vec::new())),
+            deadlines: Arc::new(std::sync::Mutex::new(Vec::new())),
+            active: Arc::new(AtomicUsize::new(0)),
+            max_active: Arc::new(AtomicUsize::new(0)),
+            delay: Duration::ZERO,
+        };
+        let calls = Arc::clone(&transport.calls);
+        let error = fixture
+            .range_client(transport)
+            .range(RangeRequest {
+                operation: OperationId::IndexKospiDdTrd,
+                range: DateRange::new(
+                    TradingDate::parse("20260105").unwrap(),
+                    TradingDate::parse("20260105").unwrap(),
+                )
+                .unwrap(),
+                mode: RangeMode::Adjusted {
+                    security_code: crate::SecurityCode::parse("005930").unwrap(),
+                },
+                options: CallOptions {
+                    cache: CachePolicy::Bypass,
+                    ..CallOptions::default()
+                },
+            })
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), KrxErrorCode::InvalidOperation);
+        assert!(calls.lock().unwrap().is_empty());
     }
 
     #[test]

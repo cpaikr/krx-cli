@@ -670,6 +670,22 @@ fn generate_local_state(product: &ProductContract, migrations: &Value, output: &
         required(migrations, "/cacheRefresh/lease/stale/absoluteAgeMs")
             .as_u64()
             .expect("cache lease absolute-age duration integer");
+    let inspect_default_entries = required(migrations, "/bounds/inspectDefaultEntries")
+        .as_u64()
+        .expect("cache inspect default bound integer");
+    let inspect_maximum_entries = required(migrations, "/bounds/inspectMaximumEntries")
+        .as_u64()
+        .expect("cache inspect maximum bound integer");
+    let prune_scan_maximum_files = required(migrations, "/bounds/pruneScanMaximumFiles")
+        .as_u64()
+        .expect("cache prune file scan bound integer");
+    let prune_scan_maximum_metadata_bytes =
+        required(migrations, "/bounds/pruneScanMaximumMetadataBytes")
+            .as_u64()
+            .expect("cache prune metadata scan bound integer");
+    let prune_delete_batch_maximum = required(migrations, "/bounds/pruneDeleteBatchMaximum")
+        .as_u64()
+        .expect("cache prune delete batch bound integer");
     let migration = required(migrations, "/transitions")
         .as_array()
         .and_then(|transitions| {
@@ -693,6 +709,17 @@ fn generate_local_state(product: &ProductContract, migrations: &Value, output: &
         ("CACHE_FUTURE_SKEW_SECONDS", 5 * 60),
         ("CACHE_LEASE_OWNER_DEAD_MS", cache_lease_owner_dead_ms),
         ("CACHE_LEASE_ABSOLUTE_AGE_MS", cache_lease_absolute_age_ms),
+        ("CACHE_INSPECT_DEFAULT_ENTRIES", inspect_default_entries),
+        ("CACHE_INSPECT_MAXIMUM_ENTRIES", inspect_maximum_entries),
+        ("CACHE_PRUNE_SCAN_MAXIMUM_FILES", prune_scan_maximum_files),
+        (
+            "CACHE_PRUNE_SCAN_MAXIMUM_METADATA_BYTES",
+            prune_scan_maximum_metadata_bytes,
+        ),
+        (
+            "CACHE_PRUNE_DELETE_BATCH_MAXIMUM",
+            prune_delete_batch_maximum,
+        ),
     ] {
         generated.push_str(&format!("pub(crate) const {name}: u64 = {value};\n"));
     }

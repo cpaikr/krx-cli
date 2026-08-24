@@ -86,6 +86,95 @@ function assertDomainPolicySources(sources: {
   }
 }
 
+function assertPublicSdkSurfaceSources(sources: {
+  readonly cache: string;
+  readonly client: string;
+  readonly integration: string;
+  readonly lib: string;
+  readonly result: string;
+  readonly state: string;
+  readonly stateWindows: string;
+  readonly watchlist: string;
+}): void {
+  const publicClientStart = sources.client.indexOf("impl Client {");
+  const publicClientEnd = sources.client.indexOf(
+    "#[derive(Clone)]\npub struct CredentialHandle",
+    publicClientStart,
+  );
+  const publicClient = sources.client.slice(publicClientStart, publicClientEnd);
+  const rangeStart = sources.client.indexOf(
+    "pub(crate) async fn range(",
+    publicClientEnd,
+  );
+  const rangeEnd = sources.client.indexOf(
+    "async fn offline_query(",
+    rangeStart,
+  );
+  const range = sources.client.slice(rangeStart, rangeEnd);
+  const unixEnumeration = sources.state.slice(
+    sources.state.indexOf("fn enumerate_cache_directory("),
+    sources.state.indexOf("fn is_cache_lease_directory("),
+  );
+  const windowsEnumeration = sources.stateWindows.slice(
+    sources.stateWindows.indexOf("fn enumerate_cache_directory("),
+    sources.stateWindows.indexOf("fn is_cache_lease_directory("),
+  );
+  const required = [
+    [
+      sources.integration,
+      '#[path = "../../../contracts/product/v1/rust-sdk-consumer.rs"]',
+    ],
+    [sources.lib, "ClientBuilder, CredentialHandle, WatchlistHandle"],
+    [sources.lib, "pub use watchlist::WatchlistEntry;"],
+    [sources.result, "pub contract_id: &'static str"],
+    [sources.client, "pub struct Client"],
+    [sources.client, "pub struct ClientBuilder"],
+    [publicClient, "pub async fn query("],
+    [publicClient, "pub async fn range("],
+    [publicClient, "pub async fn search_stocks("],
+    [publicClient, "pub async fn market_summary("],
+    [publicClient, "pub async fn watchlist_prices("],
+    [publicClient, "STOCK_SEARCH_COMPONENTS"],
+    [publicClient, "MARKET_SUMMARY_COMPONENTS"],
+    [publicClient, "WATCHLIST_PRICE_COMPONENTS"],
+    [publicClient, '"KONEX" => WatchlistMarket::Konex'],
+    [sources.client, "APPROVAL_PROBES"],
+    [sources.client, "pub async fn inspect("],
+    [sources.client, "pub async fn prune("],
+    [sources.client, "pub async fn clear("],
+    [sources.client, "pub async fn list("],
+    [sources.client, "pub async fn add("],
+    [sources.client, "pub async fn remove("],
+    [range, ".buffered(RANGE_CONCURRENCY)"],
+    [range, "query_until(direct, deadline)"],
+    [sources.watchlist, "let _lock = acquire_lock(state)?;"],
+    [sources.watchlist, "watchlist contains duplicate ISINs"],
+    [sources.cache, "CACHE_INSPECT_DEFAULT_ENTRIES"],
+    [sources.cache, "CACHE_PRUNE_SCAN_MAXIMUM_FILES"],
+    [sources.cache, "maximum > CACHE_PRUNE_DELETE_BATCH_MAXIMUM as usize"],
+    [sources.cache, "is_v2_cache_path(&entries[*right].relative)"],
+    [
+      sources.cache,
+      "is_stale_cache_temporary(&path.relative, observed.modified(), now)",
+    ],
+    [unixEnumeration, "Dir::read_from(directory)"],
+    [windowsEnumeration, ".entries()"],
+  ] as const;
+  if (
+    publicClientStart < 0 ||
+    publicClientEnd < 0 ||
+    rangeStart < 0 ||
+    rangeEnd < 0 ||
+    required.some(([source, marker]) => !source.includes(marker)) ||
+    publicClient.includes(".query(direct)") ||
+    range.includes("self.query(direct)")
+  ) {
+    throw new Error(
+      "Rust public SDK surface, shared orchestration, or state handles are incomplete",
+    );
+  }
+}
+
 function assertQuotaStateProtocolSource(source: string): void {
   const atomicStart = source.indexOf("fn atomic_write_observed_inner(");
   const atomicEnd = source.indexOf(
@@ -244,6 +333,12 @@ function assertWindowsStateProtocolSource(source: string): void {
   const identityStart = source.indexOf("fn handle_identity(");
   const identityEnd = source.indexOf("#[cfg(test)]", identityStart);
   const identity = source.slice(identityStart, identityEnd);
+  const ownerGrammarStart = source.indexOf("fn validate_plain_lock_owner(");
+  const ownerGrammarEnd = source.indexOf(
+    "fn open_absolute_root(",
+    ownerGrammarStart,
+  );
+  const ownerGrammar = source.slice(ownerGrammarStart, ownerGrammarEnd);
   const forbiddenPathMutations = [
     ".create_dir(",
     ".rename(",
@@ -422,7 +517,11 @@ function assertWindowsStateProtocolSource(source: string): void {
     !flush.includes("FlushFileBuffers(directory.as_raw_handle().cast())") ||
     !flush.includes("== 0") ||
     !source.includes("delete_open_directory(directory).is_ok()") ||
-    !source.includes("byte.is_ascii_uppercase()") ||
+    ownerGrammarStart < 0 ||
+    ownerGrammarEnd < 0 ||
+    !ownerGrammar.includes(
+      "if uuid.bytes().any(|byte| byte.is_ascii_uppercase())",
+    ) ||
     !source.includes("matches!(*suffix, 0x00b9 | 0x00b2 | 0x00b3)") ||
     identityStart < 0 ||
     identityEnd < 0 ||
@@ -953,6 +1052,105 @@ describe("production Rust SDK gate", () => {
         ),
       }),
     ).toThrow(/Rust SDK domain policy is missing/u);
+  });
+
+  it("compiles and mutation-gates the complete public SDK façade", () => {
+    const sources = {
+      cache: read("crates/krx-sdk/src/cache.rs"),
+      client: read("crates/krx-sdk/src/client.rs"),
+      integration: read("crates/krx-sdk/tests/public_contract.rs"),
+      lib: read("crates/krx-sdk/src/lib.rs"),
+      result: read("crates/krx-sdk/src/result.rs"),
+      state: read("crates/krx-sdk/src/state.rs"),
+      stateWindows: read("crates/krx-sdk/src/state_windows.rs"),
+      watchlist: read("crates/krx-sdk/src/watchlist.rs"),
+    };
+    expect(() => assertPublicSdkSurfaceSources(sources)).not.toThrow();
+    for (const [index, mutant] of [
+      {
+        ...sources,
+        integration: sources.integration.replace(
+          "rust-sdk-consumer.rs",
+          "missing-consumer.rs",
+        ),
+      },
+      {
+        ...sources,
+        result: sources.result.replace("&'static str", "String"),
+      },
+      {
+        ...sources,
+        client: sources.client.replace(
+          ".buffered(RANGE_CONCURRENCY)",
+          ".buffered(1)",
+        ),
+      },
+      {
+        ...sources,
+        client: sources.client.replace(
+          "query_until(direct, deadline)",
+          "query(direct)",
+        ),
+      },
+      {
+        ...sources,
+        client: sources.client.replace(
+          '"KONEX" => WatchlistMarket::Konex',
+          '"KONEX" => WatchlistMarket::Kosdaq',
+        ),
+      },
+      {
+        ...sources,
+        watchlist: sources.watchlist.replaceAll(
+          "let _lock = acquire_lock(state)?;",
+          "let _lock = ();",
+        ),
+      },
+      {
+        ...sources,
+        cache: sources.cache.replaceAll(
+          "CACHE_INSPECT_DEFAULT_ENTRIES",
+          "REMOVED_INSPECT_DEFAULT_ENTRIES",
+        ),
+      },
+      {
+        ...sources,
+        cache: sources.cache.replace("observed.modified()", "path.modified"),
+      },
+      {
+        ...sources,
+        cache: sources.cache.replace(
+          "maximum > CACHE_PRUNE_DELETE_BATCH_MAXIMUM as usize",
+          "false",
+        ),
+      },
+      {
+        ...sources,
+        cache: sources.cache.replace(
+          "is_v2_cache_path(&entries[*right].relative)",
+          "false",
+        ),
+      },
+      {
+        ...sources,
+        state: sources.state.replace(
+          "Dir::read_from(directory)",
+          "fs::read_dir(directory)",
+        ),
+      },
+      {
+        ...sources,
+        stateWindows: sources.stateWindows.replace(
+          ".entries()",
+          ".read_dir(directory)",
+        ),
+      },
+    ].entries()) {
+      expect(
+        () => assertPublicSdkSurfaceSources(mutant),
+        `public SDK mutant ${index}`,
+      ).toThrow(/Rust public SDK surface/u);
+    }
   });
 
   it("runs locked strict validation on both Blacksmith Linux architectures", () => {
