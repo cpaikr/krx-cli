@@ -47,22 +47,39 @@ Goal contract
 
 ### Current in-scope result
 
-Complete shared Rust SDK for all supported KRX behavior and local policy. The
-implementation is complete locally; its production PR delivery lifecycle is
-active.
+Build the native Clap CLI and public Node SDK over the merged shared Rust SDK.
+This adapter slice keeps the legacy JavaScript CLI and MCP runnable until the
+separate atomic cutover result, while preventing either candidate adapter from
+acquiring a second transport, policy implementation, or MCP compatibility
+surface.
 
 ### Next in-scope action
 
-Push the reviewed PR #9 feedback remediation, resolve every verified review
-thread, complete automatic follow-up review and exact-head Blacksmith
-validation, then merge the production SDK PR while preserving its commits.
-Keep CLI and Node adapter implementation out of this slice until that PR is
-complete.
+Deliver one reviewable adapter PR containing `crates/krx-cli`, the private
+`crates/krx-node` napi-rs boundary, and the typed `packages/node` facade. Drive
+both adapters only through `krx-sdk`; preserve the frozen CLI and Node
+contracts; assemble all four supported target definitions; and continuously
+certify the Linux GNU x64/ARM64 tarballs under Node 22 and 24 on Blacksmith.
+Keep parity promotion, package-export cutover, legacy TypeScript deletion, and
+MCP removal out of this slice.
 
 ### Evidence and blockers
 
-- Production SDK PR [#9](https://github.com/cpaikr/krx-cli/pull/9) is open and
-  its original implementation head `1471622` passed both Blacksmith SDK jobs,
+- Production SDK PR [#9](https://github.com/cpaikr/krx-cli/pull/9) merged as
+  `9f11cda` with all eleven reviewed commits preserved. Its final feedback
+  collection covered exact head `3bb5397`, found all 21 threads resolved with
+  no outside-diff findings, and confirmed the PR mergeable. Exact-head Rust SDK
+  run [32708825108](https://github.com/cpaikr/krx-cli/actions/runs/32708825108)
+  passed Blacksmith Linux x64/ARM64. Native certification run
+  [32708825088](https://github.com/cpaikr/krx-cli/actions/runs/32708825088)
+  passed both Linux builds, all four Node 22/24 clean-install consumers, and the
+  Linux package-identity aggregator. CodeRabbit accepted the reviewed
+  compatibility and CI-cost dispositions; its exact-head status was successful
+  with incremental review intentionally skipped by repository policy. The
+  delivery had no GitHub Actions quota failure.
+- Before its merge, production SDK PR
+  [#9](https://github.com/cpaikr/krx-cli/pull/9) original implementation head
+  `1471622` passed both Blacksmith SDK jobs,
   both Linux native builds, all four Node 22/24 consumers, and the identity
   aggregator. Codex and CodeRabbit completed reviews on that exact head. The
   checked remediation accepts the valid public-request, watchlist, workflow,
