@@ -25,7 +25,18 @@ Goal contract
 
 ## Authorized amendments
 
-_None._
+- On 2026-08-24, the repository moved from `sjunepark/krx-cli` to the private
+  `cpaikr/krx-cli` repository. The transferred repository, branches, PRs,
+  reviews, and history remain the delivery authority.
+- The four native artifact targets remain supported: macOS ARM64, Linux GNU
+  x64/ARM64, and Windows x64. Continuous exact-head CI certification is reduced
+  to Linux GNU x64/ARM64 under Node 22 and 24. macOS and Windows are
+  intentionally omitted from continuous CI solely to reduce compute cost;
+  their historical certification remains evidence but is no longer a rewrite
+  completion gate.
+- GitHub Actions jobs use Blacksmith runners. The heavy native certification
+  runs for pull requests and manual dispatch only; branch pushes do not launch
+  a duplicate matrix.
 
 ## Execution status
 
@@ -39,14 +50,24 @@ Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Next in-scope action
 
-Deliver the certified contract-authority branch through its create-PR,
-feedback, re-review, and merge lifecycle. Production Rust remains blocked until
-that PR is complete.
+Push the Blacksmith/Linux certification amendment to contract delivery PR #8,
+obtain exact-head Linux GNU x64/ARM64 evidence, refresh the complete feedback
+surface, and merge the reviewed contract authority. Production Rust remains
+blocked until that PR is complete.
 
 ### Evidence and blockers
 
+- The repository transfer to private `cpaikr/krx-cli` preserved PR #8 and its
+  branch topology. The checked amendment routes every Actions job to
+  Blacksmith, removes the duplicate native branch-push matrix, retains all four
+  supported native targets, and freezes Linux GNU x64/ARM64 as the continuous
+  Node 22/24 certification subset. `pnpm verify` passes 48 files and 487 tests,
+  the installed-package compatibility and package-smoke gates pass, and the
+  Rust workspace passes formatting, 25 tests with two opt-in native checks
+  ignored locally, and strict Clippy. Exact-head hosted Blacksmith evidence is
+  pending the PR-branch push.
 - Contract delivery PR
-  [#8](https://github.com/sjunepark/krx-cli/pull/8) completed its initial
+  [#8](https://github.com/cpaikr/krx-cli/pull/8) completed its initial
   13-job four-target matrix at `c085b94`; all native builds, eight Node
   consumers, and the cross-target identity aggregator passed. Review feedback
   exposed six contract/probe defects plus an unsafe probe-origin hook. The
@@ -67,9 +88,9 @@ that PR is complete.
   Node 22 and 24 pass locally; both consumers certify portable digest
   `7f5dc0f96e7c38fd458ebc203f599d5ff561712a3d88111cb28fb723d3c90180`.
   Final implementation-head push run
-  [32617597910](https://github.com/sjunepark/krx-cli/actions/runs/32617597910)
+  [32617597910](https://github.com/cpaikr/krx-cli/actions/runs/32617597910)
   and PR run
-  [32617600682](https://github.com/sjunepark/krx-cli/actions/runs/32617600682)
+  [32617600682](https://github.com/cpaikr/krx-cli/actions/runs/32617600682)
   each pass all four native builds, all eight unchanged-archive Node
   consumers, and the final identity aggregator at `6b46cc1`. A refreshed
   complete feedback collection confirms all six Codex threads are answered
@@ -143,7 +164,8 @@ that PR is complete.
   redirect refusal, whole-response cancellation and deadlines, bounded
   chunked bodies, redaction, and an injected credential backend. Opt-in local
   checks pass the official Rustls handshake and a cleaned-up native keychain
-  round-trip; the hosted workflow runs both on every target.
+  round-trip. The historical hosted workflow ran both on every target; the
+  amended workflow runs them on the two continuously certified Linux targets.
 - Five native CLI integration tests prove Clap-owned topology and conflicts,
   semantic rejection before credential or network access, the frozen
   diagnostic grammar, direct shared-SDK invocation, and a native executable
@@ -156,14 +178,15 @@ that PR is complete.
 - One locally assembled `darwin-arm64` tarball passes the clean-install gate
   unchanged under Node 22 and 24, including TypeScript consumer compilation and
   npm's direct native `krx` bin link. Both local consumers report identical
-  portable payload, metadata, and capability identities. The workflow builds
-  macOS ARM64, Linux GNU x64/ARM64, and Windows x64 once per target, fans each
-  exact tarball out to both Node majors, and compares all eight reports. At this
-  historical pre-certification checkpoint, hosted certification was still
-  pending; the successful certification and documentation-head reruns are
-  recorded below.
+  portable payload, metadata, and capability identities. The historical
+  workflow built macOS ARM64, Linux GNU x64/ARM64, and Windows x64 once per
+  target, fanned each exact tarball out to both Node majors, and compared all
+  eight reports. The amended workflow performs the same proof for Linux GNU
+  x64/ARM64 only. At this historical pre-certification checkpoint, hosted
+  certification was still pending; the successful certification and
+  documentation-head reruns are recorded below.
 - Hosted run
-  [32560050687](https://github.com/sjunepark/krx-cli/actions/runs/32560050687)
+  [32560050687](https://github.com/cpaikr/krx-cli/actions/runs/32560050687)
   passed every build, test, Rustls, keyring, assembly, pack, and upload step on
   macOS ARM64 and Linux GNU x64/ARM64. Windows passed through assembly but Node
   24 could not directly spawn `npm.cmd`, yielding a null child-process status.
@@ -171,7 +194,7 @@ that PR is complete.
   path regression, preserves failure diagnostics, and updates the workflow to
   the current documented checkout, setup-node, and download-artifact majors.
 - Hosted retry
-  [32561033733](https://github.com/sjunepark/krx-cli/actions/runs/32561033733)
+  [32561033733](https://github.com/cpaikr/krx-cli/actions/runs/32561033733)
   passed all four build jobs, including Windows x64 assembly, pack, and upload,
   and six non-Windows clean-install consumers. Both Windows consumers installed
   the artifact successfully before exposing a POSIX-separator assumption in
@@ -179,7 +202,7 @@ that PR is complete.
   semantics and an executable Win32 regression covering nested, root, sibling,
   and cross-drive paths; its independent review is clean.
 - Hosted retry
-  [32561770761](https://github.com/sjunepark/krx-cli/actions/runs/32561770761)
+  [32561770761](https://github.com/cpaikr/krx-cli/actions/runs/32561770761)
   passed all four builds and six non-Windows consumers. Both Windows consumers
   completed every check and emitted matching `status: passed` reports before
   cleanup failed because the certifier process still held its imported native
@@ -187,7 +210,7 @@ that PR is complete.
   which exits and releases the module before the parent removes the temporary
   install. Local clean installs pass unchanged under Node 22 and 24.
 - Hosted retry
-  [32562681277](https://github.com/sjunepark/krx-cli/actions/runs/32562681277)
+  [32562681277](https://github.com/cpaikr/krx-cli/actions/runs/32562681277)
   passed all four builds and all eight clean-install consumers, including DLL
   release and cleanup on Windows under Node 22 and 24. The final aggregator
   then detected that Windows checkout had converted every portable JavaScript
@@ -195,14 +218,14 @@ that PR is complete.
   are otherwise byte-identical. Checked attributes now pin every portable
   source to LF, and the workflow watches that policy as a certification input.
 - Hosted certification
-  [32563560693](https://github.com/sjunepark/krx-cli/actions/runs/32563560693)
+  [32563560693](https://github.com/cpaikr/krx-cli/actions/runs/32563560693)
   passed all four target builds, all eight exact-archive clean-install
   consumers under Node 22 and 24, and the final package-identity aggregator.
   All eight reports share portable digest `7f5dc0f96e7c38fd458ebc203f599d5ff561712a3d88111cb28fb723d3c90180`,
   package metadata, and native capability identity. An independent download
   and local comparator replay passed against those reports.
 - Documentation-head run
-  [32564281020](https://github.com/sjunepark/krx-cli/actions/runs/32564281020)
+  [32564281020](https://github.com/cpaikr/krx-cli/actions/runs/32564281020)
   repeated the complete 13-job certification matrix successfully at commit
   `07fe73fe4c5500f3dcba0910a592b9d2c7a681ab`, the final implementation and
   certification-report head before the contract PR lifecycle.
@@ -228,7 +251,7 @@ that PR is complete.
   independent no-data-exit, schema-description, and adjustment-metadata mutants
   only in their named scenarios.
 - Baseline delivery PR
-  [#7](https://github.com/sjunepark/krx-cli/pull/7) completed the create-review,
+  [#7](https://github.com/cpaikr/krx-cli/pull/7) completed the create-review,
   feedback, re-review, and merge lifecycle. CodeRabbit and Codex reviewed the
   implementation, all ten review threads were addressed and resolved, and the
   final bounded implementation re-review was clean.
@@ -237,13 +260,13 @@ that PR is complete.
   mutation proofs, and packed-artifact smoke. npm 10.9.8 compatibility and
   package-smoke runs pass separately.
 - Hosted CI run
-  [32549447464](https://github.com/sjunepark/krx-cli/actions/runs/32549447464)
+  [32549447464](https://github.com/cpaikr/krx-cli/actions/runs/32549447464)
   passes the complete deterministic gate on Ubuntu and Windows under Node 22
   and 24.
 - Hosted deterministic contract-drift run
-  [32549339039](https://github.com/sjunepark/krx-cli/actions/runs/32549339039)
+  [32549339039](https://github.com/cpaikr/krx-cli/actions/runs/32549339039)
   passes for all 31 registered endpoints with no exclusions. Live-mode run
-  [32549366727](https://github.com/sjunepark/krx-cli/actions/runs/32549366727)
+  [32549366727](https://github.com/cpaikr/krx-cli/actions/runs/32549366727)
   passes the current official KRX calendar step and then stops at the missing
   repository credential boundary.
 - Merge commit `3732598e461ec5d78bd1121dbbe86d56aa658376` is the

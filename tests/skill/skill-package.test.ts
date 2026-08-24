@@ -110,7 +110,7 @@ describe("krx-cli skill package", () => {
     expect(packageJson.files).toContain("skills");
     expect(packageJson.files).not.toContain("SKILL.md");
     expect(packageJson.scripts).not.toHaveProperty("sync-skill-version");
-    expect(readme).toContain("npx skills add sjunepark/krx-cli");
+    expect(readme).toContain("npx skills add cpaikr/krx-cli");
     expect(readme).toContain("cp -R skills/krx-cli");
     expect(readme).toContain("krx-cli.md.legacy");
   });

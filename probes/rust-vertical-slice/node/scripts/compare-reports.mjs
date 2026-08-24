@@ -20,12 +20,7 @@ const reports = await Promise.all(
     JSON.parse(await readFile(resolve(reportsRoot, name), "utf8")),
   ),
 );
-const expectedTargets = [
-  "darwin-arm64",
-  "linux-x64-gnu",
-  "linux-arm64-gnu",
-  "win32-x64-msvc",
-];
+const expectedTargets = ["linux-x64-gnu", "linux-arm64-gnu"];
 assert.equal(reports.length, expectedTargets.length * 2);
 for (const target of expectedTargets) {
   assert.deepEqual(

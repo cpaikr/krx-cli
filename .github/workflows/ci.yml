@@ -12,12 +12,13 @@ permissions:
 
 jobs:
   verify:
-    name: ${{ matrix.os }} / Node.js ${{ matrix.node-version }}
-    runs-on: ${{ matrix.os }}
+    name: Linux x64 / Node.js ${{ matrix.node-version }}
+    # macOS and Windows are intentionally omitted to reduce CI compute cost.
+    # Their native artifact targets remain supported but are not continuously tested.
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
         node-version: [22, 24]
 
     steps:

@@ -66,7 +66,7 @@ describe("Rust vertical-slice gate", () => {
     expect(result.status, result.stderr).toBe(0);
   });
 
-  it("rejects a missing certified target", () => {
+  it("rejects a missing supported target", () => {
     const path = mutatedJson(
       "contracts/product/v1/native-targets.json",
       (document) => {
@@ -75,7 +75,21 @@ describe("Rust vertical-slice gate", () => {
     );
     const result = run("--native-targets", path);
     expect(result.status).toBe(1);
-    expect(result.stderr).toMatch(/four certified targets/u);
+    expect(result.stderr).toMatch(/four supported targets/u);
+  });
+
+  it("rejects drift in the continuous certification target set", () => {
+    const path = mutatedJson(
+      "contracts/product/v1/native-targets.json",
+      (document) => {
+        document.distribution.continuousCertificationTargets.push(
+          "darwin-arm64",
+        );
+      },
+    );
+    const result = run("--native-targets", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/only the two Linux GNU targets/u);
   });
 
   it("rejects an uncertified Node major", () => {
@@ -325,6 +339,28 @@ describe("Rust vertical-slice gate", () => {
     expect(result.stderr).toMatch(/install the pinned Rust toolchain/u);
   });
 
+  it("rejects duplicate branch-push certification", () => {
+    const path = replacedText(
+      ".github/workflows/rust-vertical-slice.yml",
+      "on:\n",
+      'on:\n  push: { branches: ["codex/rust-rewrite-*"] }\n',
+    );
+    const result = run("--workflow", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/must not duplicate/u);
+  });
+
+  it("rejects a non-Blacksmith continuous runner", () => {
+    const path = replacedText(
+      ".github/workflows/rust-vertical-slice.yml",
+      "runner: blacksmith-2vcpu-ubuntu-2404-arm",
+      "runner: ubuntu-24.04-arm",
+    );
+    const result = run("--workflow", path);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/expected Blacksmith image/u);
+  });
+
   it("rejects a native CLI version that drifts from the root package", () => {
     const path = replacedText(
       "probes/rust-vertical-slice/cli/Cargo.toml",
@@ -349,12 +385,7 @@ describe("Rust vertical-slice gate", () => {
 
   it("rejects cross-target portable payload divergence", () => {
     const directory = mkdtempSync(join(tmpdir(), "krx-probe-reports-"));
-    const targets = [
-      "darwin-arm64",
-      "linux-x64-gnu",
-      "linux-arm64-gnu",
-      "win32-x64-msvc",
-    ];
+    const targets = ["linux-x64-gnu", "linux-arm64-gnu"];
     for (const target of targets) {
       for (const node of [22, 24]) {
         writeFileSync(
@@ -372,7 +403,7 @@ describe("Rust vertical-slice gate", () => {
       }
     }
     expect(runReportComparison(directory).status).toBe(0);
-    const mutant = join(directory, "win32-x64-msvc-node24.json");
+    const mutant = join(directory, "linux-arm64-gnu-node24.json");
     const report = JSON.parse(readFileSync(mutant, "utf8"));
     report.portableSha256 = "divergent";
     writeFileSync(mutant, `${JSON.stringify(report)}\n`);

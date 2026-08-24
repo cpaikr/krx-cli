@@ -113,7 +113,13 @@ const targetIds = targets.targets.map((target) => target.id);
 equal(
   targetIds,
   ["darwin-arm64", "linux-x64-gnu", "linux-arm64-gnu", "win32-x64-msvc"],
-  "native target manifest must contain the four certified targets in stable order",
+  "native target manifest must contain the four supported targets in stable order",
+);
+const continuousTargetIds = targets.distribution.continuousCertificationTargets;
+equal(
+  continuousTargetIds,
+  ["linux-x64-gnu", "linux-arm64-gnu"],
+  "continuous certification must cover only the two Linux GNU targets",
 );
 equal(
   targets.targets.map((target) => target.rustTarget),
@@ -165,10 +171,9 @@ equal(
   ],
   "portable package sources must have an exact LF-only attributes policy",
 );
-equal(
-  workflow.on?.push?.paths,
-  requiredWorkflowPaths,
-  "workflow push paths must cover every certification input",
+invariant(
+  workflow.on?.push === undefined,
+  "workflow must not duplicate the certification matrix on branch pushes",
 );
 equal(
   workflow.on?.pull_request?.paths,
@@ -176,15 +181,25 @@ equal(
   "workflow pull-request paths must cover every certification input",
 );
 invariant(
+  Object.hasOwn(workflow.on ?? {}, "workflow_dispatch"),
+  "workflow must retain manual certification dispatch",
+);
+invariant(
   Array.isArray(buildTargets),
   "workflow build matrix must use an explicit include list",
 );
 equal(
   buildTargets.map((target) => target.id),
-  targetIds,
-  "workflow build matrix must match the native manifest",
+  continuousTargetIds,
+  "workflow build matrix must match the continuous certification targets",
 );
-for (const target of targets.targets) {
+const expectedRunners = {
+  "linux-x64-gnu": "blacksmith-2vcpu-ubuntu-2404",
+  "linux-arm64-gnu": "blacksmith-2vcpu-ubuntu-2404-arm",
+};
+for (const targetId of continuousTargetIds) {
+  const target = targets.targets.find((candidate) => candidate.id === targetId);
+  invariant(target, `native manifest is missing continuous target ${targetId}`);
   const workflowTarget = buildTargets.find(
     (candidate) => candidate.id === target.id,
   );
@@ -193,6 +208,11 @@ for (const target of targets.targets) {
     workflowTarget["rust-target"],
     target.rustTarget,
     `workflow Rust target for ${target.id} must match the manifest`,
+  );
+  equal(
+    workflowTarget.runner,
+    expectedRunners[target.id],
+    `workflow runner for ${target.id} must use the expected Blacksmith image`,
   );
   invariant(
     workflowTarget.binding.endsWith(bindingFilename(target)),
@@ -210,13 +230,25 @@ equal(
 );
 equal(
   workflow.jobs?.consume?.strategy?.matrix?.target?.map((target) => target.id),
-  targetIds,
-  "workflow consumer target matrix must match the manifest",
+  continuousTargetIds,
+  "workflow consumer target matrix must match the continuous certification targets",
 );
+for (const target of workflow.jobs?.consume?.strategy?.matrix?.target ?? []) {
+  equal(
+    target.runner,
+    expectedRunners[target.id],
+    `workflow consumer for ${target.id} must use the expected Blacksmith image`,
+  );
+}
 equal(
   workflow.jobs?.certification?.needs,
   ["build", "consume"],
   "workflow must aggregate every build and consumer result",
+);
+equal(
+  workflow.jobs?.certification?.["runs-on"],
+  "blacksmith-2vcpu-ubuntu-2404",
+  "workflow aggregator must use the expected Blacksmith image",
 );
 const rustInstall = workflow.jobs?.build?.steps?.find(
   (step) => step.name === "Install pinned Rust toolchain and target",
@@ -394,7 +426,7 @@ for (const required of [
 }
 
 process.stdout.write(
-  `Rust vertical-slice contract valid (${targetIds.length} targets, ${targets.distribution.nodeMajors.length} Node majors)\n`,
+  `Rust vertical-slice contract valid (${targetIds.length} supported targets, ${continuousTargetIds.length} continuously certified, ${targets.distribution.nodeMajors.length} Node majors)\n`,
 );
 
 async function readJson(path) {

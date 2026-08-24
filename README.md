@@ -29,7 +29,7 @@ Claude Code, GPT, Cursor 등의 AI 에이전트가 Bash tool 또는 MCP를 통�
 - Node.js 22 이상
 - pnpm 10.28 이상
 - Git
-- `sjunepark/krx-cli` 저장소 접근 권한
+- `cpaikr/krx-cli` 저장소 접근 권한
 
 ### GitHub SSH 인증
 
@@ -55,7 +55,7 @@ ssh -T git@github.com
 
 ```bash
 pnpm add --global --allow-build=krx-cli \
-  "git+ssh://git@github.com/sjunepark/krx-cli.git#<TAG>"
+  "git+ssh://git@github.com/cpaikr/krx-cli.git#<TAG>"
 
 krx --version
 krx --help
@@ -71,7 +71,7 @@ krx --help
 
 ```bash
 pnpm add --global --allow-build=krx-cli \
-  "git+ssh://git@github.com/sjunepark/krx-cli.git#<NEW_TAG>"
+  "git+ssh://git@github.com/cpaikr/krx-cli.git#<NEW_TAG>"
 ```
 
 설치된 버전은 `krx --version` 또는 `krx version`으로 확인합니다. 사용할 최신
@@ -92,7 +92,7 @@ gh auth login --git-protocol https --web
 gh auth setup-git
 
 pnpm add --global --allow-build=krx-cli \
-  "git+https://github.com/sjunepark/krx-cli.git#<TAG>"
+  "git+https://github.com/cpaikr/krx-cli.git#<TAG>"
 ```
 
 개인 액세스 토큰을 Git URL에 직접 넣지 마세요.
@@ -100,7 +100,7 @@ pnpm add --global --allow-build=krx-cli \
 ### 로컬 개발 버전 설치
 
 ```bash
-git clone git@github.com:sjunepark/krx-cli.git
+git clone git@github.com:cpaikr/krx-cli.git
 cd krx-cli
 pnpm install
 pnpm add --global .
@@ -115,7 +115,7 @@ pnpm add --global .
 
 ```bash
 git ls-remote \
-  git@github.com:sjunepark/krx-cli.git \
+  git@github.com:cpaikr/krx-cli.git \
   "refs/tags/<TAG>"
 ```
 
@@ -425,14 +425,14 @@ krx-cli는 AI 에이전트가 Bash tool로 직접 호출하도록 설계되었�
 
 ```bash
 # 모든 에이전트에 글로벌 설치 (권장)
-npx skills add sjunepark/krx-cli -g
+npx skills add cpaikr/krx-cli -g
 
 # 특정 에이전트만 지정
-npx skills add sjunepark/krx-cli -g -a claude-code
-npx skills add sjunepark/krx-cli -g -a cursor
+npx skills add cpaikr/krx-cli -g -a claude-code
+npx skills add cpaikr/krx-cli -g -a cursor
 
 # 프로젝트 단위 설치 (팀 공유 시)
-npx skills add sjunepark/krx-cli
+npx skills add cpaikr/krx-cli
 ```
 
 ### Step 3: API 키 설정

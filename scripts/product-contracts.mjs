@@ -1323,6 +1323,7 @@ equal(
     registryAccess: false,
     publicBindingSubpath: false,
     nodeMajors: [22, 24],
+    continuousCertificationTargets: ["linux-x64-gnu", "linux-arm64-gnu"],
     assetNameTemplate: "krx-cli-{version}-{target}.tgz",
   },
   "native distribution boundary must stay exact",

@@ -13,9 +13,11 @@ produces private installable native tarballs for every supported platform
 without requiring a Rust toolchain on consumer machines.
 
 The rewrite is complete when the Rust SDK, native CLI, and Node SDK pass
-contract, black-box, package-consumer, and supported-platform validation and
-the legacy TypeScript protocol and JavaScript CLI implementations have been
-removed. Creating the first tag or GitHub Release remains a separate
+contract, black-box, package-consumer, and continuous Linux GNU x64/ARM64
+validation and the legacy TypeScript protocol and JavaScript CLI
+implementations have been removed. macOS ARM64 and Windows x64 remain supported
+artifact targets but are intentionally omitted from continuous CI to reduce
+compute cost. Creating the first tag or GitHub Release remains a separate
 publication decision.
 
 ## Current state
@@ -50,16 +52,17 @@ publication decision.
   error types, and strict operation-aware cache schemas. Nine maintained state
   schemas and classified fixtures cover credential, approval, cache, quota,
   and watchlist migration. The full deterministic gate passes 48 test files
-  and 481 tests, including 92 targeted authority, product, and vertical-slice
+  and 487 tests, including the targeted authority, product, and vertical-slice
   gate tests.
 - The disposable workspace compiles the frozen Rust consumer and proves one
   OpenAPI-derived operation through reqwest/Rustls, a native Clap executable,
-  and a private napi-rs binding. macOS ARM64 clean-install certification passes
-  the same private tarball under Node 22 and 24. The checked hosted workflow
-  builds all four manifest targets once apiece, consumes each unchanged on both
-  Node majors, aggregates the twelve required matrix jobs, and compares the
-  portable payload, package metadata, and native capabilities reported by all
-  eight consumers. The first hosted run passed all macOS and Linux work and
+  and a private napi-rs binding. Before the 2026-08-24 CI-cost amendment,
+  macOS ARM64 clean-install certification passed the same private tarball under
+  Node 22 and 24. The historical hosted workflow built all four manifest
+  targets once apiece, consumed each unchanged on both Node majors, aggregated
+  the twelve required matrix jobs, and compared the portable payload, package
+  metadata, and native capabilities reported by all eight consumers. The first
+  hosted run passed all macOS and Linux work and
   every Windows step through package assembly, then exposed Node 24's inability
   to spawn `npm.cmd` directly. The next retry passed all four builds, including
   Windows assembly, pack, and upload, plus six non-Windows consumers. Its two
@@ -81,6 +84,11 @@ publication decision.
   repeated the complete 13-job matrix successfully at commit
   `07fe73fe4c5500f3dcba0910a592b9d2c7a681ab`, the final implementation and
   certification-report head before PR delivery.
+- On 2026-08-24, the repository moved to the private `cpaikr/krx-cli`
+  repository. Continuous certification moved to Blacksmith Ubuntu 24.04 x64
+  and ARM64 runners and now runs only for pull requests or manual dispatch.
+  The manifest retains all four supported targets, while macOS and Windows are
+  no longer continuous certification gates solely to reduce compute cost.
 - `../ytm` supplies the target structural precedent. The accepted guidance in
   `../mytech` supplies the design rules: OpenAPI wire authority, a handwritten
   Rust conformer, narrow Node-API binding, boundary-owned contracts, pure
@@ -266,23 +274,30 @@ crates/krx-cli   crates/krx-node
   operating systems, architectures, libc variants, and WASM remain unclaimed.
 - Keep the public Node SDK facade in `packages/node` and the native CLI in
   `crates/krx-cli`; use a canonical native target manifest to drive binding and
-  executable names, release assembly, CI, and docs.
+  executable names, release assembly, and docs. Its explicit continuous-target
+  subset drives CI.
 - The release design uses one self-contained npm-compatible `.tgz` per
-  supported target. The rewrite assembles and certifies all four as attachable
-  private GitHub Release assets; a separately authorized release attaches
-  them. Each tarball contains the same Node SDK JavaScript, exactly one matching
-  `.node` artifact, and exactly one matching native `krx` executable. Package
-  metadata may use only a minimal launcher when required to enter that binary;
-  it must contain no command parsing or CLI behavior and must transparently
-  forward argv, stdin, stdout, stderr, exit status, and termination signals.
-  Installation needs Node but no Rust toolchain or registry access.
-- Clean-install every exact tarball on its native runner and test both SDK
-  import and `krx` execution. Installation and update docs use authenticated
-  GitHub Release download followed by local tarball installation; tokens never
-  appear in package URLs or lockfiles.
-- Retire Git-tag source builds after the prebuilt path passes on all targets.
-  Version, JavaScript, declarations, Node binding, CLI executable, package
-  metadata, and capability output must agree exactly.
+  supported target. Continuous CI assembles and certifies the Linux GNU
+  x64/ARM64 assets; macOS ARM64 and Windows x64 remain release-assembly targets
+  without continuous validation. A separately authorized release attaches the
+  artifacts. Each tarball contains the same Node SDK JavaScript, exactly one
+  matching `.node` artifact, and exactly one matching native `krx` executable.
+  Package metadata may use only a minimal launcher when required to enter that
+  binary; it must contain no command parsing or CLI behavior and must
+  transparently forward argv, stdin, stdout, stderr, exit status, and
+  termination signals. Installation needs Node but no Rust toolchain or
+  registry access.
+- Clean-install every continuously certified Linux tarball on its native runner
+  and test both SDK import and `krx` execution. macOS and Windows release-time
+  validation is deferred to the separately authorized publication decision.
+  Installation and update docs use authenticated GitHub Release download
+  followed by local tarball installation; tokens never appear in package URLs
+  or lockfiles.
+- Retire Git-tag source builds after the continuously certified Linux prebuilt
+  path passes. macOS and Windows artifacts require separate release-time
+  validation before attachment. Version, JavaScript, declarations, Node
+  binding, CLI executable, package metadata, and capability output must agree
+  exactly wherever an artifact is produced.
 
 ## Execution plan
 
@@ -362,12 +377,14 @@ crates/krx-cli   crates/krx-node
 - Test clean legacy credential, cache, approval, quota, and watchlist state
   migration, including interrupted migrations, corrupt files, concurrent
   readers/writers, offline stale hits, and offline misses without credentials.
-- Assemble all four private target tarballs and clean-install each on its native
-  runner across every supported Node major. Exercise SDK imports, CLI help,
-  representative native CLI commands, OS/CPU/libc rejection, Unix executable
-  permissions, independent missing or mismatched binding and executable
-  failures, cancellation, and package contents from the tarballs rather than
-  the source tree.
+- Retain assembly definitions for all four private target tarballs and
+  continuously assemble and clean-install Linux GNU x64/ARM64 on native
+  Blacksmith runners across every supported Node major. Exercise SDK imports,
+  CLI help, representative native CLI commands, OS/CPU/libc rejection, Unix
+  executable permissions, independent missing or mismatched binding and
+  executable failures, cancellation, and package contents from the tarballs
+  rather than the source tree. macOS and Windows remain supported manifest
+  targets without continuous CI execution.
 - Run source, binding, package-consumer, security, dependency, license, contract
   freshness, and deliberate-mutation checks. Run credentialed live smoke only
   as a separate bounded validation.
@@ -417,13 +434,14 @@ crates/krx-cli   crates/krx-node
   completeness, exit codes, and stdout/stderr behavior while proving parser
   constraints, removed MCP, and corrected option/secret/cache behavior. No
   JavaScript CLI parser or alternate command implementation remains.
-- Clean consumers install each macOS ARM64, Linux GNU x64/ARM64, and Windows x64
-  tarball and run both the SDK and executable without a compiler or Rust
-  toolchain. Package inspection finds exactly one matching `.node` binding and
-  one matching native `krx` executable; wrong-platform artifacts, missing
-  artifacts, mismatched artifacts, and missing Unix executable permissions fail
-  explicitly.
-- Deterministic merge validation, supported-platform CI, code review, and
+- Clean consumers install each Linux GNU x64/ARM64 tarball under Node 22 and 24
+  and run both the SDK and executable without a compiler or Rust toolchain.
+  Package inspection finds exactly one matching `.node` binding and one
+  matching native `krx` executable; wrong-platform artifacts, missing
+  artifacts, mismatched artifacts, and missing Unix executable permissions
+  fail explicitly. macOS ARM64 and Windows x64 remain supported manifest
+  targets but are not continuous CI completion criteria.
+- Deterministic merge validation, continuous Linux CI, code review, and
   documentation freshness pass. Live credentialed checks remain separately
   reported and cannot weaken or block credential-free correctness evidence.
 - The final repository has no legacy TypeScript protocol/domain code, JavaScript
