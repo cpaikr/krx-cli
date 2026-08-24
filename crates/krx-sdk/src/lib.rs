@@ -18,6 +18,14 @@ mod approval;
     not(test),
     expect(
         dead_code,
+        reason = "cache policy is consumed by the private client engine in this SDK PR"
+    )
+)]
+mod cache;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
         reason = "calendar selection is consumed by ranges and default-date resolution"
     )
 )]
@@ -84,6 +92,10 @@ mod state;
 mod transport;
 
 pub use approval::{ApprovalObservation, ApprovalState};
+pub use cache::{
+    CacheEntryDescription, CacheInspectOptions, CacheInspection, CachePruneOptions,
+    CachePruneResult,
+};
 pub use credential::{CredentialMigrationResult, CredentialSource, CredentialStatus};
 pub use error::{KrxError, KrxErrorCode, KrxErrorKind};
 pub use operation::{

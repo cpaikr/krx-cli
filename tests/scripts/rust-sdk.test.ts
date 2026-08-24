@@ -151,9 +151,15 @@ function assertWindowsStateProtocolSource(source: string): void {
   );
   const atomicWrite = source.slice(atomicStart, atomicEnd);
   const fileSync = atomicWrite.indexOf("file.sync_all()");
-  const atomicRename = atomicWrite.indexOf("rename_open_handle(");
-  const renameCommitted = atomicWrite.indexOf("renamed = true;");
-  const parentFlush = atomicWrite.indexOf("flush_directory(");
+  const atomicRename = atomicWrite.indexOf("rename_open_handle(", fileSync);
+  const renameCommitted = atomicWrite.indexOf("renamed = true;", atomicRename);
+  const parentFlush = atomicWrite.indexOf("flush_directory(", renameCommitted);
+  const conditionalStart = source.indexOf("fn change_observed_file(");
+  const conditionalEnd = source.indexOf(
+    "pub(crate) fn atomic_write_observed(",
+    conditionalStart,
+  );
+  const conditionalMutation = source.slice(conditionalStart, conditionalEnd);
   const rootStart = source.indexOf("fn open_absolute_root(");
   const rootEnd = source.indexOf("fn open_relative_directories(", rootStart);
   const rootTraversal = source.slice(rootStart, rootEnd);
@@ -255,6 +261,10 @@ function assertWindowsStateProtocolSource(source: string): void {
     atomicRename <= fileSync ||
     renameCommitted <= atomicRename ||
     parentFlush <= renameCommitted ||
+    conditionalStart < 0 ||
+    conditionalEnd < 0 ||
+    (conditionalMutation.match(/false,\n {12}true,/gu)?.length ?? 0) !== 2 ||
+    !conditionalMutation.includes("flush_directory(&parent") ||
     !atomicWrite.includes("if result.is_err() && !renamed") ||
     !atomicWrite.includes("let mut renamed = false;") ||
     !atomicWrite.includes("delete_open_handle(file.as_raw_handle())") ||
@@ -982,6 +992,14 @@ describe("production Rust SDK gate", () => {
       '#[cfg(windows)]\n#[path = "state_windows.rs"]\nmod state;',
     );
     expect(() => assertWindowsStateProtocolSource(windowsState)).not.toThrow();
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "&self.path,\n            false,\n            true,\n            ReadSensitivity::NonSecret,",
+          "&self.path,\n            false,\n            false,\n            ReadSensitivity::NonSecret,",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
     expect(() =>
       assertWindowsStateProtocolSource(
         windowsState.replace(

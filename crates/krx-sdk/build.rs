@@ -659,6 +659,33 @@ fn generate_local_state(product: &ProductContract, migrations: &Value, output: &
         "pub(crate) const APPROVAL_TTL_SECONDS: u64 = {};\n",
         product.defaults.approval_ttl_seconds
     ));
+    let cache_entry_read_bytes = required(migrations, "/bounds/cacheEntryReadBytes")
+        .as_u64()
+        .expect("cache entry read bound integer");
+    let migration = required(migrations, "/transitions")
+        .as_array()
+        .and_then(|transitions| {
+            transitions.iter().find(|transition| {
+                transition.get("id").and_then(Value::as_str) == Some("cache-v1-to-v2")
+            })
+        })
+        .expect("cache v1-to-v2 transition");
+    assert!(
+        required(migration, "/preconditions")
+            .as_array()
+            .expect("cache migration preconditions")
+            .iter()
+            .any(|value| {
+                value.as_str() == Some("fetchedAt-is-no-more-than-five-minutes-in-future")
+            }),
+        "cache future-skew contract changed"
+    );
+    for (name, value) in [
+        ("CACHE_ENTRY_READ_BYTES", cache_entry_read_bytes),
+        ("CACHE_FUTURE_SKEW_SECONDS", 5 * 60),
+    ] {
+        generated.push_str(&format!("pub(crate) const {name}: u64 = {value};\n"));
+    }
     generated
         .push_str("pub(crate) static APPROVAL_PROBES: &[(ApprovalCategory, OperationId)] = &[\n");
     for (category, operation) in &product.approval_probes {

@@ -82,8 +82,28 @@ pub(crate) fn decode_response(
         .iter()
         .map(|field| field.name)
         .collect::<BTreeSet<_>>();
+    decode_rows(operation, rows, &expected)
+}
+
+pub(crate) fn decode_cached_rows(
+    operation: OperationId,
+    rows: &[Value],
+) -> Result<Vec<Row>, KrxError> {
+    let expected = operation_spec(operation)
+        .response_fields
+        .iter()
+        .map(|field| field.name)
+        .collect::<BTreeSet<_>>();
+    decode_rows(operation, rows, &expected)
+}
+
+fn decode_rows(
+    operation: OperationId,
+    rows: &[Value],
+    expected: &BTreeSet<&str>,
+) -> Result<Vec<Row>, KrxError> {
     rows.iter()
-        .map(|row| decode_row(operation, row, &expected))
+        .map(|row| decode_row(operation, row, expected))
         .collect()
 }
 

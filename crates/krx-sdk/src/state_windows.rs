@@ -76,6 +76,8 @@ struct FileIdentity {
 #[derive(Clone, Debug)]
 pub(crate) struct ObservedFile {
     bytes: Vec<u8>,
+    identity: FileIdentity,
+    complete: bool,
 }
 
 impl ObservedFile {
@@ -85,6 +87,10 @@ impl ObservedFile {
 
     pub(crate) fn into_bytes(self) -> Vec<u8> {
         self.bytes
+    }
+
+    pub(crate) fn is_complete(&self) -> bool {
+        self.complete
     }
 }
 
@@ -174,6 +180,32 @@ impl StateRoot {
         sensitivity: ReadSensitivity,
         error_code: KrxErrorCode,
     ) -> Result<Option<ObservedFile>, KrxError> {
+        self.read_internal(relative, maximum_bytes, sensitivity, error_code, false)
+    }
+
+    pub(crate) fn read_cache(
+        &self,
+        relative: &str,
+        maximum_bytes: u64,
+        error_code: KrxErrorCode,
+    ) -> Result<Option<ObservedFile>, KrxError> {
+        self.read_internal(
+            relative,
+            maximum_bytes,
+            ReadSensitivity::NonSecret,
+            error_code,
+            true,
+        )
+    }
+
+    fn read_internal(
+        &self,
+        relative: &str,
+        maximum_bytes: u64,
+        sensitivity: ReadSensitivity,
+        error_code: KrxErrorCode,
+        observe_oversized: bool,
+    ) -> Result<Option<ObservedFile>, KrxError> {
         let components = relative_components(relative)?;
         let Some(root) = open_absolute_root(&self.path, false, false, sensitivity, error_code)?
         else {
@@ -191,7 +223,14 @@ impl StateRoot {
         else {
             return Ok(None);
         };
-        read_file(&parent, &leaf[0], maximum_bytes, sensitivity, error_code)
+        read_file(
+            &parent,
+            &leaf[0],
+            maximum_bytes,
+            sensitivity,
+            error_code,
+            observe_oversized,
+        )
     }
 
     pub(crate) fn atomic_write(
@@ -202,6 +241,102 @@ impl StateRoot {
     ) -> Result<(), KrxError> {
         self.atomic_write_observed(relative, bytes, error_code)
             .map_err(AtomicWriteFailure::into_error)
+    }
+
+    pub(crate) fn remove_if_unchanged(
+        &self,
+        relative: &str,
+        observed: &ObservedFile,
+        error_code: KrxErrorCode,
+    ) -> Result<bool, KrxError> {
+        self.change_observed_file(relative, observed, None, error_code)
+    }
+
+    pub(crate) fn rename_if_unchanged(
+        &self,
+        relative: &str,
+        observed: &ObservedFile,
+        destination_leaf: &str,
+        error_code: KrxErrorCode,
+    ) -> Result<bool, KrxError> {
+        let destination = relative_components(destination_leaf)?;
+        if destination.len() != 1 {
+            return Err(invalid_state_path(
+                "local state rename target must be one filename",
+            ));
+        }
+        self.change_observed_file(relative, observed, Some(&destination[0]), error_code)
+    }
+
+    fn change_observed_file(
+        &self,
+        relative: &str,
+        observed: &ObservedFile,
+        destination_leaf: Option<&OsStr>,
+        error_code: KrxErrorCode,
+    ) -> Result<bool, KrxError> {
+        if !observed.complete {
+            return Ok(false);
+        }
+        let components = relative_components(relative)?;
+        let Some(root) = open_absolute_root(
+            &self.path,
+            false,
+            true,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        else {
+            return Ok(false);
+        };
+        let (parents, leaf) = components.split_at(components.len() - 1);
+        let Some(parent) = open_relative_directories(
+            &root,
+            parents,
+            false,
+            true,
+            ReadSensitivity::NonSecret,
+            error_code,
+        )?
+        else {
+            return Ok(false);
+        };
+        let Some(mut file) = open_secure_file(&parent, &leaf[0], false, false, true, error_code)?
+        else {
+            return Ok(false);
+        };
+        let before = file_metadata_identity(&file, error_code)?;
+        if before != observed.identity || before.size != observed.bytes.len() as u64 {
+            return Ok(false);
+        }
+        let mut bytes = Vec::with_capacity(observed.bytes.len());
+        Read::by_ref(&mut file)
+            .take(observed.bytes.len() as u64 + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|_| state_error(error_code, "local state file read failed"))?;
+        let after = file_metadata_identity(&file, error_code)?;
+        if before != after || bytes != observed.bytes {
+            return Ok(false);
+        }
+        match destination_leaf {
+            Some(destination) => match rename_open_handle(&file, &parent, destination, false) {
+                Ok(()) => {}
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::AlreadyExists | io::ErrorKind::DirectoryNotEmpty
+                    ) =>
+                {
+                    return Ok(false);
+                }
+                Err(_) => return Err(state_error(error_code, "local state rename failed")),
+            },
+            None => delete_open_handle(file.as_raw_handle())
+                .map_err(|_| state_error(error_code, "local state removal failed"))?,
+        }
+        drop(file);
+        flush_directory(&parent, error_code, "local state parent sync failed")?;
+        Ok(true)
     }
 
     pub(crate) fn atomic_write_observed(
@@ -1113,12 +1248,20 @@ fn read_file(
     maximum_bytes: u64,
     _sensitivity: ReadSensitivity,
     error_code: KrxErrorCode,
+    observe_oversized: bool,
 ) -> Result<Option<ObservedFile>, KrxError> {
     let Some(mut file) = open_secure_file(parent, leaf, false, false, false, error_code)? else {
         return Ok(None);
     };
     let before = file_metadata_identity(&file, error_code)?;
     if before.size > maximum_bytes {
+        if observe_oversized {
+            return Ok(Some(ObservedFile {
+                bytes: Vec::new(),
+                identity: before,
+                complete: false,
+            }));
+        }
         return Err(state_error(
             error_code,
             "local state file exceeds its read bound",
@@ -1144,7 +1287,11 @@ fn read_file(
             "local state file changed during read",
         ));
     }
-    Ok(Some(ObservedFile { bytes }))
+    Ok(Some(ObservedFile {
+        bytes,
+        identity: before,
+        complete: true,
+    }))
 }
 
 fn publish_protocol_file(
@@ -1943,6 +2090,60 @@ mod tests {
             .unwrap_err();
         assert!(!failure.committed());
         assert_eq!(fs::read(root_path.join("config.json")).unwrap(), b"before");
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn conditional_file_changes_never_touch_a_replacement() {
+        let parent = std::env::temp_dir().join(format!("krx-state-{}", Uuid::new_v4()));
+        let root_path = parent.join(".krx-cli");
+        let state = StateRoot::new(root_path.clone()).unwrap();
+        state
+            .atomic_write(
+                "cache/entry.json",
+                b"observed",
+                KrxErrorCode::CacheWriteFailed,
+            )
+            .unwrap();
+        let observed = state
+            .read(
+                "cache/entry.json",
+                64,
+                ReadSensitivity::NonSecret,
+                KrxErrorCode::CacheReadFailed,
+            )
+            .unwrap()
+            .unwrap();
+        state
+            .atomic_write(
+                "cache/entry.json",
+                b"replacement",
+                KrxErrorCode::CacheWriteFailed,
+            )
+            .unwrap();
+        assert!(
+            !state
+                .remove_if_unchanged(
+                    "cache/entry.json",
+                    &observed,
+                    KrxErrorCode::CacheWriteFailed
+                )
+                .unwrap()
+        );
+        assert!(
+            !state
+                .rename_if_unchanged(
+                    "cache/entry.json",
+                    &observed,
+                    "entry.json.corrupt",
+                    KrxErrorCode::CacheWriteFailed
+                )
+                .unwrap()
+        );
+        assert_eq!(
+            fs::read(root_path.join("cache/entry.json")).unwrap(),
+            b"replacement"
+        );
         fs::remove_dir_all(parent).unwrap();
     }
 

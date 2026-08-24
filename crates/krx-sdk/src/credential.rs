@@ -1201,6 +1201,8 @@ mod tests {
         assert_eq!(KEYRING_ACCOUNT, "default");
         assert_eq!(CREDENTIAL_ENVIRONMENT, "KRX_API_KEY");
         assert_eq!(APPROVAL_TTL_SECONDS, 900);
+        assert_eq!(CACHE_ENTRY_READ_BYTES, 64 * 1024 * 1024);
+        assert_eq!(CACHE_FUTURE_SKEW_SECONDS, 5 * 60);
         assert_eq!(APPROVAL_PROBES.len(), 7);
         let native = CredentialManager::native(PathBuf::from("/native-state"), None);
         assert_eq!(native.state_root(), &PathBuf::from("/native-state"));

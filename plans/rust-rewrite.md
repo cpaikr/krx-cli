@@ -335,6 +335,14 @@ crates/krx-cli   crates/krx-node
   format after a successful online use or refresh; offline hits return the
   validated version-1 entry without mutation or refresh-lease acquisition. Do
   not bulk-convert unknown or corrupt files.
+- Conditional cache cleanup and quarantine retain an opaque file identity and
+  exact bytes, reopen through secured no-follow parents, and revalidate both
+  immediately before mutation. Windows mutates the exact open handle. POSIX
+  has no portable identity-conditional rename or unlink across both supported
+  Linux and macOS targets, leaving a final same-user pathname-replacement race
+  between revalidation and the syscall. This accepted residual is confined to
+  credential-independent, refetchable cache data; links, foreign ownership,
+  unsafe parent traversal, and observed replacements remain fail-closed.
 
 ### Runtime and private distribution
 

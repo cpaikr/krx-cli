@@ -44,6 +44,12 @@ impl ApprovalCategory {
     }
 }
 
+pub(crate) fn parse_operation_id(value: &str) -> Option<OperationId> {
+    OperationId::ALL
+        .into_iter()
+        .find(|operation| operation.as_str() == value)
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct OperationFieldDescription {
     pub name: &'static str,

@@ -52,12 +52,36 @@ Complete shared Rust SDK for all supported KRX behavior and local policy.
 ### Next in-scope action
 
 Complete the remaining frozen `crates/krx-sdk` surface in the same production
-SDK PR: add cache/offline/singleflight policy, cache migration, range
-orchestration, and public client handles over the completed private transport.
-Keep CLI and Node adapter implementation out of this slice.
+SDK PR: add cross-process cache leases, in-process singleflight, offline/client
+orchestration, range orchestration, and public client handles over the completed
+private transport and cache core. Keep CLI and Node adapter implementation out
+of this slice.
 
 ### Evidence and blockers
 
+- The reviewed private cache-core checkpoint derives canonical v1/v2 keys,
+  paths, schema identities, size limits, and timestamp bounds from the frozen
+  product contracts. It strictly decodes exact operation rows and parameters,
+  rejects empty/current/future writes, prefers valid v2 while allowing a valid
+  v1 fallback after invalid-v2 quarantine, and conditionally quarantines or
+  removes only identity-and-content-matching observations. Oversized entries
+  are classified invalid without an unbounded read and are preserved when
+  exact-content mutation cannot be proven. Online v1 promotion publishes a
+  durable v2 entry before conditional v1 cleanup, and concurrent replacement
+  tests prove newer legacy files are not removed. Windows cache mutations use
+  exact validated handles and writable parent flushing. POSIX rejects links,
+  foreign ownership, unsafe parents, and changed observations but accepts the
+  documented final same-user pathname race because Linux and macOS lack one
+  portable exact-handle conditional rename/unlink primitive; the residual is
+  confined to credential-independent, refetchable cache data. Independent
+  contract and security rereviews are clean. The private operational methods
+  remain unreachable until the next layer adds lease-protected v2 rechecks,
+  valid-v2 legacy cleanup, singleflight, and offline/client orchestration.
+  Workspace formatting, 110 Rust tests with one intentional interoperability
+  worker ignored, strict all-target/all-feature Clippy, the seven-test SDK
+  mutation/source gate, and diff validation pass. Native Windows cross-check
+  remains unavailable on this macOS host because `aws-lc-sys` requires absent
+  Windows SDK headers; the Windows source mutation gate passes.
 - The reviewed private transport checkpoint uses one reusable reqwest 0.13.4
   Rustls client with redirects, ambient proxies, and automatic retries
   disabled. It derives retry statuses, defaults, timeouts, cache age, and daily
