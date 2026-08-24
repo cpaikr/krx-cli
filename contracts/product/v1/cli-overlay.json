@@ -65,6 +65,10 @@
     {
       "id": "watchlist-konex-prices",
       "classification": "defect-fix"
+    },
+    {
+      "id": "bounded-cache-clear-targets",
+      "classification": "security-fix"
     }
   ],
   "optionPolicy": {
@@ -83,10 +87,11 @@
       "stock-search": [["stock", "search"]],
       "market-summary": [["market", "summary"]],
       "watchlist-prices": [["watchlist", "show"]],
-      "auth-status": [["auth", "status"]]
+      "auth-status": [["auth", "status"]],
+      "cache-status": [["cache", "status"]]
     },
     "activeRootOptionScopes": {
-      "output": ["endpoint-rows", "auth-status"],
+      "output": ["endpoint-rows", "auth-status", "cache-status"],
       "fields": ["endpoint-rows", "stock-search"],
       "dry-run": ["endpoint-rows"],
       "verbose": ["endpoint-rows"],

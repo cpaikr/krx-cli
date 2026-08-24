@@ -827,6 +827,7 @@ equalKeys(
     "market-summary",
     "watchlist-prices",
     "auth-status",
+    "cache-status",
   ],
   "CLI scope commands",
 );

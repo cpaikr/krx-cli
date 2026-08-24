@@ -194,15 +194,18 @@ crates/krx-cli   crates/krx-node
   napi-derive 3.6.3, napi-build 2.4.1, keyring-rs 4.1.6, serde 1.0.229,
   serde_json 1.0.151, serde-saphyr 1.1.0, thiserror 2.0.20, url 2.5.8,
   zeroize 1.9.0, rpassword 7.4.0, futures-util 0.3.34, sha2 0.11.0,
-  uuid 1.25.0, jiff 0.2.35,
-  num-bigint 0.5.1, Unix-only rustix 1.1.4, and Windows-only cap-std 4.0.3 and
+  uuid 1.25.0, jiff 0.2.35, ICU4X `icu_collator` 2.3.1 and `icu_locale`
+  2.3.1, num-bigint 0.5.1, Unix-only rustix 1.1.4, and Windows-only cap-std 4.0.3 and
   windows-sys 0.61.2. SHA-256 identity, OS-random UUID-v4 lock identities,
   canonical UTC/KST time handling, unbounded exact adjustment factors, and
   descriptor-relative no-follow state traversal use those maintained crates
   rather than project-owned cryptography, randomness, timestamp parsing,
   big-integer arithmetic, or unsafe syscall bindings. The exact `rpassword`
   pin supplies cross-platform no-echo input for interactive credential entry,
-  while secret-bearing argv remains forbidden. On Windows, cap-std's
+  while secret-bearing argv remains forbidden. The ICU4X pins supply compiled
+  Korean collation data so native CLI text
+  sorting preserves the frozen `localeCompare(..., "ko")` behavior without
+  depending on the host locale installation. On Windows, cap-std's
   `NtCreateFile`-backed directory capabilities keep traversal relative to open
   handles. The narrow windows-sys surface validates reparse attributes, handle
   identity, current-user ownership, and every effective ACL writer; native

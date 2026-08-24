@@ -315,6 +315,24 @@ pub fn native_capabilities(native_client: &NativeClient) -> NapiResult<NativeOut
 }
 
 #[napi(catch_unwind)]
+pub fn native_operation_supports_adjusted_range(
+    native_client: &NativeClient,
+    operation: String,
+) -> NapiResult<NativeOutcome> {
+    Ok(run_sync(|| {
+        let client = native_client.client()?;
+        let operation = parse_operation(&operation)?;
+        let supported = client
+            .capabilities()
+            .iter()
+            .find(|description| description.operation_id == operation)
+            .and_then(|description| description.derived_output)
+            .is_some();
+        Ok(Value::Bool(supported))
+    }))
+}
+
+#[napi(catch_unwind)]
 pub async fn native_credential_status(native_client: &NativeClient) -> NapiResult<NativeOutcome> {
     Ok(run(async move {
         let client = native_client.client()?;

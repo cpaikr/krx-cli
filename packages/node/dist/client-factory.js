@@ -169,6 +169,16 @@ export function createKrxClientClass(loadBinding) {
         throw invalidArgument("adjusted must be a boolean");
       }
       validateOptionalString(request.securityCode, "securityCode");
+      if (
+        request.securityCode !== undefined &&
+        !supportsAdjustedRange(
+          this.#binding,
+          this.#nativeClient,
+          request.operation,
+        )
+      ) {
+        throw invalidArgument("securityCode is not valid for this operation");
+      }
       validateRetryCount(request.retries);
       const cache = cacheArguments(request?.cache, this.#cacheMaxAgeHours);
       return await withCancellation(
@@ -263,6 +273,17 @@ function createNativeClient(binding, apiKey) {
   try {
     if (typeof binding?.NativeClient !== "function") throw internalFailure();
     return new binding.NativeClient(apiKey);
+  } catch (error) {
+    if (error instanceof KrxError) throw error;
+    throw internalFailure();
+  }
+}
+
+function supportsAdjustedRange(binding, nativeClient, operation) {
+  try {
+    const method = binding?.nativeOperationSupportsAdjustedRange;
+    if (typeof method !== "function") throw internalFailure();
+    return outcomeValue(method.call(binding, nativeClient, operation));
   } catch (error) {
     if (error instanceof KrxError) throw error;
     throw internalFailure();

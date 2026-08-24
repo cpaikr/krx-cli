@@ -12,6 +12,8 @@ path = "src/main.rs"
 
 [dependencies]
 clap.workspace = true
+icu_collator = "=2.3.1"
+icu_locale = "=2.3.1"
 krx-sdk = { path = "../krx-sdk" }
 jiff.workspace = true
 serde_json.workspace = true

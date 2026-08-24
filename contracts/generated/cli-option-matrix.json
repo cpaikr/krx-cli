@@ -92,7 +92,7 @@
     {
       "option": "output",
       "commandPath": ["cache", "status"],
-      "active": false,
+      "active": true,
       "inactiveExit": 2
     },
     {

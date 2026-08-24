@@ -3,6 +3,8 @@ use std::io::{self, IsTerminal, Read};
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use icu_collator::{Collator, CollatorBorrowed, options::CollatorOptions};
+use icu_locale::locale;
 use krx_sdk::{
     ApiKey, CacheInspectOptions, CachePolicy, CachePruneOptions, CallOptions, Cancellation, Client,
     Completeness, CompletenessState, CredentialSource, DirectRequest, Freshness, KrxError,
@@ -232,7 +234,7 @@ async fn execute_endpoint(
         .iter()
         .find(|d| d.operation_id == operation)
         .ok_or_else(|| Failure::invalid("unknown operation"))?;
-    verbose(cli, format!("endpoint {}", description.path));
+    verbose(cli, format!("endpoint: {}", description.path));
     let explicit_date = leaf_date.or(cli.from.as_deref());
     let date = if let Some(value) = explicit_date {
         parse_date(value)?
@@ -291,13 +293,12 @@ async fn execute_endpoint(
             })
             .await?;
         let rows = result.result.data.clone();
-        verbose(
-            cli,
-            format!(
-                "range fetched {} day(s), failed {} day(s)",
-                result.fetched_days, result.failed_days
-            ),
-        );
+        if result.failed_days > 0 {
+            verbose(
+                cli,
+                format!("{} date-range component(s) failed", result.failed_days),
+            );
+        }
         (rows, Some(range_value(&result)), None)
     } else {
         let result = client
@@ -308,14 +309,6 @@ async fn execute_endpoint(
             })
             .await?;
         let provenance = result.provenance.clone();
-        verbose(
-            cli,
-            format!(
-                "response source={} freshness={}",
-                result_source_name(provenance.source),
-                freshness_name(provenance.freshness)
-            ),
-        );
         (result.rows, None, Some(provenance))
     };
 
@@ -329,11 +322,7 @@ async fn execute_endpoint(
     apply_pipeline(&mut rows, cli)?;
     verbose(
         cli,
-        format!(
-            "pipeline retained {} of {} row(s)",
-            rows.len(),
-            before_pipeline
-        ),
+        format!("pipeline: {} → {} rows", before_pipeline, rows.len()),
     );
     if envelope.is_none() && rows.is_empty() {
         return Ok(no_data(&direct_no_data_message(
@@ -417,7 +406,7 @@ async fn execute_auth(
                     exit: 4,
                 });
             }
-            eprintln!("Checking service approvals...");
+            eprintln!("Error: Checking service approvals...");
             let credentials = client.credentials();
             let observations = credentials.check_all_approvals(cancellation).await?;
             let services = Map::from_iter(observations.iter().map(|observation| {
@@ -814,7 +803,15 @@ fn apply_pipeline(rows: &mut Vec<Row>, cli: &Cli) -> Result<(), Failure> {
         rows.retain(|row| matches_filter(row, expression).unwrap_or(false));
     }
     if let Some(field) = &cli.sort {
-        rows.sort_by(|a, b| compare_values(a.get(field).unwrap_or(""), b.get(field).unwrap_or("")));
+        let collator = Collator::try_new(locale!("ko").into(), CollatorOptions::default())
+            .map_err(|_| Failure::local("Korean collation data is unavailable"))?;
+        rows.sort_by(|a, b| {
+            compare_sort_values(
+                a.get(field).unwrap_or(""),
+                b.get(field).unwrap_or(""),
+                &collator,
+            )
+        });
         if !cli.asc {
             rows.reverse();
         }
@@ -831,7 +828,7 @@ fn apply_pipeline(rows: &mut Vec<Row>, cli: &Cli) -> Result<(), Failure> {
 fn matches_filter(row: &Row, expression: &str) -> Option<bool> {
     let (field, op, want) = filter_parts(expression)?;
     let got = row.get(field)?;
-    let order = compare_values(got, want);
+    let order = compare_filter_values(got, want);
     Some(match op {
         "==" => order.is_eq(),
         "!=" => !order.is_eq(),
@@ -842,13 +839,26 @@ fn matches_filter(row: &Row, expression: &str) -> Option<bool> {
         _ => false,
     })
 }
-fn compare_values(left: &str, right: &str) -> std::cmp::Ordering {
+fn compare_filter_values(left: &str, right: &str) -> std::cmp::Ordering {
     match (
         left.replace(',', "").parse::<f64>(),
         right.replace(',', "").parse::<f64>(),
     ) {
         (Ok(a), Ok(b)) => a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal),
         _ => left.cmp(right),
+    }
+}
+fn compare_sort_values(
+    left: &str,
+    right: &str,
+    collator: &CollatorBorrowed<'_>,
+) -> std::cmp::Ordering {
+    match (
+        left.replace(',', "").parse::<f64>(),
+        right.replace(',', "").parse::<f64>(),
+    ) {
+        (Ok(a), Ok(b)) => a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal),
+        _ => collator.compare(left, right),
     }
 }
 fn matches_code(row: &Row, query: &str) -> bool {
@@ -1162,7 +1172,7 @@ fn freshness_name(freshness: Freshness) -> &'static str {
 
 fn verbose(cli: &Cli, message: impl std::fmt::Display) {
     if cli.verbose {
-        eprintln!("krx: verbose: {message}");
+        eprintln!("[verbose] {message}");
     }
 }
 fn composite_exit<Id>(
@@ -1409,5 +1419,13 @@ mod tests {
             direct_no_data_message(OperationId::StockStkIsuBaseInfo, &date, None),
             "No data"
         );
+    }
+
+    #[test]
+    fn text_sorting_uses_the_frozen_korean_collation() {
+        let collator = Collator::try_new(locale!("ko").into(), CollatorOptions::default()).unwrap();
+        let mut values = ["SK하이닉스", "카카오", "삼성전자"];
+        values.sort_by(|left, right| compare_sort_values(left, right, &collator));
+        assert_eq!(values, ["삼성전자", "카카오", "SK하이닉스"]);
     }
 }

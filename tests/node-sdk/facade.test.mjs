@@ -68,6 +68,14 @@ function fixtureBinding(overrides = {}) {
           responseFields: [],
         },
       ]),
+    nativeOperationSupportsAdjustedRange: (_client, operation) =>
+      ok(
+        new Set([
+          "stock_stk_bydd_trd",
+          "stock_ksq_bydd_trd",
+          "stock_knx_bydd_trd",
+        ]).has(operation),
+      ),
     nativeCredentialStatus: async () =>
       ok({ source: "explicit", persisted: false }),
     nativeCredentialSet: async () => ok(null),
@@ -193,6 +201,38 @@ test("forwards the frozen adjusted-range argument shape", async () => {
     2,
   ]);
   assert.equal(arguments_.at(-1) instanceof fixture.NativeCancellation, true);
+});
+
+test("enforces the frozen range security-code union for JavaScript callers", async () => {
+  let rangeCalls = 0;
+  const fixture = fixtureBinding({
+    nativeRange: async () => {
+      rangeCalls += 1;
+      return ok({ success: true, data: [], fetchedDays: 0 });
+    },
+  });
+  const KrxClient = createKrxClientClass(() => fixture);
+  const client = new KrxClient();
+
+  await assert.rejects(
+    client.range({
+      operation: "index_kospi_dd_trd",
+      from: "20260102",
+      to: "20260103",
+      securityCode: "005930",
+    }),
+    (error) => error instanceof KrxError && error.code === "invalid_argument",
+  );
+  assert.equal(rangeCalls, 0);
+
+  await client.range({
+    operation: "stock_stk_bydd_trd",
+    from: "20260102",
+    to: "20260103",
+    adjusted: false,
+    securityCode: "005930",
+  });
+  assert.equal(rangeCalls, 1);
 });
 
 test("removes AbortSignal listeners after resolve and reject", async () => {

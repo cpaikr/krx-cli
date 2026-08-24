@@ -21,9 +21,9 @@ use crate::watchlist::{WatchlistEntry, WatchlistStore};
 use crate::{
     ApiKey, ApprovalCategory, ApprovalObservation, CachePolicy, CallOptions, Cancellation,
     DirectRequest, Freshness, KrxError, KrxErrorCode, MarketComponent, MarketSummaryRequest,
-    MarketSummaryResult, OperationDescription, QueryResult, RangeMode, RangeRequest, RangeResult,
-    ResultProvenance, ResultSource, Row, SearchMarket, StockSearchRequest, StockSearchResult,
-    WatchlistMarket, WatchlistPricesRequest, WatchlistPricesResult,
+    MarketSummaryResult, OperationDescription, OperationId, QueryResult, RangeMode, RangeRequest,
+    RangeResult, ResultProvenance, ResultSource, Row, SearchMarket, StockSearchRequest,
+    StockSearchResult, WatchlistMarket, WatchlistPricesRequest, WatchlistPricesResult,
 };
 
 type TransportFuture<'a> = Pin<Box<dyn Future<Output = Result<Vec<Row>, KrxError>> + Send + 'a>>;
@@ -280,14 +280,18 @@ impl CredentialHandle {
         cancellation: Cancellation,
     ) -> Result<Vec<ApprovalObservation>, KrxError> {
         let checked_at = SystemTime::now();
-        join_all(
-            ApprovalCategory::ALL
-                .into_iter()
-                .map(|category| self.check_approval_at(category, cancellation.clone(), checked_at)),
-        )
-        .await
-        .into_iter()
-        .collect()
+        let results =
+            join_all(ApprovalCategory::ALL.into_iter().map(|category| {
+                self.check_approval_at(category, cancellation.clone(), checked_at)
+            }))
+            .await;
+        if cancellation.is_cancelled() {
+            return Err(KrxError::new(
+                KrxErrorCode::RequestCancelled,
+                "request was cancelled",
+            ));
+        }
+        results.into_iter().collect()
     }
 
     async fn check_approval_at(
@@ -325,6 +329,7 @@ impl CredentialHandle {
         };
         let today = crate::transport::kst_date(SystemTime::now())?;
         let date = crate::calendar::resolve_recent(&today)?.date;
+        let request_cancellation = cancellation.clone();
         let result = self
             .direct
             .query_bypass_until(
@@ -341,17 +346,17 @@ impl CredentialHandle {
                 deadline,
             )
             .await;
-        let outcome = match result {
-            Ok(result) if result.rows.is_empty() => ApprovalOutcome::NoData,
-            Ok(_) => ApprovalOutcome::Approved,
-            Err(error) if error.code() == KrxErrorCode::ServiceNotApproved => {
-                ApprovalOutcome::Rejected(error)
-            }
-            Err(error) => ApprovalOutcome::Inconclusive(Some(error)),
-        };
-        self.approvals
-            .record(&credential.api_key, category, outcome, checked_at)
-            .await
+        let outcome = classify_approval_result(result);
+        record_approval_outcome(
+            &self.approvals,
+            &credential.api_key,
+            category,
+            outcome,
+            checked_at,
+            &request_cancellation,
+            operation,
+        )
+        .await
     }
 
     pub async fn set(&self, api_key: ApiKey) -> Result<(), KrxError> {
@@ -365,6 +370,39 @@ impl CredentialHandle {
     pub async fn migrate_legacy(&self) -> Result<CredentialMigrationResult, KrxError> {
         self.manager.migrate_legacy().await
     }
+}
+
+fn classify_approval_result(result: Result<QueryResult, KrxError>) -> ApprovalOutcome {
+    match result {
+        Ok(result) if result.rows.is_empty() => ApprovalOutcome::NoData,
+        Ok(_) => ApprovalOutcome::Approved,
+        Err(error) if error.code() == KrxErrorCode::ServiceNotApproved => {
+            ApprovalOutcome::Rejected(error)
+        }
+        Err(error) => ApprovalOutcome::Inconclusive(Some(error)),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn record_approval_outcome(
+    approvals: &ApprovalStore,
+    api_key: &ApiKey,
+    category: ApprovalCategory,
+    outcome: ApprovalOutcome,
+    checked_at: SystemTime,
+    cancellation: &Cancellation,
+    operation: OperationId,
+) -> Result<ApprovalObservation, KrxError> {
+    let recorded = approvals
+        .record(api_key, category, outcome, checked_at)
+        .await;
+    if cancellation.is_cancelled() {
+        return Err(
+            KrxError::new(KrxErrorCode::RequestCancelled, "request was cancelled")
+                .for_operation(operation),
+        );
+    }
+    recorded
 }
 
 #[derive(Clone)]
@@ -1255,6 +1293,50 @@ mod tests {
             failure: Some(KrxErrorCode::RequestFailed),
             ..mock(Duration::ZERO)
         }
+    }
+
+    #[tokio::test]
+    async fn approval_probe_cancellation_is_persisted_but_dominates_the_call() {
+        let fixture = Fixture::new();
+        let operation = OperationId::StockStkByddTrd;
+        let category = ApprovalCategory::Stock;
+        let api_key = ApiKey::parse("test-placeholder").unwrap();
+        let approvals = ApprovalStore::new(fixture.root.clone()).unwrap();
+        let cancellation = Cancellation::new();
+        cancellation.cancel();
+        let outcome = classify_approval_result(Err(KrxError::new(
+            KrxErrorCode::RequestCancelled,
+            "request was cancelled",
+        )));
+        let error = record_approval_outcome(
+            &approvals,
+            &api_key,
+            category,
+            outcome,
+            SystemTime::now(),
+            &cancellation,
+            operation,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(error.code(), KrxErrorCode::RequestCancelled);
+        assert_eq!(error.operation_id(), Some(operation));
+
+        let observation = approvals
+            .status(&api_key, category, SystemTime::now())
+            .await
+            .unwrap()
+            .expect("cancelled probe observation");
+        assert_eq!(observation.state, crate::ApprovalState::Inconclusive);
+        assert!(observation.error.is_none());
+        let persisted: serde_json::Value = serde_json::from_slice(
+            &fs::read(fixture.root.join("config.json")).expect("persisted approval config"),
+        )
+        .expect("valid approval config");
+        assert_eq!(
+            persisted["serviceStatus"]["stock"]["failureType"],
+            "cancelled"
+        );
     }
 
     fn write_v1(fixture: &Fixture, request: &DirectRequest, fetched_at: &str) -> CacheKey {

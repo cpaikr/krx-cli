@@ -68,6 +68,13 @@ Candidate-only command syntax is frozen as follows:
 inspection and pruning remain bounded by the local-state contract; exceeding a
 command bound is invalid input and exits `2` before traversal.
 
+The native `cache clear` operation removes only revalidated entries, exact
+stale temporary files, and securely observed stale leases. It preserves
+unrecognized children instead of recursively deleting the cache tree, and its
+legacy-shaped `directories` field is therefore always `0`; `files` reports the
+entries actually removed. This is the classified
+`bounded-cache-clear-targets` security fix.
+
 ## Environment
 
 | Variable                  | Contract                                                                         |
