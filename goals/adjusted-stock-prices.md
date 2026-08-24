@@ -83,7 +83,7 @@ and require separate authority._
 - Post-feedback gate: `pnpm verify` passed with 42 test files and 370 tests, no
   production vulnerabilities, a successful build, and installed-package smoke
   covering 31 schemas and 12 MCP tools.
-- Delivery: [PR #6](https://github.com/sjunepark/krx-cli/pull/6) completed the
+- Delivery: [PR #6](https://github.com/cpaikr/krx-cli/pull/6) completed the
   `$create-pr` and `$address-pr-feedback` lifecycle and merged into
   `codex/adjusted-stock-prices-integration` as `84f3a75`, preserving feature
   commit `4e90c06` and feedback commit `e2ffdca`. All ten review threads were

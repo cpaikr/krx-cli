@@ -4,11 +4,15 @@ import {
   resolveEndpoint,
   resolveDate,
 } from "../command-helper.js";
+import {
+  OPENAPI_OPERATION_PATHS,
+  OPENAPI_WIRE,
+} from "../../contracts/generated/openapi-registry.js";
 
 const TYPE_ENDPOINTS: Record<string, string> = {
-  oil: "/svc/apis/gen/oil_bydd_trd",
-  gold: "/svc/apis/gen/gold_bydd_trd",
-  emission: "/svc/apis/gen/ets_bydd_trd",
+  oil: OPENAPI_OPERATION_PATHS.commodity_oil_bydd_trd,
+  gold: OPENAPI_OPERATION_PATHS.commodity_gold_bydd_trd,
+  emission: OPENAPI_OPERATION_PATHS.commodity_ets_bydd_trd,
 };
 
 export function registerCommodityCommand(program: Command): void {
@@ -27,7 +31,7 @@ export function registerCommodityCommand(program: Command): void {
 
       await executeCommand({
         endpoint,
-        params: { basDd: date },
+        params: { [OPENAPI_WIRE.requestDateField]: date },
         program,
         noDataMessage: `No data for date ${date}`,
       });

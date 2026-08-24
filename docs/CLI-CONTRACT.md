@@ -6,6 +6,16 @@ environment names, and `src/cli/exit-codes.ts` for process exit semantics.
 Contract tests keep this reference, `README.md`,
 `skills/krx-cli/references/cli-usage.md`, and Commander help aligned.
 
+This document freezes the installed legacy boundary until atomic cutover. The
+native candidate is resolved as a delta over that boundary by
+`contracts/product/v1/cli-overlay.json`, its candidate-only cases, and the
+generated exhaustive option-scope matrix. The overlay removes MCP and `serve`,
+removes secret-bearing argv input, adds explicit credential migration and
+offline/cache maintenance, and makes formerly ineffective root options fail
+with exit 2. It also fixes watchlist price coverage so persisted KONEX entries
+are requested instead of silently omitted. Any difference absent from that
+ledger blocks cutover.
+
 ## Output
 
 Single-endpoint row commands default to `table` on an interactive TTY and
@@ -36,6 +46,7 @@ deliberate:
 | Option family                                                  | Active command scope                                                        |
 | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `--output`                                                     | Endpoint row commands and `auth status`; composite results remain JSON.     |
+| `--verbose`                                                    | Endpoint row commands.                                                      |
 | `--fields`                                                     | Endpoint row commands, date ranges, and stock search.                       |
 | `--code`, `--sort`, `--asc`, `--offset`, `--limit`, `--filter` | Endpoint row commands and date ranges.                                      |
 | `--from`, `--to`, `--save`, `--dry-run`                        | Endpoint row commands.                                                      |
@@ -43,7 +54,19 @@ deliberate:
 | `--retries`                                                    | Direct single-endpoint row requests; composites retain the bounded default. |
 | `stock list --no-adjusted`                                     | Eligible exact-code KOSPI/KOSDAQ/KONEX date ranges only.                    |
 
-Passing a root option outside its active scope does not change that command.
+The legacy executable accepts a root option outside its active scope without
+changing that command. The native candidate rejects the same ineffective use
+with exit `2`, as the classified `inactive-root-options-exit-2` defect fix.
+
+Candidate-only command syntax is frozen as follows:
+
+- `krx auth migrate [--help]`
+- `krx cache inspect [--operation <id>] [--date <YYYYMMDD>] [--limit <1..1000>]`
+- `krx cache prune [--older-than <instant>] [--max-entries <0..10000>]`
+
+`auth migrate` is the only plaintext-credential migration trigger. Cache
+inspection and pruning remain bounded by the local-state contract; exceeding a
+command bound is invalid input and exits `2` before traversal.
 
 ## Environment
 

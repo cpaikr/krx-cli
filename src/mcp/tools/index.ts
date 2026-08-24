@@ -24,6 +24,7 @@ import {
   adjustStockDateRange,
   isAdjustedStockEndpoint,
 } from "../../client/stock-adjustment.js";
+import { OPENAPI_WIRE } from "../../contracts/generated/openapi-registry.js";
 
 type ZodRawShape = Record<string, z.ZodType>;
 
@@ -304,7 +305,9 @@ function createCategoryTool(categoryId: CategoryId): ToolDefinition {
       // isuCd is NOT passed to the API — KRX endpoints ignore it and return
       // all rows regardless. Client-side filtering is applied after fetch.
       // This also ensures a single cache entry per date (no isuCd in cache key).
-      const params: Record<string, string> = { basDd: dateStr };
+      const params: Record<string, string> = {
+        [OPENAPI_WIRE.requestDateField]: dateStr,
+      };
 
       const result = await krxFetch({
         endpoint: endpoint.path,

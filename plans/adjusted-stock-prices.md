@@ -1,7 +1,7 @@
 # Deliver trustworthy adjusted historical stock prices
 
 Status: complete
-Delivered by [PR #6](https://github.com/sjunepark/krx-cli/pull/6) to
+Delivered by [PR #6](https://github.com/cpaikr/krx-cli/pull/6) to
 `codex/adjusted-stock-prices-integration`.
 
 ## Outcome

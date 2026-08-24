@@ -5,11 +5,15 @@ import {
   createCompleteness,
   type CompositeResult,
 } from "./completeness.js";
+import {
+  OPENAPI_OPERATION_PATHS,
+  OPENAPI_WIRE,
+} from "../contracts/generated/openapi-registry.js";
 
-const KOSPI_INDEX_ENDPOINT = "/svc/apis/idx/kospi_dd_trd";
-const KOSDAQ_INDEX_ENDPOINT = "/svc/apis/idx/kosdaq_dd_trd";
-const KOSPI_STOCK_ENDPOINT = "/svc/apis/sto/stk_bydd_trd";
-const KOSDAQ_STOCK_ENDPOINT = "/svc/apis/sto/ksq_bydd_trd";
+const KOSPI_INDEX_ENDPOINT = OPENAPI_OPERATION_PATHS.index_kospi_dd_trd;
+const KOSDAQ_INDEX_ENDPOINT = OPENAPI_OPERATION_PATHS.index_kosdaq_dd_trd;
+const KOSPI_STOCK_ENDPOINT = OPENAPI_OPERATION_PATHS.stock_stk_bydd_trd;
+const KOSDAQ_STOCK_ENDPOINT = OPENAPI_OPERATION_PATHS.stock_ksq_bydd_trd;
 
 const TOP_N = 5;
 const MARKET_COMPONENTS = [
@@ -106,7 +110,7 @@ export async function fetchMarketSummary(
   options: MarketSummaryOptions,
 ): Promise<MarketSummaryResult> {
   const { apiKey, date, cache, refresh, signal } = options;
-  const params = { basDd: date };
+  const params = { [OPENAPI_WIRE.requestDateField]: date };
 
   const [kospiIdx, kosdaqIdx, kospiStk, kosdaqStk] = await Promise.all([
     safeFetch({

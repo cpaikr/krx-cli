@@ -6,10 +6,12 @@ availability.
 
 ## Per-change and release-blocking
 
-The reusable CI gate runs on Ubuntu and Windows with supported Node.js LTS
-versions. It requires a frozen install, lint, type checking, unit and integration
-tests with coverage thresholds, a clean production dependency audit, both
-bundled builds, and an isolated smoke test of the npm package.
+The reusable CI gate runs on Blacksmith Ubuntu 24.04 x64 with supported Node.js
+LTS versions. macOS and Windows are intentionally omitted from continuous CI to
+reduce compute cost; their native artifact targets remain supported. The gate
+requires a frozen install, lint, type checking, unit and integration tests with
+coverage thresholds, a clean production dependency audit, both bundled builds,
+and an isolated smoke test of the npm package.
 
 Run the same gate locally with:
 

@@ -5,6 +5,10 @@ import {
   createCompleteness,
   type CompositeResult,
 } from "./completeness.js";
+import {
+  OPENAPI_OPERATION_PATHS,
+  OPENAPI_WIRE,
+} from "../contracts/generated/openapi-registry.js";
 
 export interface StockSearchMatch {
   readonly ISU_CD: string;
@@ -14,8 +18,14 @@ export interface StockSearchMatch {
 }
 
 const BASE_INFO_ENDPOINTS = [
-  { endpoint: "/svc/apis/sto/stk_isu_base_info", market: "KOSPI" },
-  { endpoint: "/svc/apis/sto/ksq_isu_base_info", market: "KOSDAQ" },
+  {
+    endpoint: OPENAPI_OPERATION_PATHS.stock_stk_isu_base_info,
+    market: "KOSPI",
+  },
+  {
+    endpoint: OPENAPI_OPERATION_PATHS.stock_ksq_isu_base_info,
+    market: "KOSDAQ",
+  },
 ] as const;
 type SearchMarket = (typeof BASE_INFO_ENDPOINTS)[number]["market"];
 const SEARCH_MARKETS = BASE_INFO_ENDPOINTS.map(({ market }) => market);
@@ -30,14 +40,14 @@ export async function searchStock(
   query: string,
   signal?: AbortSignal,
 ): Promise<StockSearchResult> {
-  const basDd = getRecentTradingDate();
+  const requestDate = getRecentTradingDate();
   const lowerQuery = query.toLowerCase();
 
   const responses = await Promise.all(
     BASE_INFO_ENDPOINTS.map(async ({ endpoint, market }) => {
       const response = await krxFetch<Record<string, string>>({
         endpoint,
-        params: { basDd },
+        params: { [OPENAPI_WIRE.requestDateField]: requestDate },
         apiKey,
         signal,
       }).catch(

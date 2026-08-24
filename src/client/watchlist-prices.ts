@@ -4,10 +4,20 @@ import {
   createCompleteness,
   type CompositeResult,
 } from "./completeness.js";
+import {
+  OPENAPI_OPERATION_PATHS,
+  OPENAPI_WIRE,
+} from "../contracts/generated/openapi-registry.js";
 
 const STOCK_ENDPOINTS = [
-  { market: "KOSPI", endpoint: "/svc/apis/sto/stk_bydd_trd" },
-  { market: "KOSDAQ", endpoint: "/svc/apis/sto/ksq_bydd_trd" },
+  {
+    market: "KOSPI",
+    endpoint: OPENAPI_OPERATION_PATHS.stock_stk_bydd_trd,
+  },
+  {
+    market: "KOSDAQ",
+    endpoint: OPENAPI_OPERATION_PATHS.stock_ksq_bydd_trd,
+  },
 ] as const;
 
 type WatchlistMarket = (typeof STOCK_ENDPOINTS)[number]["market"];
@@ -39,7 +49,7 @@ export async function fetchWatchlistPrices(
     STOCK_ENDPOINTS.map(async ({ market, endpoint }) => {
       const response = await krxFetch<Record<string, string>>({
         endpoint,
-        params: { basDd: options.date },
+        params: { [OPENAPI_WIRE.requestDateField]: options.date },
         apiKey: options.apiKey,
         cache: options.cache,
         refresh: options.refresh,

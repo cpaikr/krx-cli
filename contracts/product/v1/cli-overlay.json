@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "id": "native-v1",
+  "base": {
+    "scenarios": "tests/compat/scenarios.json",
+    "inventory": "tests/compat/command-inventory.json"
+  },
+  "candidateCases": "contracts/product/v1/cli-cases.json",
+  "inventoryChanges": [
+    {
+      "change": "remove-command",
+      "path": [],
+      "name": "serve",
+      "reason": "mcp-removal"
+    },
+    {
+      "change": "add-command",
+      "path": ["auth"],
+      "name": "migrate",
+      "options": ["help"],
+      "reason": "explicit-credential-migration"
+    },
+    {
+      "change": "add-command",
+      "path": ["cache"],
+      "name": "inspect",
+      "options": ["operation", "date", "limit", "help"],
+      "reason": "bounded-cache-maintenance"
+    },
+    {
+      "change": "add-command",
+      "path": ["cache"],
+      "name": "prune",
+      "options": ["older-than", "max-entries", "help"],
+      "reason": "bounded-cache-maintenance"
+    },
+    {
+      "change": "add-option",
+      "path": [],
+      "name": "offline",
+      "reason": "explicit-network-free-reads"
+    }
+  ],
+  "behaviorChanges": [
+    {
+      "id": "auth-set-rejects-argv-secret",
+      "classification": "security-fix"
+    },
+    {
+      "id": "inactive-root-options-exit-2",
+      "classification": "defect-fix"
+    },
+    {
+      "id": "offline-conflicts",
+      "classification": "new-contract"
+    },
+    {
+      "id": "empty-current-future-not-cached",
+      "classification": "defect-fix"
+    },
+    {
+      "id": "direct-offline-provenance-stderr",
+      "classification": "new-contract"
+    },
+    {
+      "id": "watchlist-konex-prices",
+      "classification": "defect-fix"
+    }
+  ],
+  "optionPolicy": {
+    "inactiveRootOptionExit": 2,
+    "scopeCommands": {
+      "endpoint-rows": [
+        ["index", "list"],
+        ["stock", "list"],
+        ["stock", "info"],
+        ["etp", "list"],
+        ["bond", "list"],
+        ["derivative", "list"],
+        ["commodity", "list"],
+        ["esg", "list"]
+      ],
+      "stock-search": [["stock", "search"]],
+      "market-summary": [["market", "summary"]],
+      "watchlist-prices": [["watchlist", "show"]],
+      "auth-status": [["auth", "status"]]
+    },
+    "activeRootOptionScopes": {
+      "output": ["endpoint-rows", "auth-status"],
+      "fields": ["endpoint-rows", "stock-search"],
+      "dry-run": ["endpoint-rows"],
+      "verbose": ["endpoint-rows"],
+      "code": ["endpoint-rows"],
+      "sort": ["endpoint-rows"],
+      "asc": ["endpoint-rows"],
+      "offset": ["endpoint-rows"],
+      "limit": ["endpoint-rows"],
+      "no-cache": ["endpoint-rows", "market-summary", "watchlist-prices"],
+      "refresh": ["endpoint-rows", "market-summary", "watchlist-prices"],
+      "from": ["endpoint-rows"],
+      "to": ["endpoint-rows"],
+      "filter": ["endpoint-rows"],
+      "save": ["endpoint-rows"],
+      "retries": ["endpoint-rows"],
+      "offline": [
+        "endpoint-rows",
+        "stock-search",
+        "market-summary",
+        "watchlist-prices"
+      ]
+    },
+    "offlineActiveScopes": [
+      "endpoint-rows",
+      "stock-search",
+      "market-summary",
+      "watchlist-prices"
+    ],
+    "offlineConflicts": ["refresh", "no-cache", "dry-run", "retries"]
+  },
+  "compatibilityPolicy": {
+    "clapPresentationStable": false,
+    "topologyStable": true,
+    "acceptedValuesStable": true,
+    "streamsStable": true,
+    "semanticDiagnosticsStable": true,
+    "exitsStable": true,
+    "unclassifiedDifference": "reject"
+  },
+  "diagnostics": {
+    "error": "krx: error[{kind}/{code}]: {message}",
+    "provenance": "krx: provenance {json}"
+  },
+  "removedPackageSurfaces": ["krx-mcp"],
+  "removedEnvironment": ["KRX_MCP_TOKEN", "KRX_MCP_ALLOWED_HOSTS"]
+}

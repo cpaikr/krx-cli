@@ -5,6 +5,7 @@ import * as crypto from "node:crypto";
 import { formatDateToYYYYMMDD } from "../utils/date.js";
 import { writeFileAtomicSync } from "../utils/atomic-file.js";
 import { PUBLIC_CONTRACT } from "../user-contract.js";
+import { OPENAPI_WIRE } from "../contracts/generated/openapi-registry.js";
 
 const CACHE_DIR = path.join(os.homedir(), ".krx-cli", "cache");
 const DATE_FORMAT = /^\d{8}$/;
@@ -165,7 +166,7 @@ export function getCached<T>(
   params: Record<string, string>,
   options: CacheReadOptions = {},
 ): readonly T[] | null {
-  const date = params["basDd"];
+  const date = params[OPENAPI_WIRE.requestDateField];
   const now = options.now ?? new Date();
   if (!date || !isValidCacheDate(date) || isToday(date, now)) return null;
 
@@ -202,7 +203,7 @@ export function setCached<T>(
   data: readonly T[],
   options: CacheWriteOptions = {},
 ): void {
-  const date = params["basDd"];
+  const date = params[OPENAPI_WIRE.requestDateField];
   const now = options.now ?? new Date();
   if (!date || !isValidCacheDate(date) || isToday(date, now)) return;
 

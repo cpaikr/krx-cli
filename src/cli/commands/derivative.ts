@@ -4,14 +4,18 @@ import {
   resolveEndpoint,
   resolveDate,
 } from "../command-helper.js";
+import {
+  OPENAPI_OPERATION_PATHS,
+  OPENAPI_WIRE,
+} from "../../contracts/generated/openapi-registry.js";
 
 const TYPE_ENDPOINTS: Record<string, string> = {
-  futures: "/svc/apis/drv/fut_bydd_trd",
-  "futures-kospi": "/svc/apis/drv/eqsfu_stk_bydd_trd",
-  "futures-kosdaq": "/svc/apis/drv/eqkfu_ksq_bydd_trd",
-  options: "/svc/apis/drv/opt_bydd_trd",
-  "options-kospi": "/svc/apis/drv/eqsop_bydd_trd",
-  "options-kosdaq": "/svc/apis/drv/eqkop_bydd_trd",
+  futures: OPENAPI_OPERATION_PATHS.derivative_fut_bydd_trd,
+  "futures-kospi": OPENAPI_OPERATION_PATHS.derivative_eqsfu_stk_bydd_trd,
+  "futures-kosdaq": OPENAPI_OPERATION_PATHS.derivative_eqkfu_ksq_bydd_trd,
+  options: OPENAPI_OPERATION_PATHS.derivative_opt_bydd_trd,
+  "options-kospi": OPENAPI_OPERATION_PATHS.derivative_eqsop_bydd_trd,
+  "options-kosdaq": OPENAPI_OPERATION_PATHS.derivative_eqkop_bydd_trd,
 };
 
 export function registerDerivativeCommand(program: Command): void {
@@ -34,7 +38,7 @@ export function registerDerivativeCommand(program: Command): void {
 
       await executeCommand({
         endpoint,
-        params: { basDd: date },
+        params: { [OPENAPI_WIRE.requestDateField]: date },
         program,
         noDataMessage: `No data for date ${date}`,
       });

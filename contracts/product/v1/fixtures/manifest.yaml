@@ -1,0 +1,261 @@
+formatVersion: 1
+asOfKstDate: "20260103"
+asOfInstant: "2026-01-03T12:00:00.000Z"
+fixtureSecret: fixture-key
+
+schemaCases:
+  - id: legacy-config-valid
+    schema: ../state/legacy-config-v0.schema.json
+    fixture: legacy-config-v0.json
+    valid: true
+  - id: legacy-config-without-secret-valid
+    schema: ../state/legacy-config-v0.schema.json
+    fixture: legacy-config-without-secret-v0.json
+    valid: true
+  - id: legacy-config-absent-status-valid
+    schema: ../state/legacy-config-v0.schema.json
+    fixture: legacy-config-absent-status-v0.json
+    valid: true
+  - id: legacy-config-empty-status-valid
+    schema: ../state/legacy-config-v0.schema.json
+    fixture: legacy-config-empty-status-v0.json
+    valid: true
+  - id: legacy-config-version-collision-valid-v0
+    schema: ../state/legacy-config-v0.schema.json
+    fixture: legacy-config-version-collision-v0.json
+    valid: true
+  - id: approval-bound-version-collision-valid-v0
+    schema: ../state/legacy-config-v0.schema.json
+    fixture: approval-bound-version-collision-v0.json
+    valid: true
+  - id: legacy-config-invalid-status
+    schema: ../state/legacy-config-v0.schema.json
+    fixture: legacy-config-invalid-status-v0.json
+    valid: false
+  - id: legacy-config-invalid-with-secret
+    schema: ../state/legacy-config-v0.schema.json
+    fixture: legacy-config-invalid-with-secret-v0.json
+    valid: false
+  - id: keychain-valid
+    schema: ../state/credential-keychain-fixture-v1.schema.json
+    fixture: keychain-v1.json
+    valid: true
+  - id: keychain-empty-present-invalid
+    fixture: keychain-empty-invalid.txt
+    valid: false
+    parse: json
+  - id: approval-valid
+    schema: ../state/approval-config-v1.schema.json
+    fixture: approval-v1.json
+    valid: true
+  - id: approval-empty-valid
+    schema: ../state/approval-config-v1.schema.json
+    fixture: approval-empty-v1.json
+    valid: true
+  - id: approval-secret-forbidden
+    schema: ../state/approval-config-v1.schema.json
+    fixture: approval-forbidden-secret-v1.json
+    valid: false
+  - id: approval-invalid-ttl
+    schema: ../state/approval-config-v1.schema.json
+    fixture: approval-invalid-ttl-v1.json
+    valid: false
+    semantic: approval
+  - id: approval-error-secret
+    schema: ../state/approval-config-v1.schema.json
+    fixture: approval-error-secret-v1.json
+    valid: false
+    semantic: approval
+  - id: cache-v1-valid
+    schema: ../../../generated/state/cache-v1.schema.json
+    fixture: cache-v1-full.json
+    valid: true
+    semantic: cache-v1
+  - id: cache-v1-partial-row
+    schema: ../../../generated/state/cache-v1.schema.json
+    fixture: cache-v1-partial-invalid.json
+    valid: false
+  - id: cache-v1-extra-param
+    schema: ../../../generated/state/cache-v1.schema.json
+    fixture: cache-v1-extra-param-invalid.json
+    valid: false
+  - id: cache-v2-valid
+    schema: ../../../generated/state/cache-v2.schema.json
+    fixture: cache-v2-full.json
+    valid: true
+    semantic: cache-v2
+  - id: cache-v2-current-date
+    schema: ../../../generated/state/cache-v2.schema.json
+    fixture: cache-v2-current-invalid.json
+    valid: false
+    semantic: cache-v2
+  - id: cache-v2-extra-param
+    schema: ../../../generated/state/cache-v2.schema.json
+    fixture: cache-v2-extra-param-invalid.json
+    valid: false
+  - id: cache-v2-missing-param
+    schema: ../../../generated/state/cache-v2.schema.json
+    fixture: cache-v2-missing-param-invalid.json
+    valid: false
+  - id: cache-v2-duplicate-param-name
+    schema: ../../../generated/state/cache-v2.schema.json
+    fixture: cache-v2-duplicate-param-invalid.json
+    valid: false
+  - id: quota-root-valid
+    schema: ../state/quota-root-v0.schema.json
+    fixture: quota-root-v0.json
+    valid: true
+  - id: quota-v1-valid
+    schema: ../state/quota-v1.schema.json
+    fixture: quota-v1.json
+    valid: true
+  - id: quota-root-impossible-date
+    schema: ../state/quota-root-v0.schema.json
+    fixture: quota-root-impossible-date-invalid.json
+    valid: false
+  - id: quota-v1-impossible-date
+    schema: ../state/quota-v1.schema.json
+    fixture: quota-v1-impossible-date-invalid.json
+    valid: false
+  - id: quota-over-limit
+    schema: ../state/quota-root-v0.schema.json
+    fixture: quota-over-limit-invalid.json
+    valid: false
+  - id: watchlist-v0-valid
+    schema: ../state/watchlist-v0.schema.json
+    fixture: watchlist-v0.json
+    valid: true
+    semantic: watchlist-v0
+  - id: watchlist-v1-valid
+    schema: ../state/watchlist-v1.schema.json
+    fixture: watchlist-v1.json
+    valid: true
+    semantic: watchlist-v1
+  - id: watchlist-extra-field
+    schema: ../state/watchlist-v0.schema.json
+    fixture: watchlist-extra-field-invalid.json
+    valid: false
+  - id: corrupt-json
+    fixture: corrupt.json.txt
+    valid: false
+    parse: json
+
+transitionCases:
+  - id: credential-absent-keychain
+    transition: credential-config-v0-to-keychain-v1
+    source: legacy-config-v0.json
+    keychain: absent
+    expectedConfig: legacy-config-without-secret-v0.json
+    expectedKeychain: keychain-v1.json
+    expectedKeychainWrites: 1
+    result: migrated
+  - id: credential-same-keychain
+    transition: credential-config-v0-to-keychain-v1
+    source: legacy-config-v0.json
+    keychain: keychain-v1.json
+    expectedConfig: legacy-config-without-secret-v0.json
+    expectedKeychain: keychain-v1.json
+    expectedKeychainWrites: 0
+    result: migrated
+  - id: credential-conflicting-keychain
+    transition: credential-config-v0-to-keychain-v1
+    source: legacy-config-v0.json
+    keychain: keychain-conflict-v1.json
+    expectedConfig: legacy-config-v0.json
+    expectedKeychain: keychain-conflict-v1.json
+    expectedKeychainWrites: 0
+    result: migration-conflict-no-writes
+  - id: credential-empty-present-keychain
+    transition: credential-config-v0-to-keychain-v1
+    source: legacy-config-v0.json
+    keychain: keychain-empty-invalid.txt
+    expectedConfig: legacy-config-v0.json
+    expectedKeychain: keychain-empty-invalid.txt
+    expectedKeychainWrites: 0
+    result: invalid-present-keychain-no-writes
+  - id: credential-invalid-source-precedes-keychain-conflict
+    transition: credential-config-v0-to-keychain-v1
+    source: legacy-config-invalid-with-secret-v0.json
+    keychain: keychain-conflict-v1.json
+    expectedConfig: legacy-config-invalid-with-secret-v0.json
+    expectedKeychain: keychain-conflict-v1.json
+    expectedKeychainWrites: 0
+    result: legacy-state-invalid-no-writes
+  - id: approval-unbound-dropped
+    transition: approval-config-v0-to-v1
+    source: legacy-config-without-secret-v0.json
+    expected: approval-empty-v1.json
+    result: empty-service-status-preserve-other-keys
+  - id: approval-absent-initialized
+    transition: approval-config-v0-to-v1
+    source: legacy-config-absent-status-v0.json
+    expected: approval-empty-v1.json
+    result: empty-service-status-preserve-other-keys
+  - id: approval-empty-initialized
+    transition: approval-config-v0-to-v1
+    source: legacy-config-empty-status-v0.json
+    expected: approval-empty-v1.json
+    result: empty-service-status-preserve-other-keys
+  - id: approval-bound-preserved
+    transition: approval-config-v0-to-v1
+    source: approval-bound-v0.json
+    expected: approval-v1.json
+    result: bound-service-status-preserved
+  - id: approval-unbound-version-collision
+    transition: approval-config-v0-to-v1
+    source: legacy-config-version-collision-v0.json
+    expected: legacy-config-version-collision-v0.json
+    result: legacy-state-invalid-no-writes
+  - id: approval-bound-version-collision
+    transition: approval-config-v0-to-v1
+    source: approval-bound-version-collision-v0.json
+    expected: approval-bound-version-collision-v0.json
+    result: legacy-state-invalid-no-writes
+  - id: approval-invalid-source-preserved
+    transition: approval-config-v0-to-v1
+    source: legacy-config-invalid-status-v0.json
+    expected: legacy-config-invalid-status-v0.json
+    result: legacy-state-invalid-no-writes
+  - id: approval-mixed-invalid
+    transition: approval-config-v0-to-v1
+    source: approval-mixed-invalid-v0.json
+    expected: approval-mixed-invalid-v0.json
+    result: legacy-state-invalid-no-writes
+  - id: cache-strict-v1-to-v2
+    transition: cache-v1-to-v2
+    source: cache-v1-full.json
+    expected: cache-v2-full.json
+    result: migrated
+  - id: cache-invalid-params-preserved
+    transition: cache-v1-to-v2
+    source: cache-v1-extra-param-invalid.json
+    expected: cache-v1-extra-param-invalid.json
+    result: legacy-state-invalid-no-writes
+  - id: quota-root-to-shared-v1
+    transition: quota-root-v0-to-v1
+    source: quota-root-v0.json
+    expected: quota-v1.json
+    result: reserved
+  - id: quota-invalid-date-preserved
+    transition: quota-root-v0-to-v1
+    source: quota-root-impossible-date-invalid.json
+    expected: quota-root-impossible-date-invalid.json
+    result: legacy-state-invalid-no-writes
+  - id: watchlist-strict-v0-to-v1
+    transition: watchlist-v0-to-v1
+    source: watchlist-v0.json
+    expected: watchlist-v1.json
+    result: migrated-on-first-mutation
+
+proceduralCases:
+  - crash-after-keychain-set-rerun
+  - mixed-approval-state-preserves-bytes
+  - stale-v1-offline-read-without-promotion
+  - v1-v2-coexistence-prefers-v2
+  - interrupted-temp-ignored
+  - live-lease-contention
+  - dead-and-stale-lease-recovery
+  - symlink-and-reparse-rejected
+  - Node-Rust-concurrent-quota-total
+  - concurrent-watchlist-mutations
+  - legacy-watchlist-read-prohibited-after-cutover

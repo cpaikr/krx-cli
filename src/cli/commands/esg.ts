@@ -4,11 +4,15 @@ import {
   resolveEndpoint,
   resolveDate,
 } from "../command-helper.js";
+import {
+  OPENAPI_OPERATION_PATHS,
+  OPENAPI_WIRE,
+} from "../../contracts/generated/openapi-registry.js";
 
 const TYPE_ENDPOINTS: Record<string, string> = {
-  "sri-bond": "/svc/apis/esg/sri_bond_info",
-  etp: "/svc/apis/esg/esg_etp_info",
-  index: "/svc/apis/esg/esg_index_info",
+  "sri-bond": OPENAPI_OPERATION_PATHS.esg_sri_bond_info,
+  etp: OPENAPI_OPERATION_PATHS.esg_esg_etp_info,
+  index: OPENAPI_OPERATION_PATHS.esg_esg_index_info,
 };
 
 export function registerEsgCommand(program: Command): void {
@@ -25,7 +29,7 @@ export function registerEsgCommand(program: Command): void {
 
       await executeCommand({
         endpoint,
-        params: { basDd: date },
+        params: { [OPENAPI_WIRE.requestDateField]: date },
         program,
         noDataMessage: `No data for date ${date}`,
       });

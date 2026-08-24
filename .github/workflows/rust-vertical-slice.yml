@@ -1,0 +1,202 @@
+name: Rust vertical-slice certification
+
+on:
+  pull_request:
+    paths:
+      - ".gitattributes"
+      - ".github/workflows/rust-vertical-slice.yml"
+      - "contracts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "probes/rust-vertical-slice/**"
+      - "scripts/package-smoke-command.mjs"
+      - "scripts/rust-vertical-slice.mjs"
+      - "src/calendar/krx-closures.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-vertical-slice-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.id }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS ARM64 and Windows x64 remain supported package targets, but
+        # continuous CI intentionally omits them to reduce compute cost.
+        include:
+          - id: linux-x64-gnu
+            runner: blacksmith-2vcpu-ubuntu-2404
+            rust-target: x86_64-unknown-linux-gnu
+            node-arch: x64
+            binding: target/x86_64-unknown-linux-gnu/release/libkrx_node_probe.so
+            executable: target/x86_64-unknown-linux-gnu/release/krx
+          - id: linux-arm64-gnu
+            runner: blacksmith-2vcpu-ubuntu-2404-arm
+            rust-target: aarch64-unknown-linux-gnu
+            node-arch: arm64
+            binding: target/aarch64-unknown-linux-gnu/release/libkrx_node_probe.so
+            executable: target/aarch64-unknown-linux-gnu/release/krx
+
+    defaults:
+      run:
+        working-directory: probes/rust-vertical-slice
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          architecture: ${{ matrix.node-arch }}
+
+      - name: Install pinned Rust toolchain and target
+        run: >-
+          rustup toolchain install 1.92.0
+          --profile minimal
+          --component rustfmt,clippy
+          --target ${{ matrix.rust-target }}
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Compile the complete probe workspace
+        run: cargo check --locked --workspace --all-targets --all-features
+
+      - name: Lint the complete probe workspace
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+
+      - name: Test the host-native probe workspace
+        run: cargo test --locked --workspace --all-features
+
+      - name: Verify official Rustls handshake without credentials
+        env:
+          KRX_PROBE_LIVE_TLS: "1"
+        run: >-
+          cargo test --locked -p krx-sdk
+          tests::official_endpoint_accepts_a_rustls_handshake_without_retaining_payloads
+          -- --ignored --exact --nocapture
+
+      - name: Verify native keyring behavior
+        env:
+          KRX_PROBE_NATIVE_KEYRING: "1"
+        run: >-
+          cargo test --locked -p krx-sdk
+          tests::native_keyring_round_trip_or_typed_headless_failure
+          -- --ignored --exact --nocapture
+
+      - name: Build the native package members once
+        run: cargo build --locked --release --target ${{ matrix.rust-target }} -p krx-cli-probe -p krx-node-probe
+
+      - name: Assemble the manifest-certified package
+        run: >-
+          node node/scripts/assemble.mjs
+          --target ${{ matrix.id }}
+          --binding ${{ matrix.binding }}
+          --executable ${{ matrix.executable }}
+          --out target/package
+
+      - name: Pack the private target archive
+        run: >-
+          node node/scripts/pack.mjs
+          --package target/package
+          --target ${{ matrix.id }}
+          --artifacts target/artifacts
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rust-probe-${{ matrix.id }}
+          path: probes/rust-vertical-slice/target/artifacts/*.tgz
+          if-no-files-found: error
+          retention-days: 14
+
+  consume:
+    name: Consume ${{ matrix.target.id }} / Node ${{ matrix.node }}
+    needs: build
+    runs-on: ${{ matrix.target.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+        # macOS ARM64 and Windows x64 are omitted here for the same compute-cost policy.
+        target:
+          - id: linux-x64-gnu
+            runner: blacksmith-2vcpu-ubuntu-2404
+            node-arch: x64
+          - id: linux-arm64-gnu
+            runner: blacksmith-2vcpu-ubuntu-2404-arm
+            node-arch: arm64
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ matrix.node }}
+          architecture: ${{ matrix.target.node-arch }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: rust-probe-${{ matrix.target.id }}
+          path: probes/rust-vertical-slice/target/download
+
+      - name: Certify the exact packed artifact
+        shell: bash
+        run: >-
+          node probes/rust-vertical-slice/node/scripts/certify.mjs
+          --tarball probes/rust-vertical-slice/target/download/*.tgz
+          --target ${{ matrix.target.id }}
+          --report probes/rust-vertical-slice/target/certification/${{ matrix.target.id }}-node${{ matrix.node }}.json
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rust-probe-report-${{ matrix.target.id }}-node${{ matrix.node }}
+          path: probes/rust-vertical-slice/target/certification/*.json
+          if-no-files-found: error
+          retention-days: 14
+
+  certification:
+    name: Linux native certification
+    if: always()
+    needs: [build, consume]
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - name: Require every build and Node consumer
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          CONSUME_RESULT: ${{ needs.consume.result }}
+        run: |
+          test "$BUILD_RESULT" = success
+          test "$CONSUME_RESULT" = success
+
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: rust-probe-report-*
+          path: probes/rust-vertical-slice/target/reports
+          merge-multiple: true
+
+      - name: Compare target-independent package identity
+        run: >-
+          node probes/rust-vertical-slice/node/scripts/compare-reports.mjs
+          --reports probes/rust-vertical-slice/target/reports

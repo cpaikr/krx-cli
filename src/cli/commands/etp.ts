@@ -4,11 +4,15 @@ import {
   resolveEndpoint,
   resolveDate,
 } from "../command-helper.js";
+import {
+  OPENAPI_OPERATION_PATHS,
+  OPENAPI_WIRE,
+} from "../../contracts/generated/openapi-registry.js";
 
 const TYPE_ENDPOINTS: Record<string, string> = {
-  etf: "/svc/apis/etp/etf_bydd_trd",
-  etn: "/svc/apis/etp/etn_bydd_trd",
-  elw: "/svc/apis/etp/elw_bydd_trd",
+  etf: OPENAPI_OPERATION_PATHS.etp_etf_bydd_trd,
+  etn: OPENAPI_OPERATION_PATHS.etp_etn_bydd_trd,
+  elw: OPENAPI_OPERATION_PATHS.etp_elw_bydd_trd,
 };
 
 export function registerEtpCommand(program: Command): void {
@@ -27,7 +31,7 @@ export function registerEtpCommand(program: Command): void {
 
       await executeCommand({
         endpoint,
-        params: { basDd: date },
+        params: { [OPENAPI_WIRE.requestDateField]: date },
         program,
         noDataMessage: `No data for date ${date}`,
       });

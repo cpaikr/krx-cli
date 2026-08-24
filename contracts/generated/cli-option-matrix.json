@@ -1,0 +1,2559 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": {
+    "inventory": "contracts/generated/candidate-command-inventory.json",
+    "policy": "contracts/product/v1/cli-overlay.json#optionPolicy"
+  },
+  "entries": [
+    {
+      "option": "output",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["auth", "status"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "output",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["stock", "search"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "fields",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "dry-run",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "verbose",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "code",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "sort",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "asc",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offset",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "limit",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["market", "summary"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["watchlist", "show"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "no-cache",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["market", "summary"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["watchlist", "show"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "refresh",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "from",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "to",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "filter",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "save",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["stock", "search"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["market", "summary"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["watchlist", "show"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "retries",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["auth", "set"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["auth", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["auth", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["auth", "check"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["index", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["stock", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["stock", "info"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["stock", "search"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["etp", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["bond", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["derivative", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["commodity", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["esg", "list"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["schema"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["cache", "status"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["cache", "clear"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["market", "summary"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["watchlist", "add"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["watchlist", "remove"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["watchlist", "list"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["watchlist", "show"],
+      "active": true,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["version"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["auth", "migrate"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["cache", "inspect"],
+      "active": false,
+      "inactiveExit": 2
+    },
+    {
+      "option": "offline",
+      "commandPath": ["cache", "prune"],
+      "active": false,
+      "inactiveExit": 2
+    }
+  ]
+}

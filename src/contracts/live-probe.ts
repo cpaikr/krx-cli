@@ -6,6 +6,7 @@ import type {
   ObservedFieldDrift,
   ProbeIssue,
 } from "./types.js";
+import { OPENAPI_WIRE } from "./generated/openapi-registry.js";
 
 const LIVE_PROBE_TIMEOUT_MS = 15_000;
 
@@ -74,7 +75,7 @@ export function compareObservedRows(
       .filter((name) => !expected.has(name))
       .sort(),
     missingFromObserved: [...expected]
-      .filter((name) => !observed.has(name))
+      .filter((name) => rows.some((row) => !(name in row)))
       .sort(),
     changedTypes: [...observed.entries()]
       .filter(
@@ -120,12 +121,12 @@ export async function probeEndpoint(
     response = await (options.fetchImpl ?? fetch)(
       `${BASE_URL}${options.endpoint.path}`,
       {
-        method: "POST",
+        method: OPENAPI_WIRE.method,
         headers: {
-          AUTH_KEY: options.apiKey,
-          "Content-Type": "application/json; charset=utf-8",
+          [OPENAPI_WIRE.authHeaderName]: options.apiKey,
+          "Content-Type": OPENAPI_WIRE.requestContentType,
         },
-        body: JSON.stringify({ basDd: options.date }),
+        body: JSON.stringify({ [OPENAPI_WIRE.requestDateField]: options.date }),
         signal: AbortSignal.timeout(LIVE_PROBE_TIMEOUT_MS),
       },
     );
@@ -188,8 +189,18 @@ export async function probeEndpoint(
     typeof body === "object" && body !== null
       ? (body as Record<string, unknown>)
       : undefined;
-  const krxErrorCode = safeMessage(record?.["respCode"], options.apiKey);
-  const krxErrorMessage = safeMessage(record?.["respMsg"], options.apiKey);
+  const krxErrorCode = safeMessage(
+    record?.[OPENAPI_WIRE.errorCodeField],
+    options.apiKey,
+  );
+  const krxErrorMessage = safeMessage(
+    record?.[OPENAPI_WIRE.errorMessageField],
+    options.apiKey,
+  );
+  const hasKrxError =
+    record !== undefined &&
+    (Object.hasOwn(record, OPENAPI_WIRE.errorCodeField) ||
+      Object.hasOwn(record, OPENAPI_WIRE.errorMessageField));
 
   if (!response.ok) {
     return reportFailure(
@@ -209,7 +220,7 @@ export async function probeEndpoint(
     );
   }
 
-  if (krxErrorCode || krxErrorMessage) {
+  if (hasKrxError) {
     return reportFailure(
       options,
       "krx_error",
@@ -225,14 +236,14 @@ export async function probeEndpoint(
     );
   }
 
-  const outBlock = record?.["OutBlock_1"];
+  const outBlock = record?.[OPENAPI_WIRE.successEnvelopeField];
   if (!Array.isArray(outBlock)) {
     return reportFailure(
       options,
       "invalid_response",
       {
         code: "missing_out_block",
-        message: "KRX success response did not contain OutBlock_1",
+        message: `KRX success response did not contain ${OPENAPI_WIRE.successEnvelopeField}`,
       },
       { httpStatus: response.status, quotaReserved: true },
     );
@@ -243,8 +254,7 @@ export async function probeEndpoint(
       "empty",
       {
         code: "empty_trading_date",
-        message:
-          "OutBlock_1 was empty; choose a confirmed trading date before validating schema",
+        message: `${OPENAPI_WIRE.successEnvelopeField} was empty; choose a confirmed trading date before validating schema`,
       },
       { httpStatus: response.status, quotaReserved: true },
     );
@@ -259,7 +269,7 @@ export async function probeEndpoint(
       "invalid_response",
       {
         code: "invalid_out_block_rows",
-        message: "OutBlock_1 contained a non-object row",
+        message: `${OPENAPI_WIRE.successEnvelopeField} contained a non-object row`,
       },
       { httpStatus: response.status, quotaReserved: true },
     );

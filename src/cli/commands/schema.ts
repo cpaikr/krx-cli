@@ -1,9 +1,5 @@
 import { Command } from "commander";
-import {
-  ENDPOINTS,
-  CATEGORIES,
-  type ResponseFieldDef,
-} from "../../client/endpoints.js";
+import { ENDPOINTS, type ResponseFieldDef } from "../../client/endpoints.js";
 import { writeOutput, writeError } from "../../output/formatter.js";
 import { EXIT_CODES } from "../exit-codes.js";
 import {
@@ -11,6 +7,7 @@ import {
   isAdjustedStockEndpoint,
   type DerivedOutputSchema,
 } from "../../client/stock-adjustment.js";
+import { OPENAPI_WIRE } from "../../contracts/generated/openapi-registry.js";
 
 interface SchemaEntry {
   readonly command: string;
@@ -32,25 +29,16 @@ interface ParamDef {
 
 const COMMON_PARAMS: readonly ParamDef[] = [
   {
-    name: "basDd",
+    name: OPENAPI_WIRE.requestDateField,
     type: "string",
     required: true,
     description: "Trading date in YYYYMMDD format",
   },
 ];
 
-function buildCommandName(endpoint: string): string {
-  const parts = endpoint.replace("/svc/apis/", "").split("/");
-  const categoryCode = parts[0];
-  const apiName = parts[1];
-
-  const category = CATEGORIES.find((c) => c.code === categoryCode);
-  return `${category?.id ?? categoryCode}.${apiName}`;
-}
-
 function getAllSchemas(): readonly SchemaEntry[] {
   return ENDPOINTS.map((endpoint) => ({
-    command: buildCommandName(endpoint.path),
+    command: endpoint.legacyCommand,
     endpoint: endpoint.path,
     description: endpoint.description,
     descriptionKo: endpoint.descriptionKo,

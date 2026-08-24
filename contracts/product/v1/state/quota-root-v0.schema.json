@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://krx-cli.invalid/contracts/state/quota-root-v0.schema.json",
+  "title": "Legacy unbound quota counter",
+  "type": "object",
+  "required": ["date", "count"],
+  "properties": {
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{8}$",
+      "format": "krx-compact-date"
+    },
+    "count": { "type": "integer", "minimum": 0, "maximum": 10000 }
+  },
+  "additionalProperties": false
+}

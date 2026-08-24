@@ -7,6 +7,7 @@ import { getRecentTradingDate } from "../utils/date.js";
 import { writeFileAtomicSync } from "../utils/atomic-file.js";
 import { credentialFingerprint } from "./rate-limit.js";
 import { PUBLIC_CONTRACT } from "../user-contract.js";
+import { OPENAPI_WIRE } from "../contracts/generated/openapi-registry.js";
 
 const CONFIG_DIR = path.join(os.homedir(), ".krx-cli");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
@@ -228,7 +229,7 @@ async function probeCategory(
     // Probe endpoints are selected only from the checked-in official category
     // registry; arbitrary endpoints can never become approval probes.
     endpoint: category.probeEndpoint,
-    params: { basDd: getRecentTradingDate() },
+    params: { [OPENAPI_WIRE.requestDateField]: getRecentTradingDate() },
     apiKey,
     cache: false,
     signal: options.signal,

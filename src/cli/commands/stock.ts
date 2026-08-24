@@ -19,17 +19,21 @@ import { withCliCancellation } from "../cancellation.js";
 import { applyCompositeExitPolicy } from "../composite.js";
 import { missingApiKeyMessage } from "../../user-contract.js";
 import { UserInputError } from "../../errors.js";
+import {
+  OPENAPI_OPERATION_PATHS,
+  OPENAPI_WIRE,
+} from "../../contracts/generated/openapi-registry.js";
 
 const TRADING_ENDPOINTS: Record<string, string> = {
-  kospi: "/svc/apis/sto/stk_bydd_trd",
-  kosdaq: "/svc/apis/sto/ksq_bydd_trd",
-  konex: "/svc/apis/sto/knx_bydd_trd",
+  kospi: OPENAPI_OPERATION_PATHS.stock_stk_bydd_trd,
+  kosdaq: OPENAPI_OPERATION_PATHS.stock_ksq_bydd_trd,
+  konex: OPENAPI_OPERATION_PATHS.stock_knx_bydd_trd,
 };
 
 const INFO_ENDPOINTS: Record<string, string> = {
-  kospi: "/svc/apis/sto/stk_isu_base_info",
-  kosdaq: "/svc/apis/sto/ksq_isu_base_info",
-  konex: "/svc/apis/sto/knx_isu_base_info",
+  kospi: OPENAPI_OPERATION_PATHS.stock_stk_isu_base_info,
+  kosdaq: OPENAPI_OPERATION_PATHS.stock_ksq_isu_base_info,
+  konex: OPENAPI_OPERATION_PATHS.stock_knx_isu_base_info,
 };
 
 export function registerStockCommand(program: Command): void {
@@ -56,7 +60,7 @@ export function registerStockCommand(program: Command): void {
 
         await executeCommand({
           endpoint,
-          params: { basDd: date },
+          params: { [OPENAPI_WIRE.requestDateField]: date },
           program,
           adjusted: opts.adjusted,
           noDataMessage: `No data for date ${date}`,
