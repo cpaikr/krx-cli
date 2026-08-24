@@ -1150,10 +1150,12 @@ fn composite_value<Id: Ord>(
     success: bool,
     data: Value,
     completeness: &Completeness<Id>,
-    provenance: &std::collections::BTreeMap<Id, ResultProvenance>,
+    _provenance: &std::collections::BTreeMap<Id, ResultProvenance>,
     error: Option<&KrxError>,
     id_value: impl Fn(&Id) -> String,
 ) -> Value {
+    // Provenance remains available on the shared SDK result. Adding it to the
+    // CLI envelope would change the frozen legacy success payload.
     let mut value = json!({
         "success": success,
         "data": data,
@@ -1168,10 +1170,6 @@ fn composite_value<Id: Ord>(
             })).collect::<Vec<_>>(),
             "skipped": completeness.skipped.iter().map(&id_value).collect::<Vec<_>>(),
         },
-        "provenance": provenance
-            .iter()
-            .map(|(id, value)| (id_value(id), provenance_value(value)))
-            .collect::<serde_json::Map<_, _>>(),
     });
     if let Some(error) = error {
         value["error"] = json!(error.message());
@@ -1440,7 +1438,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn composite_projection_uses_contract_ids_and_provenance() {
+    fn composite_projection_uses_contract_ids_and_omits_absent_error_metadata() {
         let completeness = Completeness {
             state: CompletenessState::Complete,
             requested: vec![SearchMarket::Kospi, SearchMarket::Kosdaq],
@@ -1471,38 +1469,9 @@ mod tests {
             value["completeness"]["requested"],
             json!(["KOSPI", "KOSDAQ"])
         );
-        assert_eq!(
-            value["provenance"]["KOSPI"],
-            json!({
-                "source": "cache",
-                "fetchedAt": "1970-01-01T00:00:00.000Z",
-                "freshness": "stale",
-                "contractId": "contract-kospi",
-            })
-        );
+        assert!(value.get("provenance").is_none());
         assert!(value.get("error").is_none());
         assert!(value.get("errorType").is_none());
-    }
-
-    #[test]
-    fn composite_projection_keeps_required_provenance_empty_when_no_components_succeed() {
-        let completeness = Completeness {
-            state: CompletenessState::Empty,
-            requested: vec![SearchMarket::Kospi],
-            succeeded: Vec::new(),
-            failed: Vec::new(),
-            skipped: vec![SearchMarket::Kospi],
-        };
-        let value = composite_value(
-            false,
-            json!([]),
-            &completeness,
-            &BTreeMap::new(),
-            None,
-            search_market_id,
-        );
-
-        assert_eq!(value["provenance"], json!({}));
     }
 
     #[test]
