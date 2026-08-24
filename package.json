@@ -30,6 +30,7 @@
     "test:e2e": "vitest run --config tests/vitest.config.e2e.ts",
     "contract:check": "pnpm build && node dist/contract-check.js",
     "contract:dry-run": "pnpm build && node dist/contract-check.js --dry-run",
+    "rust:sdk": "cargo fmt --all --check && cargo check --locked --workspace --all-targets --all-features && cargo clippy --locked --workspace --all-targets --all-features -- -D warnings && cargo test --locked --workspace --all-features",
     "calendar:check": "node scripts/krx-calendar.mjs --check",
     "calendar:update": "node scripts/krx-calendar.mjs --write",
     "check": "pnpm contract:validate && pnpm lint && pnpm typecheck && pnpm test",

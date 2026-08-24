@@ -170,8 +170,11 @@ crates/krx-cli   crates/krx-node
   Clap 4.6.6, reqwest 0.13.4, Tokio 1.53.1, tokio-util 0.7.19, napi-rs 3.12.2,
   napi-derive 3.6.3, napi-build 2.4.1, keyring-rs 4.1.6, serde 1.0.229,
   serde_json 1.0.151, serde-saphyr 1.1.0, thiserror 2.0.20, url 2.5.8,
-  zeroize 1.9.0, and futures-util 0.3.34. The contract gate rejects drift and
-  the heavyweight fallback credential-database feature graph.
+  zeroize 1.9.0, futures-util 0.3.34, sha2 0.11.0, uuid 1.25.0, and jiff
+  0.2.35. SHA-256 identity, OS-random UUID-v4 lock identities, and canonical
+  UTC/KST time handling use those maintained crates rather than project-owned
+  cryptography, randomness, or timestamp parsing. The contract gate rejects
+  drift and the heavyweight fallback credential-database feature graph.
 
 ### Rust SDK and native CLI
 
