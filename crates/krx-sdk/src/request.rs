@@ -1,6 +1,7 @@
 use std::fmt;
 use std::time::Duration;
 
+use jiff::civil::Date;
 use tokio_util::sync::CancellationToken;
 use zeroize::Zeroizing;
 
@@ -156,11 +157,14 @@ impl SecurityCode {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DateRange {
-    pub from: TradingDate,
-    pub to: TradingDate,
+    pub(crate) from: TradingDate,
+    pub(crate) to: TradingDate,
 }
 
 impl DateRange {
+    /// Maximum number of inclusive calendar dates in one range request.
+    pub const MAX_DAYS: usize = 10_000;
+
     pub fn new(from: TradingDate, to: TradingDate) -> Result<Self, KrxError> {
         if from > to {
             return Err(KrxError::new(
@@ -168,7 +172,34 @@ impl DateRange {
                 "range start must not follow range end",
             ));
         }
+        let from_civil = Date::strptime("%Y%m%d", from.as_str()).map_err(|_| {
+            KrxError::new(
+                KrxErrorCode::InvalidArgument,
+                "range start is outside the supported calendar",
+            )
+        })?;
+        let to_civil = Date::strptime("%Y%m%d", to.as_str()).map_err(|_| {
+            KrxError::new(
+                KrxErrorCode::InvalidArgument,
+                "range end is outside the supported calendar",
+            )
+        })?;
+        let span_days = (to_civil - from_civil).get_days() as usize;
+        if span_days >= Self::MAX_DAYS {
+            return Err(KrxError::new(
+                KrxErrorCode::InvalidArgument,
+                format!("date range may contain at most {} days", Self::MAX_DAYS),
+            ));
+        }
         Ok(Self { from, to })
+    }
+
+    pub fn from(&self) -> &TradingDate {
+        &self.from
+    }
+
+    pub fn to(&self) -> &TradingDate {
+        &self.to
     }
 }
 
@@ -206,9 +237,85 @@ pub struct DirectRequest {
     pub options: CallOptions,
 }
 
+#[derive(Clone, Debug)]
+pub enum RangeMode {
+    Raw,
+    Adjusted { security_code: SecurityCode },
+}
+
+#[derive(Clone, Debug)]
+pub struct RangeRequest {
+    pub operation: OperationId,
+    pub range: DateRange,
+    pub mode: RangeMode,
+    pub options: CallOptions,
+}
+
+#[derive(Clone, Debug)]
+pub struct StockSearchRequest {
+    pub query: String,
+    pub options: CallOptions,
+}
+
+impl StockSearchRequest {
+    pub fn new(query: &str, options: CallOptions) -> Result<Self, KrxError> {
+        let query = query.trim();
+        if query.is_empty() {
+            return Err(KrxError::new(
+                KrxErrorCode::InvalidArgument,
+                "stock search query must not be empty",
+            ));
+        }
+        Ok(Self {
+            query: query.to_owned(),
+            options,
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct MarketSummaryRequest {
+    pub date: TradingDate,
+    pub options: CallOptions,
+}
+
+impl MarketSummaryRequest {
+    pub fn new(date: TradingDate, options: CallOptions) -> Self {
+        Self { date, options }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WatchlistPricesRequest {
+    pub date: TradingDate,
+    pub security_codes: Vec<SecurityCode>,
+    pub options: CallOptions,
+}
+
+impl WatchlistPricesRequest {
+    pub fn new(
+        date: TradingDate,
+        security_codes: Vec<SecurityCode>,
+        options: CallOptions,
+    ) -> Result<Self, KrxError> {
+        if security_codes.is_empty() {
+            return Err(KrxError::new(
+                KrxErrorCode::InvalidArgument,
+                "watchlist request must contain at least one security code",
+            ));
+        }
+        Ok(Self {
+            date,
+            security_codes,
+            options,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use jiff::ToSpan;
 
     #[test]
     fn validates_project_owned_scalar_types() {
@@ -236,5 +343,37 @@ mod tests {
         cancellation.cancel();
         assert!(clone.is_cancelled());
         std::mem::drop(clone.cancelled());
+    }
+
+    #[test]
+    fn composite_requests_reject_empty_required_collections() {
+        assert!(StockSearchRequest::new("  ", CallOptions::default()).is_err());
+        assert!(
+            WatchlistPricesRequest::new(
+                TradingDate::parse("20260102").expect("date"),
+                Vec::new(),
+                CallOptions::default(),
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn date_ranges_are_bounded_before_calendar_materialization() {
+        let start = Date::new(2000, 1, 1).expect("start");
+        let date =
+            |value: Date| TradingDate::parse(&value.strftime("%Y%m%d").to_string()).expect("date");
+        let last_allowed = start
+            .checked_add(((DateRange::MAX_DAYS - 1) as i64).days())
+            .expect("last allowed");
+        let allowed = DateRange::new(date(start), date(last_allowed)).expect("bounded range");
+        assert_eq!(allowed.from().as_str(), "20000101");
+        assert_eq!(allowed.to(), &date(last_allowed));
+
+        let first_rejected = start
+            .checked_add((DateRange::MAX_DAYS as i64).days())
+            .expect("first rejected");
+        let error = DateRange::new(date(start), date(first_rejected)).expect_err("oversized range");
+        assert_eq!(error.code(), KrxErrorCode::InvalidArgument);
     }
 }

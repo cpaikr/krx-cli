@@ -10,7 +10,71 @@ use serde_json::Value;
 #[serde(rename_all = "camelCase")]
 struct ProductContract {
     operations: Vec<ProductOperation>,
+    operation_sets: ProductOperationSets,
+    composites: ProductComposites,
     errors: ProductErrors,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProductOperationSets {
+    adjusted_daily_stock: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProductComposites {
+    stock_search: ProductComposite,
+    watchlist_prices: ProductComposite,
+    market_summary: ProductMarketSummary,
+}
+
+#[derive(Deserialize)]
+struct ProductComposite {
+    #[serde(deserialize_with = "ordered_string_map")]
+    components: Vec<(String, String)>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProductMarketSummary {
+    #[serde(deserialize_with = "ordered_string_map")]
+    components: Vec<(String, String)>,
+    top_count: usize,
+}
+
+fn ordered_string_map<'de, D>(deserializer: D) -> Result<Vec<(String, String)>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct OrderedStringMap;
+
+    impl<'de> serde::de::Visitor<'de> for OrderedStringMap {
+        type Value = Vec<(String, String)>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("an ordered string-to-string map")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            let mut entries = Vec::with_capacity(map.size_hint().unwrap_or(0));
+            let mut keys = BTreeSet::new();
+            while let Some((key, value)) = map.next_entry::<String, String>()? {
+                if !keys.insert(key.clone()) {
+                    return Err(serde::de::Error::custom(format!(
+                        "duplicate component key {key}"
+                    )));
+                }
+                entries.push((key, value));
+            }
+            Ok(entries)
+        }
+    }
+
+    deserializer.deserialize_map(OrderedStringMap)
 }
 
 #[derive(Deserialize)]
@@ -456,6 +520,56 @@ fn generate_operations(document: &Value, product: &ProductContract, output: &Pat
         ));
     }
     generated.push_str("    }\n}\n");
+
+    let operation_ids = product
+        .operations
+        .iter()
+        .map(|operation| operation.operation_id.as_str())
+        .collect::<BTreeSet<_>>();
+    generated.push_str("pub(crate) static ADJUSTED_DAILY_STOCK: &[OperationId] = &[\n");
+    for operation in &product.operation_sets.adjusted_daily_stock {
+        assert!(
+            operation_ids.contains(operation.as_str()),
+            "unknown adjusted operation"
+        );
+        generated.push_str(&format!("    OperationId::{},\n", rust_variant(operation)));
+    }
+    generated.push_str("];\n");
+
+    for (name, components) in [
+        (
+            "STOCK_SEARCH_COMPONENTS",
+            &product.composites.stock_search.components,
+        ),
+        (
+            "WATCHLIST_PRICE_COMPONENTS",
+            &product.composites.watchlist_prices.components,
+        ),
+        (
+            "MARKET_SUMMARY_COMPONENTS",
+            &product.composites.market_summary.components,
+        ),
+    ] {
+        generated.push_str(&format!(
+            "pub(crate) static {name}: &[(&str, OperationId)] = &[\n"
+        ));
+        for (component, operation) in components {
+            assert!(
+                operation_ids.contains(operation.as_str()),
+                "unknown composite operation"
+            );
+            generated.push_str(&format!(
+                "    ({}, OperationId::{}),\n",
+                literal(component),
+                rust_variant(operation)
+            ));
+        }
+        generated.push_str("];\n");
+    }
+    generated.push_str(&format!(
+        "pub(crate) const MARKET_SUMMARY_TOP_COUNT: usize = {};\n",
+        product.composites.market_summary.top_count
+    ));
     fs::write(output.join("operation_contract.rs"), generated).expect("write generated operations");
 }
 

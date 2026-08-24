@@ -11,6 +11,8 @@ on:
       - "contracts/product/**"
       - "crates/krx-sdk/**"
       - "rust-toolchain.toml"
+      - "src/calendar/krx-closures.json"
+      - "tests/fixtures/adjusted-stock-prices/oracles.json"
       - "tests/scripts/release-policy.test.ts"
       - "tests/scripts/rust-sdk.test.ts"
   workflow_dispatch:

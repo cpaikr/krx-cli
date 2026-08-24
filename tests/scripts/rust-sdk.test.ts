@@ -9,11 +9,12 @@ function read(path: string): string {
 const workspaceDependencyLines = [
   'clap = { version = "=4.6.6", features = ["derive"] }',
   'futures-util = "=0.3.34"',
-  'jiff = { version = "=0.2.35", features = ["serde"] }',
+  'jiff = { version = "=0.2.35", default-features = false, features = ["serde", "std"] }',
   'keyring = "=4.1.6"',
   'napi = { version = "=3.12.2", default-features = false, features = ["async", "napi8", "tokio_rt"] }',
   'napi-build = "=2.4.1"',
   'napi-derive = "=3.6.3"',
+  'num-bigint = "=0.5.1"',
   'reqwest = { version = "=0.13.4", default-features = false, features = ["json", "rustls", "stream"] }',
   'serde = { version = "=1.0.229", features = ["derive"] }',
   'serde_json = "=1.0.151"',
@@ -35,6 +36,37 @@ function assertWorkspaceDependencyPins(source: string): void {
   }
 }
 
+function assertDomainPolicySources(sources: {
+  readonly adjustment: string;
+  readonly build: string;
+  readonly request: string;
+  readonly result: string;
+}): void {
+  const transitionStart = sources.adjustment.indexOf("fn transition_string(");
+  const transitionEnd = sources.adjustment.indexOf(
+    "pub(crate) fn adjust_stock_rows(",
+    transitionStart,
+  );
+  const transitionFormatter = sources.adjustment.slice(
+    transitionStart,
+    transitionEnd,
+  );
+  const exactTransitionFormat =
+    '{{\\"date\\":\\"{}\\",\\"previousClose\\":\\"{}\\",\\"previousDate\\":\\"{}\\",\\"ratio\\":{{\\"denominator\\":\\"{}\\",\\"numerator\\":\\"{}\\"}},\\"referencePrice\\":\\"{}\\"}}';
+  const required = [
+    [sources.build, 'deserialize_with = "ordered_string_map"'],
+    [sources.request, "pub const MAX_DAYS: usize = 10_000;"],
+    [sources.result, "krx-adjustment-transition/v1"],
+    [sources.adjustment, "krx-adjustment-transition/v1"],
+    [transitionFormatter, exactTransitionFormat],
+  ] as const;
+  for (const [source, marker] of required) {
+    if (!source.includes(marker)) {
+      throw new Error(`Rust SDK domain policy is missing ${marker}`);
+    }
+  }
+}
+
 describe("production Rust SDK gate", () => {
   it("owns a pinned workspace without probe or adapter dependencies", () => {
     const workspace = read("Cargo.toml");
@@ -49,6 +81,8 @@ describe("production Rust SDK gate", () => {
       ["serde", "1.0.229"],
       ["serde_json", "1.0.151"],
       ["serde-saphyr", "1.1.0"],
+      ["jiff", "0.2.35"],
+      ["num-bigint", "0.5.1"],
       ["tokio-util", "0.7.19"],
       ["zeroize", "1.9.0"],
     ]) {
@@ -81,6 +115,34 @@ describe("production Rust SDK gate", () => {
     expect(source).not.toContain("probes/");
   });
 
+  it("freezes ordered composites, bounded ranges, and transition grammar", () => {
+    const sources = {
+      adjustment: read("crates/krx-sdk/src/adjustment.rs"),
+      build: read("crates/krx-sdk/build.rs"),
+      request: read("crates/krx-sdk/src/request.rs"),
+      result: read("crates/krx-sdk/src/result.rs"),
+    };
+    expect(() => assertDomainPolicySources(sources)).not.toThrow();
+    expect(() =>
+      assertDomainPolicySources({
+        ...sources,
+        adjustment: sources.adjustment.replace(
+          "krx-adjustment-transition/v1",
+          "krx-adjustment-transition/v2",
+        ),
+      }),
+    ).toThrow(/domain policy is missing krx-adjustment-transition\/v1/u);
+    expect(() =>
+      assertDomainPolicySources({
+        ...sources,
+        adjustment: sources.adjustment.replace(
+          '\\"denominator\\":\\"{}\\",\\"numerator\\":\\"{}\\"',
+          '\\"numerator\\":\\"{}\\",\\"denominator\\":\\"{}\\"',
+        ),
+      }),
+    ).toThrow(/Rust SDK domain policy is missing/u);
+  });
+
   it("runs locked strict validation on both Blacksmith Linux architectures", () => {
     const workflow = YAML.parse(read(".github/workflows/rust-sdk.yml"));
     const paths = workflow.on.pull_request.paths as string[];
@@ -97,6 +159,8 @@ describe("production Rust SDK gate", () => {
       "contracts/product/**",
       "crates/krx-sdk/**",
       "rust-toolchain.toml",
+      "src/calendar/krx-closures.json",
+      "tests/fixtures/adjusted-stock-prices/oracles.json",
       "tests/scripts/release-policy.test.ts",
       "tests/scripts/rust-sdk.test.ts",
     ]);

@@ -170,10 +170,11 @@ crates/krx-cli   crates/krx-node
   Clap 4.6.6, reqwest 0.13.4, Tokio 1.53.1, tokio-util 0.7.19, napi-rs 3.12.2,
   napi-derive 3.6.3, napi-build 2.4.1, keyring-rs 4.1.6, serde 1.0.229,
   serde_json 1.0.151, serde-saphyr 1.1.0, thiserror 2.0.20, url 2.5.8,
-  zeroize 1.9.0, futures-util 0.3.34, sha2 0.11.0, uuid 1.25.0, and jiff
-  0.2.35. SHA-256 identity, OS-random UUID-v4 lock identities, and canonical
-  UTC/KST time handling use those maintained crates rather than project-owned
-  cryptography, randomness, or timestamp parsing. The contract gate rejects
+  zeroize 1.9.0, futures-util 0.3.34, sha2 0.11.0, uuid 1.25.0, jiff 0.2.35,
+  and num-bigint 0.5.1. SHA-256 identity, OS-random UUID-v4 lock identities,
+  canonical UTC/KST time handling, and unbounded exact adjustment factors use
+  those maintained crates rather than project-owned cryptography, randomness,
+  timestamp parsing, or big-integer arithmetic. The contract gate rejects
   drift and the heavyweight fallback credential-database feature graph.
 
 ### Rust SDK and native CLI
@@ -193,6 +194,27 @@ crates/krx-cli   crates/krx-node
   private substitutable seams only around filesystem, clocks/timers,
   environment, and keychain, plus one true-external KRX HTTP seam whose
   production adapter is reqwest/Rustls and whose test adapter is scripted.
+- Preserve the legacy market-summary numeric fallback at the derived boundary:
+  malformed or out-of-range rate, volume, and value strings contribute zero.
+  The SDK exposes `u64` totals and uses saturating addition so derived summaries
+  cannot wrap; unavailable stock markets remain absent, never synthetic zero
+  observations.
+- Composite call-wide cancellation, invalid-request, local-state, and internal
+  invariant failures reject the call. When more than one is observed,
+  `compositePriority` selects deterministically; invalid requests are normally
+  rejected before fan-out. Internal failures are call-wide because a broken
+  SDK invariant cannot be represented as usable component data.
+- The frozen four-state rule treats a provider failure beside a safely skipped
+  calendar closure as `partial`, matching `docs/COMPOSITE-RESULTS.md`; this is
+  an intentional correction to the legacy range reducer's `failed` result.
+- `DateRange::new` accepts at most 10,000 inclusive calendar dates and returns
+  `invalid_argument` before allocation when the bound is exceeded. Its fields
+  remain private so callers cannot construct an unvalidated range.
+- Adjustment `basisTransitions` strings use the lossless compact JSON grammar
+  `krx-adjustment-transition/v1`, with exact field order `date`,
+  `previousClose`, `previousDate`, `ratio` (`denominator`, `numerator`), then
+  `referencePrice`. The values are canonical decimal strings and the grammar
+  is regression-tested byte-for-byte for adapter parity.
 - Build `crates/krx-cli` with Clap derive. Model the command tree with `Parser`
   and `Subcommand`, reusable option groups with `Args`, and closed command-line
   values with `ValueEnum`. Parser-level constraints reject invalid or

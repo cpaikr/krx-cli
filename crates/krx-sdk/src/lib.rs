@@ -5,6 +5,24 @@
 
 // These expectations are transitional and self-removing: strict linting will
 // fail once a later SDK commit consumes every private seam but leaves one here.
+mod adjustment;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "calendar selection is consumed by ranges and default-date resolution"
+    )
+)]
+mod calendar;
+mod completeness;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "composite reducers are consumed by the private client engine"
+    )
+)]
+mod composites;
 #[cfg_attr(
     not(test),
     expect(
@@ -33,6 +51,14 @@ mod operation;
     not(test),
     expect(
         dead_code,
+        reason = "range reduction is consumed by the private client engine"
+    )
+)]
+mod range;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
         reason = "private accessors are consumed by later SDK modules"
     )
 )]
@@ -45,9 +71,13 @@ pub use operation::{
 };
 pub use request::{
     ApiKey, CachePolicy, CalendarDate, CallOptions, Cancellation, DateRange, DirectRequest,
-    SecurityCode, TradingDate,
+    MarketSummaryRequest, RangeMode, RangeRequest, SecurityCode, StockSearchRequest, TradingDate,
+    WatchlistPricesRequest,
 };
 pub use result::{
-    Completeness, CompletenessState, CompositeFailure, CompositeResult, Freshness, QueryResult,
-    ResultProvenance, ResultSource, Row,
+    AdjustmentFactorField, AdjustmentMetadata, CalendarCoverage, CalendarSelection,
+    CashDividendTreatment, Completeness, CompletenessState, CompositeFailure, CompositeResult,
+    Freshness, MarketComponent, MarketSummary, MarketSummaryResult, QueryResult, RangeResult,
+    ResultProvenance, ResultSource, Row, SearchMarket, StockSearchMatch, StockSearchResult,
+    StockStats, WatchlistMarket, WatchlistPrices, WatchlistPricesResult,
 };

@@ -47,6 +47,10 @@ pub(crate) fn capabilities() -> &'static [OperationDescription] {
     GENERATED_CAPABILITIES
 }
 
+pub(crate) fn supports_adjustment(operation: OperationId) -> bool {
+    ADJUSTED_DAILY_STOCK.contains(&operation)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -65,5 +69,33 @@ mod tests {
             assert!(!actual.response_fields.is_empty());
             assert_eq!(actual.contract_id.len(), 64);
         }
+        assert_eq!(ADJUSTED_DAILY_STOCK.len(), 3);
+        assert_eq!(
+            STOCK_SEARCH_COMPONENTS,
+            [
+                ("KOSPI", OperationId::StockStkIsuBaseInfo),
+                ("KOSDAQ", OperationId::StockKsqIsuBaseInfo),
+            ]
+        );
+        assert_eq!(
+            WATCHLIST_PRICE_COMPONENTS,
+            [
+                ("KOSPI", OperationId::StockStkByddTrd),
+                ("KOSDAQ", OperationId::StockKsqByddTrd),
+                ("KONEX", OperationId::StockKnxByddTrd),
+            ]
+        );
+        assert_eq!(
+            MARKET_SUMMARY_COMPONENTS,
+            [
+                ("kospiIndex", OperationId::IndexKospiDdTrd),
+                ("kosdaqIndex", OperationId::IndexKosdaqDdTrd),
+                ("kospiStocks", OperationId::StockStkByddTrd),
+                ("kosdaqStocks", OperationId::StockKsqByddTrd),
+            ]
+        );
+        assert_eq!(MARKET_SUMMARY_TOP_COUNT, 5);
+        assert!(supports_adjustment(OperationId::StockKnxByddTrd));
+        assert!(!supports_adjustment(OperationId::IndexKospiDdTrd));
     }
 }
