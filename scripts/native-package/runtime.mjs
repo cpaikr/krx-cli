@@ -85,20 +85,26 @@ const invalidDateRequest = client.query({
   operation: "stock_stk_bydd_trd",
   date: "2026-01-02",
 });
-globalThis.queueMicrotask(() => {
-  eventLoopAdvanced = true;
-});
+invalidDateRequest.then(
+  () => {
+    eventLoopAdvanced = true;
+  },
+  () => {
+    eventLoopAdvanced = true;
+  },
+);
+await new Promise((resolve) => globalThis.queueMicrotask(resolve));
+assert.equal(
+  eventLoopAdvanced,
+  false,
+  "native calls must remain unsettled for at least one microtask",
+);
 await assert.rejects(
   invalidDateRequest,
   (error) =>
     error instanceof KrxError &&
     error.kind === "invalid_request" &&
     error.code === "invalid_date",
-);
-assert.equal(
-  eventLoopAdvanced,
-  true,
-  "native calls must yield to the event loop",
 );
 
 await assert.rejects(
@@ -112,6 +118,34 @@ await assert.rejects(
     error instanceof KrxError &&
     error.kind === "invalid_request" &&
     error.code === "conflicting_options",
+);
+
+await assert.rejects(
+  client.range({
+    operation: "index_kospi_dd_trd",
+    from: "2026-08-20",
+    to: "2026-08-21",
+    securityCode: "005930",
+  }),
+  (error) =>
+    error instanceof KrxError &&
+    error.kind === "invalid_request" &&
+    error.code === "invalid_argument",
+  "the packed addon must reject securityCode for ineligible range operations",
+);
+await assert.rejects(
+  client.range({
+    operation: "stock_stk_bydd_trd",
+    from: "2026-08-20",
+    to: "2026-08-21",
+    adjusted: false,
+    securityCode: "005930",
+  }),
+  (error) =>
+    error instanceof KrxError &&
+    error.kind === "invalid_request" &&
+    error.code === "invalid_date",
+  "the packed addon must accept securityCode for eligible raw ranges",
 );
 
 await assert.rejects(

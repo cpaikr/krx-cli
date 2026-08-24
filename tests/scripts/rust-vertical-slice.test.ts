@@ -9,6 +9,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -305,6 +306,104 @@ describe("production native package gate", () => {
     expect(existsSync(sentinel)).toBe(true);
   });
 
+  it("rejects a symlinked assembly ancestor before recursive deletion", () => {
+    const repository = isolatedNativeScriptRepository([
+      "assemble.mjs",
+      "path-containment.mjs",
+    ]);
+    const manifestDirectory = join(repository, "contracts/product/v1");
+    const outputRoot = join(repository, "target/native-package");
+    const outside = join(repository, "outside");
+    const externalPackage = join(outside, "package");
+    mkdirSync(manifestDirectory, { recursive: true });
+    mkdirSync(outputRoot, { recursive: true });
+    mkdirSync(externalPackage, { recursive: true });
+    const sentinel = join(externalPackage, "sentinel.txt");
+    writeFileSync(sentinel, "preserve\n");
+    symlinkSync(outside, join(outputRoot, "link"), "dir");
+    writeFileSync(
+      join(manifestDirectory, "native-targets.json"),
+      `${JSON.stringify({
+        targets: [
+          {
+            id: "darwin-arm64",
+            nodePlatform: "darwin",
+            nodeBinding: "native/krx.darwin-arm64.node",
+            executable: "bin/krx",
+          },
+        ],
+      })}\n`,
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repository, "scripts/native-package/assemble.mjs"),
+        "--target",
+        "darwin-arm64",
+        "--binding",
+        "missing-binding",
+        "--executable",
+        "missing-executable",
+        "--out",
+        join(outputRoot, "link/package"),
+      ],
+      { cwd: repository, encoding: "utf8" },
+    );
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/symbolic-link ancestor/u);
+    expect(readFileSync(sentinel, "utf8")).toBe("preserve\n");
+  });
+
+  it("rejects a symlinked assembly root before recursive deletion", () => {
+    const repository = isolatedNativeScriptRepository([
+      "assemble.mjs",
+      "path-containment.mjs",
+    ]);
+    const manifestDirectory = join(repository, "contracts/product/v1");
+    const targetDirectory = join(repository, "target");
+    const outsideRoot = join(repository, "outside-root");
+    const externalPackage = join(outsideRoot, "package");
+    mkdirSync(manifestDirectory, { recursive: true });
+    mkdirSync(targetDirectory, { recursive: true });
+    mkdirSync(externalPackage, { recursive: true });
+    const sentinel = join(externalPackage, "sentinel.txt");
+    writeFileSync(sentinel, "preserve\n");
+    symlinkSync(outsideRoot, join(targetDirectory, "native-package"), "dir");
+    writeFileSync(
+      join(manifestDirectory, "native-targets.json"),
+      `${JSON.stringify({
+        targets: [
+          {
+            id: "darwin-arm64",
+            nodePlatform: "darwin",
+            nodeBinding: "native/krx.darwin-arm64.node",
+            executable: "bin/krx",
+          },
+        ],
+      })}\n`,
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repository, "scripts/native-package/assemble.mjs"),
+        "--target",
+        "darwin-arm64",
+        "--binding",
+        "missing-binding",
+        "--executable",
+        "missing-executable",
+        "--out",
+        join(targetDirectory, "native-package/package"),
+      ],
+      { cwd: repository, encoding: "utf8" },
+    );
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/output root.*symbolic-link ancestor/u);
+    expect(readFileSync(sentinel, "utf8")).toBe("preserve\n");
+  });
+
   it("rejects manifest binding and executable traversal before mutation", () => {
     for (const field of ["nodeBinding", "executable"] as const) {
       const repository = isolatedNativeScriptRepository([
@@ -482,6 +581,25 @@ process.stdout.write(JSON.stringify([{ filename }]));
 
     chmodSync(join(fixture, "bin/krx"), 0o644);
     expect(invoke().stderr).toMatch(/execute permission/u);
+
+    const binding = join(fixture, "native/krx.linux-x64-gnu.node");
+    const bindingTarget = join(fixture, "binding-target");
+    writeFileSync(bindingTarget, "binding");
+    rmSync(binding);
+    symlinkSync(bindingTarget, binding);
+    expect(invoke().stderr).toMatch(/native binding must be a regular file/u);
+
+    rmSync(binding);
+    writeFileSync(binding, "binding");
+    const executable = join(fixture, "bin/krx");
+    const executableTarget = join(fixture, "executable-target");
+    writeFileSync(executableTarget, "binary");
+    chmodSync(executableTarget, 0o755);
+    rmSync(executable);
+    symlinkSync(executableTarget, executable);
+    expect(invoke().stderr).toMatch(
+      /native executable must be a regular file/u,
+    );
   });
 
   it("rejects wrong OS, CPU, libc, and target combinations", () => {

@@ -14,16 +14,16 @@ const values = new Map();
 for (let index = 2; index < process.argv.length; index += 2) {
   values.set(process.argv[index], process.argv[index + 1]);
 }
-const packageRoot = resolve(values.get("--package") ?? "");
 const targetId = values.get("--target");
-const artifacts = resolve(
-  values.get("--artifacts") ?? resolve(packageRoot, "../artifacts"),
-);
 if (!values.get("--package") || !targetId) {
   throw new Error(
     "usage: pack.mjs --package <directory> --target <id> [--artifacts <directory>]",
   );
 }
+const packageRoot = resolve(values.get("--package"));
+const artifacts = resolve(
+  values.get("--artifacts") ?? resolve(packageRoot, "../artifacts"),
+);
 const manifest = JSON.parse(
   await readFile(
     resolve(repository, "contracts/product/v1/native-targets.json"),

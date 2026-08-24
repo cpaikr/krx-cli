@@ -1,5 +1,14 @@
-import { chmod, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import {
+  chmod,
+  cp,
+  lstat,
+  mkdir,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { dirname, relative, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +17,22 @@ import { isPathInside } from "./path-containment.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 const repository = resolve(here, "../..");
 const outputRoot = resolve(repository, "target/native-package");
+
+async function nearestExistingAncestor(path) {
+  let ancestor = path;
+  for (;;) {
+    try {
+      await lstat(ancestor);
+      return ancestor;
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+      const parent = dirname(ancestor);
+      if (parent === ancestor) throw error;
+      ancestor = parent;
+    }
+  }
+}
+
 const argumentsByName = new Map();
 for (let index = 2; index < process.argv.length; index += 2) {
   argumentsByName.set(process.argv[index], process.argv[index + 1]);
@@ -36,6 +61,37 @@ if (!target) {
 if (output === outputRoot || !isPathInside(outputRoot, output)) {
   throw new Error(
     `assembled package output must be a descendant of ${outputRoot}`,
+  );
+}
+const canonicalRepository = await realpath(repository);
+const outputRootAncestor = await nearestExistingAncestor(outputRoot);
+const canonicalOutputRootAncestor = await realpath(outputRootAncestor);
+const expectedCanonicalOutputRootAncestor = resolve(
+  canonicalRepository,
+  relative(repository, outputRootAncestor),
+);
+if (canonicalOutputRootAncestor !== expectedCanonicalOutputRootAncestor) {
+  throw new Error(
+    "assembled package output root must not traverse a symbolic-link ancestor",
+  );
+}
+await mkdir(outputRoot, { recursive: true });
+const canonicalOutputRoot = await realpath(outputRoot);
+if (
+  canonicalOutputRoot !== resolve(canonicalRepository, "target/native-package")
+) {
+  throw new Error(
+    "assembled package output root must retain its exact repository identity",
+  );
+}
+const existingOutputAncestor = await nearestExistingAncestor(output);
+const canonicalOutputAncestor = await realpath(existingOutputAncestor);
+if (
+  canonicalOutputAncestor !== canonicalOutputRoot &&
+  !isPathInside(canonicalOutputRoot, canonicalOutputAncestor)
+) {
+  throw new Error(
+    "assembled package output must not traverse a symbolic-link ancestor outside the output root",
   );
 }
 const bindingDestination = resolve(output, target.nodeBinding);

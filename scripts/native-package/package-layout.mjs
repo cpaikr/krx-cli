@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { readdir, stat } from "node:fs/promises";
+import { lstat, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 export function runtimeTarget({ platform, arch, report }) {
@@ -50,8 +50,8 @@ export async function assertPackageLayout(packageRoot, target, packageJson) {
     "packed artifact must contain exactly one matching native executable",
   );
 
-  const binding = await stat(resolve(packageRoot, target.nodeBinding));
-  const executable = await stat(resolve(packageRoot, target.executable));
+  const binding = await lstat(resolve(packageRoot, target.nodeBinding));
+  const executable = await lstat(resolve(packageRoot, target.executable));
   assert.ok(binding.isFile(), "native binding must be a regular file");
   assert.ok(executable.isFile(), "native executable must be a regular file");
   if (target.nodePlatform !== "win32") {
