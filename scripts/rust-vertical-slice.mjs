@@ -33,41 +33,26 @@ const paths = {
     "contracts/product/v1/node-package-surface.json",
   ),
   workflow: argument("--workflow", ".github/workflows/rust-vertical-slice.yml"),
-  cargoLock: argument("--cargo-lock", "probes/rust-vertical-slice/Cargo.lock"),
-  cargo: argument("--cargo", "probes/rust-vertical-slice/Cargo.toml"),
-  cliCargo: argument(
-    "--cli-cargo",
-    "probes/rust-vertical-slice/cli/Cargo.toml",
-  ),
-  consumerCargo: argument(
-    "--consumer-cargo",
-    "probes/rust-vertical-slice/consumer/Cargo.toml",
-  ),
-  consumerSource: argument(
-    "--consumer-source",
-    "probes/rust-vertical-slice/consumer/src/lib.rs",
+  cargoLock: argument("--cargo-lock", "Cargo.lock"),
+  cargo: argument("--cargo", "Cargo.toml"),
+  cliCargo: argument("--cli-cargo", "crates/krx-cli/Cargo.toml"),
+  nodeCargo: argument("--node-cargo", "crates/krx-node/Cargo.toml"),
+  publicConsumer: argument(
+    "--public-consumer",
+    "crates/krx-sdk/tests/public_contract.rs",
   ),
   rootPackage: argument("--root-package", "package.json"),
-  certifier: argument(
-    "--certifier",
-    "probes/rust-vertical-slice/node/scripts/certify.mjs",
-  ),
-  toolchain: argument(
-    "--toolchain",
-    "probes/rust-vertical-slice/rust-toolchain.toml",
-  ),
-  package: argument(
-    "--package",
-    "probes/rust-vertical-slice/node/package/package.json",
-  ),
+  certifier: argument("--certifier", "scripts/native-package/certify.mjs"),
+  assembler: argument("--assembler", "scripts/native-package/assemble.mjs"),
+  runtime: argument("--runtime", "scripts/native-package/runtime.mjs"),
+  toolchain: argument("--toolchain", "rust-toolchain.toml"),
+  package: argument("--package", "packages/node/package.json"),
+  packageIndex: argument("--package-index", "packages/node/dist/index.js"),
   runtimeCases: argument(
     "--runtime-cases",
     "contracts/product/v1/consumers/node-runtime-cases.json",
   ),
-  sdkSource: argument(
-    "--sdk-source",
-    "probes/rust-vertical-slice/sdk/src/lib.rs",
-  ),
+  sdkSource: argument("--sdk-source", "crates/krx-sdk/src/client.rs"),
 };
 
 const [
@@ -78,12 +63,15 @@ const [
   cargoLock,
   cargo,
   cliCargo,
-  consumerCargo,
-  consumerSource,
+  nodeCargo,
+  publicConsumer,
   rootPackage,
   certifier,
+  assembler,
+  runtime,
   toolchain,
   packageJson,
+  packageIndex,
   runtimeCases,
   sdkSource,
 ] = await Promise.all([
@@ -94,12 +82,15 @@ const [
   readFile(paths.cargoLock, "utf8"),
   readFile(paths.cargo, "utf8"),
   readFile(paths.cliCargo, "utf8"),
-  readFile(paths.consumerCargo, "utf8"),
-  readFile(paths.consumerSource, "utf8"),
+  readFile(paths.nodeCargo, "utf8"),
+  readFile(paths.publicConsumer, "utf8"),
   readJson(paths.rootPackage),
   readFile(paths.certifier, "utf8"),
+  readFile(paths.assembler, "utf8"),
+  readFile(paths.runtime, "utf8"),
   readFile(paths.toolchain, "utf8"),
   readJson(paths.package),
+  readFile(paths.packageIndex, "utf8"),
   readJson(paths.runtimeCases),
   readFile(paths.sdkSource, "utf8"),
 ]);
@@ -154,20 +145,29 @@ for (const job of Object.values(workflow.jobs ?? {})) {
 const requiredWorkflowPaths = [
   ".gitattributes",
   ".github/workflows/rust-vertical-slice.yml",
+  "Cargo.lock",
+  "Cargo.toml",
   "contracts/**",
+  "crates/krx-cli/**",
+  "crates/krx-node/**",
+  "crates/krx-sdk/**",
   "package.json",
+  "packages/node/**",
   "pnpm-lock.yaml",
-  "probes/rust-vertical-slice/**",
+  "rust-toolchain.toml",
+  "scripts/native-package/**",
   "scripts/package-smoke-command.mjs",
   "scripts/rust-vertical-slice.mjs",
   "src/calendar/krx-closures.json",
+  "tests/scripts/release-policy.test.ts",
+  "tests/scripts/rust-vertical-slice.test.ts",
 ];
 equal(
   attributes.split(/\r?\n/u).filter(Boolean),
   [
     "/contracts/generated/*.d.ts text eol=lf",
     "/contracts/product/v1/node-sdk.d.ts text eol=lf",
-    "/probes/rust-vertical-slice/node/package/dist/*.js text eol=lf",
+    "/packages/node/dist/*.js text eol=lf",
   ],
   "portable package sources must have an exact LF-only attributes policy",
 );
@@ -178,7 +178,7 @@ invariant(
 equal(
   workflow.on?.pull_request?.paths,
   requiredWorkflowPaths,
-  "workflow pull-request paths must cover every certification input",
+  "workflow pull-request paths must cover every production certification input",
 );
 invariant(
   Object.hasOwn(workflow.on ?? {}, "workflow_dispatch"),
@@ -216,7 +216,7 @@ for (const targetId of continuousTargetIds) {
   );
   invariant(
     workflowTarget.binding.endsWith(bindingFilename(target)),
-    `workflow binding artifact for ${target.id} must match the manifest`,
+    `workflow binding artifact for ${target.id} must match the production crate`,
   );
   invariant(
     workflowTarget.executable.endsWith(target.executable.split("/").at(-1)),
@@ -260,20 +260,27 @@ invariant(
     rustInstall.run.includes("--target ${{ matrix.rust-target }}"),
   "workflow must install the pinned Rust toolchain, components, and matrix target",
 );
-for (const stepName of [
-  "Verify official Rustls handshake without credentials",
-  "Verify native keyring behavior",
-]) {
-  invariant(
-    workflow.jobs?.build?.steps?.some((step) => step.name === stepName),
-    `workflow must include ${stepName}`,
-  );
-}
+const workspaceCheck = workflow.jobs?.build?.steps?.find(
+  (step) => step.name === "Compile the production workspace",
+);
+equal(
+  workspaceCheck?.run,
+  "cargo check --locked --workspace --all-targets --all-features",
+  "hosted certification must compile the complete production workspace",
+);
+const packageBuild = workflow.jobs?.build?.steps?.find(
+  (step) => step.name === "Build the native package members once",
+);
+invariant(
+  typeof packageBuild?.run === "string" &&
+    packageBuild.run.includes("-p krx-cli -p krx-node"),
+  "workflow must build the production CLI and Node binding together",
+);
 invariant(
   workflow.jobs?.certification?.steps?.some(
     (step) =>
       step.name === "Compare target-independent package identity" &&
-      step.run.includes("compare-reports.mjs"),
+      step.run.includes("scripts/native-package/compare-reports.mjs"),
   ),
   "workflow must compare target-independent identity across all consumer reports",
 );
@@ -281,55 +288,67 @@ const consumerCertify = workflow.jobs?.consume?.steps?.find(
   (step) => step.name === "Certify the exact packed artifact",
 );
 invariant(
+  workflow.jobs?.consume?.steps?.some(
+    (step) => step.run === "pnpm install --frozen-lockfile --ignore-scripts",
+  ),
+  "consumer setup must not run legacy or dependency install scripts",
+);
+invariant(
   typeof consumerCertify?.run === "string" &&
+    consumerCertify.run.includes("scripts/native-package/certify.mjs") &&
     consumerCertify.run.includes("--report "),
-  "each consumer must emit a cross-target certification report",
+  "each consumer must certify the production tarball and emit a report",
 );
 invariant(
   workflow.jobs?.consume?.steps?.some(
     (step) =>
       step.uses ===
         `actions/upload-artifact@${actionRefs["actions/upload-artifact"]}` &&
-      String(step.with?.name).startsWith("rust-probe-report-"),
+      String(step.with?.name).startsWith("krx-native-report-"),
   ),
   "each consumer must upload its cross-target certification report",
+);
+invariant(
+  !JSON.stringify(workflow).includes("probes/rust-vertical-slice"),
+  "production certification must not execute disposable probe code",
 );
 
 invariant(
   toolchain.includes('channel = "1.92.0"'),
-  "probe Rust toolchain must remain pinned to 1.92.0",
+  "production Rust toolchain must remain pinned to 1.92.0",
 );
 invariant(
-  cargo.includes('members = ["sdk", "consumer", "cli", "node"]'),
-  "probe workspace must include the public Rust SDK consumer",
+  cargo.includes(
+    'members = ["crates/krx-sdk", "crates/krx-cli", "crates/krx-node"]',
+  ),
+  "production workspace must contain the SDK, CLI, and Node binding",
 );
 invariant(
-  consumerCargo.includes('krx-sdk = { path = "../sdk" }'),
-  "public Rust SDK consumer must depend directly on the disposable SDK",
+  cliCargo.includes('name = "krx-cli"') &&
+    /krx-sdk\s*=\s*\{\s*path\s*=\s*"\.\.\/krx-sdk"/u.test(cliCargo),
+  "production CLI must depend directly on the shared SDK",
 );
 invariant(
-  consumerSource.includes(
-    '#[path = "../../../../contracts/product/v1/rust-sdk-consumer.rs"]',
-  ) && consumerSource.includes("mod public_sdk_contract;"),
-  "consumer probe must compile the canonical public Rust SDK contract",
+  nodeCargo.includes('name = "krx-node"') &&
+    nodeCargo.includes('crate-type = ["cdylib"]') &&
+    /krx-sdk\s*=\s*\{\s*path\s*=\s*"\.\.\/krx-sdk"/u.test(nodeCargo),
+  "production Node binding must be a cdylib over the shared SDK",
 );
-const workspaceCheck = workflow.jobs?.build?.steps?.find(
-  (step) => step.name === "Compile the complete probe workspace",
-);
-equal(
-  workspaceCheck?.run,
-  "cargo check --locked --workspace --all-targets --all-features",
-  "hosted certification must compile the complete workspace and public consumer",
+invariant(
+  publicConsumer.includes(
+    '#[path = "../../../contracts/product/v1/rust-sdk-consumer.rs"]',
+  ) && publicConsumer.includes("mod frozen_public_consumer;"),
+  "production SDK must compile the canonical public Rust consumer contract",
 );
 invariant(
   !/\bpub\s+fn\s+cache_max_age\b/u.test(sdkSource),
   "Rust public SDK must not expose a redundant client cache-age authority",
 );
-const cliVersion = cliCargo.match(/^version = "([^"]+)"$/mu)?.[1];
+const workspaceVersion = cargo.match(/^version = "([^"]+)"$/mu)?.[1];
 equal(
-  cliVersion,
+  workspaceVersion,
   rootPackage.version,
-  "native CLI version must match the assembled root package version",
+  "native workspace version must match the root package version",
 );
 invariant(
   certifier.includes(
@@ -337,22 +356,29 @@ invariant(
   ),
   "clean-install certification must assert the native CLI package version",
 );
+invariant(
+  certifier.includes("assertPackageLayout") &&
+    certifier.includes("assertRuntimeCompatibility") &&
+    certifier.includes("runtime.mjs"),
+  "clean-install certification must enforce exact layout, runtime target, and public runtime behavior",
+);
+invariant(
+  assembler.includes('resolve(repository, "packages/node")') &&
+    !assembler.includes("probes/rust-vertical-slice"),
+  "package assembly must copy the production Node facade without probe runtime reuse",
+);
+invariant(
+  runtime.includes("client.capabilities()") &&
+    runtime.includes("AbortController") &&
+    !runtime.includes("probeWireContract"),
+  "runtime certification must cover public capabilities and cancellation without probe hooks",
+);
+
 const requiredVersions = {
   clap: "4.6.6",
-  "futures-util": "0.3.34",
-  keyring: "4.1.6",
   napi: "3.12.2",
   "napi-build": "2.4.1",
   "napi-derive": "3.6.3",
-  reqwest: "0.13.4",
-  serde: "1.0.229",
-  "serde-saphyr": "1.1.0",
-  serde_json: "1.0.151",
-  thiserror: "2.0.20",
-  tokio: "1.53.1",
-  "tokio-util": "0.7.19",
-  url: "2.5.8",
-  zeroize: "1.9.0",
 };
 const locked = new Map(
   [
@@ -372,42 +398,50 @@ for (const [name, version] of Object.entries(requiredVersions)) {
 for (const forbidden of ["db-keystore", "turso", "libsql"]) {
   invariant(
     !locked.has(forbidden),
-    `probe lockfile must not include ${forbidden}`,
+    `production lockfile must not include ${forbidden}`,
   );
 }
 
 equal(
   packageJson.name,
   nodePackage.packageName,
-  "probe package name must match the public surface",
+  "production package name must match the public surface",
 );
-equal(packageJson.type, "module", "probe package must be ESM-only");
+equal(packageJson.type, "module", "production package must be ESM-only");
 equal(
   packageJson.engines?.node,
   nodePackage.nodeEngine,
-  "probe package Node engine must match the certified public surface",
+  "production package Node engine must match the certified public surface",
 );
 equal(
   packageJson.exports,
   nodePackage.exports,
-  "probe package exports must match the public surface",
+  "production package exports must match the public surface",
 );
 equal(
   packageJson.bin,
   { krx: "./bin/krx" },
-  "probe package must point npm directly at the native CLI",
+  "production package template must point npm directly at the native CLI",
 );
 invariant(
   packageJson.dependencies === undefined,
-  "probe package must not require install dependencies",
+  "production package must not require install dependencies",
 );
 invariant(
   packageJson.scripts === undefined,
-  "probe package must not run install scripts",
+  "production package must not run install scripts",
+);
+invariant(
+  packageJson.private === true,
+  "production native package template must remain private",
 );
 invariant(
   !Object.keys(packageJson.exports).some((key) => key.includes("native")),
   "native binding must not have a public package subpath",
+);
+invariant(
+  packageIndex.includes("KrxClient") && packageIndex.includes("KrxError"),
+  "production facade must export the frozen public Node entry points",
 );
 
 const runtimeIds = runtimeCases.cases.map((runtimeCase) => runtimeCase.id);
@@ -426,7 +460,7 @@ for (const required of [
 }
 
 process.stdout.write(
-  `Rust vertical-slice contract valid (${targetIds.length} supported targets, ${continuousTargetIds.length} continuously certified, ${targets.distribution.nodeMajors.length} Node majors)\n`,
+  `Native package contract valid (${targetIds.length} supported targets, ${continuousTargetIds.length} continuously certified, ${targets.distribution.nodeMajors.length} Node majors)\n`,
 );
 
 async function readJson(path) {
@@ -438,8 +472,8 @@ async function readYaml(path) {
 }
 
 function bindingFilename(target) {
-  if (target.nodePlatform === "darwin") return "libkrx_node_probe.dylib";
-  if (target.nodePlatform === "linux") return "libkrx_node_probe.so";
-  if (target.nodePlatform === "win32") return "krx_node_probe.dll";
+  if (target.nodePlatform === "darwin") return "libkrx_node.dylib";
+  if (target.nodePlatform === "linux") return "libkrx_node.so";
+  if (target.nodePlatform === "win32") return "krx_node.dll";
   throw new Error(`unsupported manifest platform ${target.nodePlatform}`);
 }
