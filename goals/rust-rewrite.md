@@ -46,26 +46,41 @@ Goal contract
 - Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 - Complete shared Rust SDK for all supported KRX behavior and local policy.
 - Native Clap CLI and public Node SDK over the shared Rust implementation.
+- Secure credential, approval, cache, offline, quota, watchlist, and legacy-state
+  migration through the shared Rust implementation.
+- Installed-product parity and certified private native package assembly for all
+  four supported target definitions, with continuous Linux GNU x64/ARM64 gates.
+- Local atomic package/export cutover and removal of the legacy TypeScript
+  protocol, JavaScript CLI, and MCP implementation.
 
 ### Current in-scope result
 
-Prove final installed-product parity and secure-state migration, then perform
-the atomic production cutover. Promote the native package exports and
-executable, preserve the maintainer-only contract and calendar duties, and
-remove the legacy TypeScript protocol/domain implementation, JavaScript CLI,
-MCP surface, and install-time native build path.
+Deliver the locally complete atomic cutover through final review, exact-head
+hosted certification, feedback closure, merge, and post-merge planning
+reconciliation.
 
 ### Next in-scope action
 
-Deliver the final atomic-cutover PR: close every legacy-versus-native
-black-box difference, complete executable migration coverage, switch the root
-package and release/contract workflows to the certified native artifacts,
-delete the JavaScript CLI/TypeScript protocol and MCP implementation, reconcile
-architecture and user documentation, pass clean-checkout local and hosted
-gates, address review feedback, and merge the reviewed cutover.
+Run clean-checkout validation and required code review, create the final
+atomic-cutover PR, pass exact-head Blacksmith Linux GNU x64/ARM64 gates, address
+all feedback, merge while preserving commits, and reconcile the durable goal
+and roadmap on the merged repository.
 
 ### Evidence and blockers
 
+- The locally complete atomic-cutover branch passes the one-conformer legacy
+  absence gate, canonical OpenAPI and product-contract validation, 130
+  maintainer tests, 14 public Node facade tests, 155 Rust tests with one
+  intentional interoperability worker ignored, strict Clippy, current calendar
+  validation, and a clean production dependency audit. A fresh host
+  `darwin-arm64` archive contains the native CLI, private binding, public Node
+  declarations/facade, and portable skill; it passes clean-install
+  certification under Node 24 with portable SHA-256
+  `3c84bab73759ca8b4fed59da39da01b19efe2e4562a7f8d272d97b16f69a8789`.
+  The exact same archive passes all 14 frozen installed-product scenarios, and
+  the no-data, schema, and adjustment mutants are rejected by their named
+  scenarios. Final PR review, hosted exact-head validation, feedback closure,
+  and merge remain.
 - Adapter PR [#10](https://github.com/cpaikr/krx-cli/pull/10) merged as
   `9bd9bb5` with all seven reviewed commits preserved. Its final feedback
   collection covered exact head `9d28167`, found all 18 threads resolved with

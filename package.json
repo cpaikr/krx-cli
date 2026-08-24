@@ -1,42 +1,30 @@
 {
   "name": "krx-cli",
   "version": "1.8.1",
-  "description": "CLI & MCP server for KRX (Korea Exchange) Open API — query Korean stock market data (KOSPI, KOSDAQ, ETF, bonds, derivatives) from terminal or AI agents",
+  "description": "Maintainer workspace for the native KRX CLI, shared Rust SDK, and public Node.js SDK",
+  "private": true,
   "type": "module",
-  "bin": {
-    "krx": "./dist/cli.js",
-    "krx-mcp": "./dist/mcp.js"
-  },
-  "files": [
-    "dist",
-    "skills",
-    "CHANGELOG.md"
-  ],
   "scripts": {
-    "build": "node esbuild.config.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:package": "node scripts/package-smoke.mjs",
-    "test:compat": "pnpm build && node scripts/compat-certify.mjs",
+    "test:compat": "node scripts/compat-certify.mjs",
     "test:node-sdk": "node --test tests/node-sdk/facade.test.mjs",
     "contract:types": "tsc --noEmit --strict --skipLibCheck false --module ESNext --moduleResolution bundler --target ES2022 --types node contracts/product/v1/node-sdk.d.ts contracts/product/v1/consumers/node-positive.ts",
     "contract:rust-probe": "node scripts/rust-vertical-slice.mjs",
     "contract:validate": "redocly lint contracts/krx/openapi.yaml --max-problems 0 && node scripts/contracts.mjs && node scripts/product-contracts.mjs && pnpm contract:rust-probe && pnpm contract:types",
     "contract:artifacts": "node scripts/contracts.mjs --write && node scripts/product-contracts.mjs --write",
     "audit:prod": "pnpm audit --prod --audit-level low",
-    "lint": "eslint src/ scripts/compat-*.mjs scripts/contracts.mjs scripts/product-contracts.mjs scripts/rust-vertical-slice.mjs scripts/native-package/*.mjs packages/node/dist/*.js probes/rust-vertical-slice/node/package/dist/*.js probes/rust-vertical-slice/node/scripts/*.mjs probes/rust-vertical-slice/node/tests/*.mjs tests/node-sdk/*.mjs contracts/generated/*.d.ts contracts/product/v1/node-sdk.d.ts contracts/product/v1/consumers/*.ts",
-    "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
-    "typecheck": "tsc --noEmit",
-    "test:e2e": "vitest run --config tests/vitest.config.e2e.ts",
-    "contract:check": "pnpm build && node dist/contract-check.js",
-    "contract:dry-run": "pnpm build && node dist/contract-check.js --dry-run",
+    "cutover:check": "node scripts/cutover-gate.mjs",
+    "lint": "eslint scripts/*.mjs scripts/native-package/*.mjs packages/node/dist/*.js tests/node-sdk/*.mjs tests/scripts/*.ts tests/skill/*.ts contracts/product/v1/consumers/*.ts",
+    "format": "prettier --write 'scripts/**/*.mjs' 'tests/**/*.ts' 'contracts/**/*.json'",
+    "typecheck": "pnpm contract:types",
+    "contract:check": "node scripts/contract-drift.mjs",
+    "contract:dry-run": "node scripts/contract-drift.mjs --dry-run",
     "rust:sdk": "cargo fmt --all --check && cargo check --locked --workspace --all-targets --all-features && cargo clippy --locked --workspace --all-targets --all-features -- -D warnings && cargo test --locked --workspace --all-features",
     "calendar:check": "node scripts/krx-calendar.mjs --check",
     "calendar:update": "node scripts/krx-calendar.mjs --write",
-    "check": "pnpm contract:validate && pnpm lint && pnpm typecheck && pnpm test:node-sdk && pnpm test",
-    "verify": "pnpm contract:validate && pnpm lint && pnpm typecheck && pnpm test:node-sdk && pnpm test:coverage && pnpm audit:prod && pnpm test:compat && pnpm test:package",
-    "prepare": "pnpm build && husky",
+    "check": "pnpm cutover:check && pnpm contract:validate && pnpm lint && pnpm typecheck && pnpm test:node-sdk && pnpm test",
+    "verify": "pnpm check && pnpm rust:sdk && pnpm calendar:check && pnpm audit:prod",
     "release": "release-it"
   },
   "keywords": [
@@ -49,8 +37,6 @@
     "finance",
     "market-data",
     "cli",
-    "mcp",
-    "mcp-server",
     "agent",
     "ai",
     "etf",
@@ -62,9 +48,9 @@
   ],
   "author": "Daniel Jung",
   "license": "MIT",
-  "homepage": "https://github.com/kyo504/krx-cli#readme",
+  "homepage": "https://github.com/cpaikr/krx-cli#readme",
   "bugs": {
-    "url": "https://github.com/kyo504/krx-cli/issues"
+    "url": "https://github.com/cpaikr/krx-cli/issues"
   },
   "funding": {
     "type": "github",
@@ -72,16 +58,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kyo504/krx-cli.git"
+    "url": "git+https://github.com/cpaikr/krx-cli.git"
   },
   "packageManager": "pnpm@10.28.0",
   "engines": {
     "node": ">=22"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "commander": "^14.0.3",
-    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.3",
@@ -90,12 +71,9 @@
     "@redocly/cli": "2.47.0",
     "@release-it/conventional-changelog": "^10.0.5",
     "@types/node": "^25.4.0",
-    "@vitest/coverage-v8": "4.0.18",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
-    "esbuild": "^0.27.3",
     "eslint": "^10.0.3",
-    "husky": "^9.1.7",
     "lint-staged": "^16.3.3",
     "prettier": "^3.8.1",
     "release-it": "^19.2.4",
@@ -190,10 +168,5 @@
         }
       }
     }
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
   }
 }

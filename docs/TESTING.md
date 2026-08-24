@@ -1,36 +1,30 @@
-# Test tiers
+# Testing
 
-krx-cli separates deterministic release evidence from paid or live upstream
-checks. A release never depends on credentials, model output, or current market
-availability.
-
-## Per-change and release-blocking
-
-The reusable CI gate runs on Blacksmith Ubuntu 24.04 x64 with supported Node.js
-LTS versions. macOS and Windows are intentionally omitted from continuous CI to
-reduce compute cost; their native artifact targets remain supported. The gate
-requires a frozen install, lint, type checking, unit and integration tests with
-coverage thresholds, a clean production dependency audit, both bundled builds,
-and an isolated smoke test of the npm package.
-
-Run the same gate locally with:
+The deterministic repository gate is:
 
 ```bash
+pnpm install --frozen-lockfile --ignore-scripts
 pnpm verify
 ```
 
-The package smoke test installs an `npm pack` artifact in a temporary directory
-and exercises `krx --help`, schema output, an invalid-argument exit code,
-`krx-mcp` startup, and MCP `tools/list`.
+It runs the atomic-cutover absence/mutation gate, OpenAPI and product contracts,
+lint and public Node type checks, maintainer tests, Node facade tests, the full
+Rust workspace check/Clippy/test suite, calendar freshness, and the production
+dependency audit.
 
-## Credentialed and nondeterministic
+Native archive certification builds `krx-cli` and `krx-node` once, assembles a
+manifest target, packs it, and installs that exact archive with scripts
+disabled. `scripts/native-package/certify.mjs` checks package layout, target
+identity, executable behavior, public JavaScript/TypeScript consumers,
+cancellation, binding privacy, and the packaged skill. The compatibility gate
+then runs 14 frozen installed-product scenarios against the same archive.
 
-`pnpm test:e2e` drives the built CLI through Claude Code. It requires the
-`claude` executable, an authenticated paid session, and `pnpm build` first.
-Model output and external service availability make this suite unsuitable for
-pull-request or release blocking; run it manually when changing agent-facing
-prompts or workflows.
+Blacksmith continuous CI covers Linux GNU x64 and ARM64 under Node 22 and 24.
+macOS ARM64 and Windows x64 remain supported artifact targets but are omitted
+from CI solely to reduce compute cost; their prior four-target certification is
+retained as historical evidence. Tag certification likewise runs only the two
+Linux targets and uploads private workflow artifacts; it does not publish or
+create a GitHub Release.
 
-Live KRX contract checks use real credentials and a documented request budget.
-They belong in a scheduled or manually dispatched credentialed tier, not the
-deterministic gate.
+Credentialed contract drift is separate because it spends quota and requires a
+repository secret. Use `pnpm contract:dry-run` before any live run.

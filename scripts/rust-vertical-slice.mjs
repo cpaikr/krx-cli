@@ -156,9 +156,13 @@ const requiredWorkflowPaths = [
   "pnpm-lock.yaml",
   "rust-toolchain.toml",
   "scripts/native-package/**",
+  "scripts/compat-certify.mjs",
+  "scripts/compat-judge.mjs",
   "scripts/package-smoke-command.mjs",
   "scripts/rust-vertical-slice.mjs",
+  "skills/krx-cli/**",
   "src/calendar/krx-closures.json",
+  "tests/compat/**",
   "tests/scripts/release-policy.test.ts",
   "tests/scripts/rust-vertical-slice.test.ts",
 ];
@@ -168,6 +172,7 @@ equal(
     "/contracts/generated/*.d.ts text eol=lf",
     "/contracts/product/v1/node-sdk.d.ts text eol=lf",
     "/packages/node/dist/*.js text eol=lf",
+    "/skills/krx-cli/** text eol=lf",
   ],
   "portable package sources must have an exact LF-only attributes policy",
 );
@@ -352,7 +357,7 @@ equal(
 );
 invariant(
   certifier.includes(
-    "assert.equal(version.stdout.trim(), `krx ${packageJson.version}`)",
+    "assert.equal(version.stdout.trim(), packageJson.version)",
   ),
   "clean-install certification must assert the native CLI package version",
 );
@@ -364,8 +369,9 @@ invariant(
 );
 invariant(
   assembler.includes('resolve(repository, "packages/node")') &&
+    assembler.includes('resolve(repository, "skills/krx-cli")') &&
     !assembler.includes("probes/rust-vertical-slice"),
-  "package assembly must copy the production Node facade without probe runtime reuse",
+  "package assembly must copy the production Node facade and skill without probe runtime reuse",
 );
 invariant(
   runtime.includes("client.capabilities()") &&
@@ -434,6 +440,10 @@ invariant(
 invariant(
   packageJson.private === true,
   "production native package template must remain private",
+);
+invariant(
+  packageJson.files?.includes("skills"),
+  "production native package must include the portable skill directory",
 );
 invariant(
   !Object.keys(packageJson.exports).some((key) => key.includes("native")),

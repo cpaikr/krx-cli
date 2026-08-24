@@ -304,14 +304,20 @@ function helpOptions(stdout) {
 function inventoryFor(profile) {
   const inventory = structuredClone(commandInventory);
   if (profile === "legacy") return inventory;
-  assertion(profile === "candidate", `unknown compatibility profile ${profile}`);
+  assertion(
+    profile === "candidate",
+    `unknown compatibility profile ${profile}`,
+  );
   const byPath = (path) =>
     inventory.find(
       (entry) => JSON.stringify(entry.path) === JSON.stringify(path),
     );
   for (const change of cliOverlay.inventoryChanges) {
     const entry = byPath(change.path);
-    assertion(entry !== undefined, `overlay path ${change.path.join(" ")} is absent`);
+    assertion(
+      entry !== undefined,
+      `overlay path ${change.path.join(" ")} is absent`,
+    );
     if (change.change === "remove-command") {
       entry.commands = (entry.commands ?? []).filter(
         (command) => command !== change.name,
@@ -339,7 +345,9 @@ function inventoryFor(profile) {
 
 async function assessCommandInventory(installRoot, runOptions, profile) {
   const inventory = inventoryFor(profile);
-  const rootOptions = new Set(inventory.find(({ path }) => path.length === 0).options);
+  const rootOptions = new Set(
+    inventory.find(({ path }) => path.length === 0).options,
+  );
   for (const entry of inventory) {
     const command = installedBinCommand(installRoot, "krx", [
       ...entry.path,
@@ -416,21 +424,28 @@ function assessScenario(scenario, result, installedVersion, profile) {
     if (expected.json !== undefined) {
       const expectedJson =
         profile === "candidate" && scenario.id === "cached-row-pipeline"
-          ? expected.json.map(({ ISU_SRT_CD: _legacyCacheOnly, ...row }) => row)
+          ? expected.json.map((row) => {
+              const candidateRow = { ...row };
+              delete candidateRow.ISU_SRT_CD;
+              return candidateRow;
+            })
           : expected.json;
       assertion(sameJsonValue(parsed, expectedJson), "JSON did not match");
     }
-    if (expected.jsonFixture !== undefined)
-      profile === "candidate"
-        ? assertCandidateRows(
-            parsed,
-            fixtures[expected.jsonFixture],
-            expected.jsonFixture,
-          )
-        : assertion(
-            sameJsonValue(parsed, fixtures[expected.jsonFixture]),
-            "fixture JSON did not match",
-          );
+    if (expected.jsonFixture !== undefined) {
+      if (profile === "candidate") {
+        assertCandidateRows(
+          parsed,
+          fixtures[expected.jsonFixture],
+          expected.jsonFixture,
+        );
+      } else {
+        assertion(
+          sameJsonValue(parsed, fixtures[expected.jsonFixture]),
+          "fixture JSON did not match",
+        );
+      }
+    }
     if (expected.jsonSubset !== undefined)
       compareJsonSubset(parsed, expected.jsonSubset);
     if (expected.completeness !== undefined) {
@@ -492,7 +507,10 @@ function assessScenario(scenario, result, installedVersion, profile) {
 
 function assertCandidateRows(actual, expected, fixtureName) {
   const endpoint = endpointFixtures[fixtureName]?.endpoint;
-  assertion(endpoint !== undefined, `candidate fixture ${fixtureName} has no endpoint`);
+  assertion(
+    endpoint !== undefined,
+    `candidate fixture ${fixtureName} has no endpoint`,
+  );
   assertion(
     sameJsonValue(
       actual,

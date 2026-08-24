@@ -83,6 +83,16 @@ try {
     await readFile(resolve(packageRoot, "package.json")),
   );
   await assertPackageLayout(packageRoot, target, packageJson);
+  for (const skillPath of [
+    "skills/krx-cli/SKILL.md",
+    "skills/krx-cli/references/cli-usage.md",
+    "skills/krx-cli/workflows/apply-service-access.md",
+  ]) {
+    assert.ok(
+      existsSync(resolve(packageRoot, skillPath)),
+      `installed package is missing ${skillPath}`,
+    );
+  }
 
   const declarationRoot = resolve(packageRoot, "dist");
   const declarationFiles = [
@@ -202,7 +212,7 @@ try {
     target: targetId,
     tarball,
     status: "passed",
-    portableSha256: await directoryDigest(resolve(packageRoot, "dist")),
+    portableSha256: await portableDigest(packageRoot),
     packageVersion: packageJson.version,
     packageMetadata: {
       name: packageJson.name,
@@ -240,16 +250,20 @@ function run(command, args, cwd) {
   return result;
 }
 
-async function directoryDigest(root) {
+async function portableDigest(packageRoot) {
   const hash = createHash("sha256");
-  for (const path of await regularFiles(root)) {
-    const relative = path.slice(root.length + 1).replaceAll("\\", "/");
-    const bytes = await readFile(path);
-    hash.update(relative);
-    hash.update("\0");
-    hash.update(String(bytes.length));
-    hash.update("\0");
-    hash.update(bytes);
+  for (const directory of ["dist", "skills"]) {
+    const root = resolve(packageRoot, directory);
+    for (const path of await regularFiles(root)) {
+      const relative = path.slice(packageRoot.length + 1).replaceAll("\\", "/");
+      const bytes = await readFile(path);
+      hash.update(relative);
+      hash.update("\0");
+      hash.update(String(bytes.length));
+      hash.update("\0");
+      hash.update(bytes);
+      hash.update("\0");
+    }
   }
   return hash.digest("hex");
 }

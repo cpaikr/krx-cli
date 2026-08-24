@@ -19,8 +19,17 @@
   "files": [
     "bin",
     "dist",
-    "native"
+    "native",
+    "skills"
   ],
   "license": "MIT",
+  "homepage": "https://github.com/cpaikr/krx-cli#readme",
+  "bugs": {
+    "url": "https://github.com/cpaikr/krx-cli/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cpaikr/krx-cli.git"
+  },
   "private": true
 }

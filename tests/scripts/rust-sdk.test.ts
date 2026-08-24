@@ -1,22 +1,6 @@
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  utimesSync,
-  writeFileSync,
-} from "node:fs";
-import { spawn } from "node:child_process";
-import { join, resolve } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import YAML from "yaml";
-import {
-  credentialFingerprint,
-  reserveCall,
-} from "../../src/client/rate-limit.js";
 
 function read(path: string): string {
   return readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
@@ -686,77 +670,6 @@ function assertCacheCoordinationProtocolSources(sources: {
   }
 }
 
-function assertNodeQuotaStateProtocolSource(source: string): void {
-  const ownerStart = source.indexOf("function publishLockOwner(");
-  const ownerEnd = source.indexOf("function publishStealClaim(", ownerStart);
-  const ownerPublication = source.slice(ownerStart, ownerEnd);
-  const ownerWrite = ownerPublication.indexOf("fs.writeFileSync(candidatePath");
-  const ownerLink = ownerPublication.indexOf(
-    "fs.linkSync(candidatePath, ownerPath)",
-  );
-  const claimStart = source.indexOf("function publishStealClaim(");
-  const claimEnd = source.indexOf("function tryStealStaleLock(", claimStart);
-  const claimPublication = source.slice(claimStart, claimEnd);
-  const claimWrite = claimPublication.indexOf("fs.writeFileSync(candidatePath");
-  const claimChmod = claimPublication.indexOf(
-    'if (process.platform !== "win32") fs.chmodSync(candidatePath, 0o600);',
-    claimWrite,
-  );
-  const claimInspect = claimPublication.indexOf(
-    "fs.lstatSync(candidatePath",
-    claimChmod,
-  );
-  const acquisitionStart = source.indexOf("async function acquireLock(");
-  const acquisitionEnd = source.indexOf(
-    "/**\n * Atomically reserve one local quota unit",
-    acquisitionStart,
-  );
-  const acquisition = source.slice(acquisitionStart, acquisitionEnd);
-  const publishedOwner = acquisition.indexOf(
-    "const publishedOwner = publishLockOwner(",
-  );
-  const inspectionCatch = acquisition.indexOf(
-    "} catch (error) {",
-    publishedOwner,
-  );
-  const failedInspectionCleanup = acquisition.indexOf(
-    "releasePublishedOwner(lockPath, acquiredLock, publishedOwner);",
-    inspectionCatch,
-  );
-  const inspectionRethrow = acquisition.indexOf(
-    "throw error;",
-    failedInspectionCleanup,
-  );
-  const ownerValidation = acquisition.indexOf(
-    "if (\n          claim ||",
-    inspectionRethrow,
-  );
-  if (
-    ownerStart < 0 ||
-    ownerEnd < 0 ||
-    ownerWrite < 0 ||
-    ownerLink <= ownerWrite ||
-    !ownerPublication.includes("readLockOwner(lockPath)") ||
-    claimStart < 0 ||
-    claimEnd < 0 ||
-    claimWrite < 0 ||
-    claimChmod <= claimWrite ||
-    claimInspect <= claimChmod ||
-    !claimPublication.includes("claim.owner !== claimant") ||
-    acquisitionStart < 0 ||
-    acquisitionEnd < 0 ||
-    publishedOwner < 0 ||
-    inspectionCatch <= publishedOwner ||
-    failedInspectionCleanup <= inspectionCatch ||
-    inspectionRethrow <= failedInspectionCleanup ||
-    ownerValidation <= inspectionRethrow ||
-    failedInspectionCleanup >= ownerValidation ||
-    source.includes('fs.writeFileSync(path.join(lockPath, "owner")')
-  ) {
-    throw new Error("Node quota owner publication must be atomic and verified");
-  }
-}
-
 function assertCredentialApprovalProtocolSources(sources: {
   readonly approval: string;
   readonly build: string;
@@ -1276,37 +1189,6 @@ describe("production Rust SDK gate", () => {
       steal: "rename-to-claim-derived-nonempty-tombstone-and-retain",
       symlinkPolicy: "reject",
     });
-    const nodeQuota = read("src/client/rate-limit.ts");
-    expect(nodeQuota).toContain("const claim = readStealClaim(lockPath);");
-    expect(nodeQuota).toContain(
-      "sameProtocolFileObservation(readLockOwner(lockPath), observedOwner)",
-    );
-    expect(nodeQuota).toContain(
-      "path.join(lockPath, `.steal.${claimant}.tmp`)",
-    );
-    expect(nodeQuota).toContain("path.join(lockPath, `.owner.${owner}.tmp`)");
-    expect(() => assertNodeQuotaStateProtocolSource(nodeQuota)).not.toThrow();
-    expect(() =>
-      assertNodeQuotaStateProtocolSource(
-        nodeQuota.replace(
-          "fs.linkSync(candidatePath, ownerPath)",
-          "fs.renameSync(candidatePath, ownerPath)",
-        ),
-      ),
-    ).toThrow(/owner publication must be atomic/u);
-    expect(() =>
-      assertNodeQuotaStateProtocolSource(
-        nodeQuota.replace("claim.owner !== claimant", "false"),
-      ),
-    ).toThrow(/owner publication must be atomic/u);
-    expect(() =>
-      assertNodeQuotaStateProtocolSource(
-        nodeQuota.replace(
-          "releasePublishedOwner(lockPath, acquiredLock, publishedOwner);",
-          "void publishedOwner;",
-        ),
-      ),
-    ).toThrow(/owner publication must be atomic/u);
     const rustState = read("crates/krx-sdk/src/state.rs");
     expect(rustState).toContain(
       "match read_steal_claim(&lock_directory, error_code)",
@@ -1723,96 +1605,4 @@ describe("production Rust SDK gate", () => {
       ),
     ).toThrow(/Windows quota state/u);
   });
-
-  it.skipIf(process.platform === "win32")(
-    "serializes byte-compatible quota reservations across Node and Rust",
-    async () => {
-      mkdirSync(resolve("target"), { recursive: true });
-      const parent = mkdtempSync(resolve("target", "quota-interop-"));
-      const stateRoot = join(parent, ".krx-cli");
-      const quotaPath = join(stateRoot, "rate-limit.json");
-      const callsPerRuntime = 40;
-      let stdout = "";
-      let stderr = "";
-      const child = spawn(
-        "cargo",
-        [
-          "test",
-          "--locked",
-          "-p",
-          "krx-sdk",
-          "quota::tests::node_interop_worker",
-          "--",
-          "--ignored",
-          "--exact",
-          "--nocapture",
-        ],
-        {
-          cwd: resolve("."),
-          env: {
-            ...process.env,
-            KRX_TEST_QUOTA_ROOT: stateRoot,
-            KRX_TEST_QUOTA_CALLS: String(callsPerRuntime),
-          },
-          stdio: ["ignore", "pipe", "pipe"],
-        },
-      );
-      child.stdout.on("data", (chunk) => (stdout += String(chunk)));
-      child.stderr.on("data", (chunk) => (stderr += String(chunk)));
-      const childDone = new Promise<void>((resolveChild, rejectChild) => {
-        child.on("error", rejectChild);
-        child.on("close", (code) => {
-          if (code === 0) resolveChild();
-          else
-            rejectChild(
-              new Error(`Rust quota worker exited ${code}: ${stderr}${stdout}`),
-            );
-        });
-      });
-      const childClosed = new Promise<void>((resolveChild) => {
-        child.on("close", () => resolveChild());
-        child.on("error", () => resolveChild());
-      });
-
-      try {
-        const readyDeadline = Date.now() + 30_000;
-        while (!existsSync(join(parent, "rust-ready"))) {
-          if (Date.now() >= readyDeadline) {
-            throw new Error(
-              `Rust quota worker did not become ready: ${stderr}`,
-            );
-          }
-          await Promise.race([delay(25), childDone]);
-        }
-        const lockPath = `${quotaPath}.lock`;
-        const deadOwner = "2147483647-00000000-0000-4000-8000-000000000000";
-        mkdirSync(lockPath, { recursive: true, mode: 0o700 });
-        writeFileSync(join(lockPath, "owner"), deadOwner, { mode: 0o600 });
-        writeFileSync(join(lockPath, "steal"), deadOwner, { mode: 0o600 });
-        chmodSync(lockPath, 0o700);
-        const stale = new Date(Date.now() - 31_000);
-        utimesSync(lockPath, stale, stale);
-        writeFileSync(join(parent, "start"), "start");
-        const fixedNow = () => new Date("2026-01-01T15:00:00.000Z");
-        const nodeReservations = Promise.all(
-          Array.from({ length: callsPerRuntime }, () =>
-            reserveCall("shared-key", { filePath: quotaPath, now: fixedNow }),
-          ),
-        );
-        const [nodeResults] = await Promise.all([nodeReservations, childDone]);
-        expect(nodeResults.every((result) => result.reserved)).toBe(true);
-        const persisted = JSON.parse(readFileSync(quotaPath, "utf8")) as {
-          credentials: Record<string, { count: number }>;
-        };
-        expect(
-          persisted.credentials[credentialFingerprint("shared-key")]?.count,
-        ).toBe(callsPerRuntime * 2);
-      } finally {
-        if (child.exitCode === null && child.signalCode === null) child.kill();
-        await childClosed;
-        rmSync(parent, { recursive: true, force: true });
-      }
-    },
-    60_000,
-  );
 });

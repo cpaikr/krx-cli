@@ -35,15 +35,12 @@ const capabilitiesPath = resolve(
 const explicitSourceRoot = argument("--source-root");
 const sourceRoots = explicitSourceRoot
   ? [resolve(root, explicitSourceRoot)]
-  : ["src", "scripts", "probes", "packages", "crates"].map((path) =>
-      resolve(root, path),
-    );
-const generatedSourceRoots = new Set([
-  resolve(root, "probes/rust-vertical-slice/target"),
-  ...(argument("--generated-source-root")
+  : ["scripts", "packages", "crates"].map((path) => resolve(root, path));
+const generatedSourceRoots = new Set(
+  argument("--generated-source-root")
     ? [resolve(root, argument("--generated-source-root"))]
-    : []),
-]);
+    : [],
+);
 const write = process.argv.includes("--write");
 const skipArtifacts = process.argv.includes("--skip-artifacts");
 
@@ -605,6 +602,7 @@ const allowedWireConsumers = new Set([
   resolve(root, "scripts/contracts.mjs"),
   resolve(root, "scripts/product-contracts.mjs"),
   resolve(root, "scripts/compat-judge.mjs"),
+  resolve(root, "scripts/contract-drift.mjs"),
 ]);
 const sharedWireValues = [
   wireEvidence.serverUrl,

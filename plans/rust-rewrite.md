@@ -32,22 +32,28 @@ publication decision.
   continuous Blacksmith certification covers Linux GNU x64/ARM64 under Node 22
   and 24. Exact-head hosted SDK and native-package certification, review
   remediation, feedback closure, and merge are complete.
-- The released implementation is a TypeScript/Node CLI and MCP server. Its
-  source owns 31 KRX endpoints, composites, trading-calendar behavior,
-  adjusted prices, caching, quota accounting, credentials, output rendering,
-  and both CLI and MCP adapters.
-- `docs/CLI-CONTRACT.md`, `docs/COMPOSITE-RESULTS.md`, the checked-in KRX
-  calendar, endpoint registry, tests, and packaged skill describe the behavior
-  that should survive the rewrite. Historical goal files are evidence, not
-  active authority.
-- The current cache stores file-per-request raw historical responses, but it
-  can persist semantically empty results and has no request coalescing,
-  cross-process refresh lease, bounded pruning, or offline stale-read mode.
-- The current persisted KRX credential is plaintext in an owner-only file.
-  KRX service-approval observations and advisory quota state also live in
-  local files.
-- The current package builds from source during private Git-tag installation.
-  There is no public Node SDK contract or prebuilt native distribution.
+- The final cutover branch promotes the native package and executable, retains
+  the maintainer-only contract and calendar workspace, and removes the legacy
+  TypeScript protocol/domain runtime, JavaScript CLI, MCP surface, source-build
+  lifecycle, and disposable probe. The root package has no runtime dependency,
+  bin, export, shipped-file, or install-hook surface. Release and contract-drift
+  workflows consume assembled native artifacts.
+- Installed-product parity passes 14 frozen scenarios against the exact native
+  archive, including deterministic diagnostic observations and strict legacy
+  cache migration. The no-data, schema, and adjustment mutants are rejected by
+  their named scenarios. Secure credential, approval, cache, quota, offline,
+  watchlist, and local-state migrations are exercised through the shared Rust
+  implementation.
+- `ARCHITECTURE.md`, the CLI/composite/cache/security/testing documents, README,
+  canonical contract guides, and packaged skill now describe only the native
+  product. The cutover scanner finds one HTTP conformer and no dormant legacy
+  or MCP runtime path.
+- Local `pnpm verify` passes 130 maintainer tests, 14 public Node facade tests,
+  155 Rust tests with one intentional interop worker ignored, strict Clippy,
+  calendar freshness, and the production dependency audit. A fresh host
+  `darwin-arm64` archive passes clean-install certification under Node 24 with
+  portable SHA-256
+  `3c84bab73759ca8b4fed59da39da01b19efe2e4562a7f8d272d97b16f69a8789`.
 - The recoverable legacy baseline is merge commit `3732598e461ec5d78bd1121dbbe86d56aa658376`.
   Its deterministic gate passes on Ubuntu and Windows under Node 22 and 24,
   the public contract-drift dry run passes for all 31 operations, and the
@@ -543,7 +549,7 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Deliver the final parity and secure-state migration work with the atomic
-package-export cutover, legacy TypeScript/JavaScript deletion, MCP removal,
-clean-checkout validation, review, feedback closure, and merge in the remaining
-PR.
+Run clean-checkout validation and required code review over the locally complete
+cutover, then deliver the final PR through exact-head Blacksmith Linux GNU
+x64/ARM64 certification, feedback closure, and merge. Creating the first tag or
+GitHub Release remains excluded.

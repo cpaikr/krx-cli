@@ -108,6 +108,13 @@ for (const [kind, destination] of [
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await cp(resolve(repository, "packages/node"), output, { recursive: true });
+await cp(
+  resolve(repository, "skills/krx-cli"),
+  resolve(output, "skills/krx-cli"),
+  {
+    recursive: true,
+  },
+);
 await rm(resolve(output, "native"), { recursive: true, force: true });
 await rm(resolve(output, "bin"), { recursive: true, force: true });
 await mkdir(dirname(bindingDestination), { recursive: true });

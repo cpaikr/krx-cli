@@ -2,13 +2,20 @@
 
 ## Unreleased
 
-### Security
+### New Features
 
-- Upgrade the bundled Model Context Protocol SDK dependency and enforce a clean production dependency audit before release.
+- Replace the JavaScript CLI and TypeScript protocol implementation with a native Clap CLI, public Node.js SDK, and shared Rust SDK.
+- Add secure credential, cache, quota, approval, watchlist, offline, and legacy-state migration through the shared implementation.
 
 ### Build System
 
-- Gate releases on cross-platform validation and isolated smoke tests of the packed `krx` and `krx-mcp` binaries.
+- Assemble private, install-script-free native archives for macOS ARM64, Linux GNU x64/ARM64, and Windows x64.
+- Continuously certify Linux GNU x64/ARM64 under Node.js 22 and 24 on Blacksmith; macOS and Windows CI jobs are intentionally omitted to reduce compute cost.
+- Remove the duplicate branch-push CI matrix and run the heavy gates for pull requests or manual dispatch.
+
+### Breaking Changes
+
+- Remove the legacy JavaScript package entry points, TypeScript runtime, and MCP binaries and server surface.
 
 ## [1.8.1](https://github.com/kyo504/krx-cli/compare/v1.8.0...v1.8.1) (2026-03-20)
 

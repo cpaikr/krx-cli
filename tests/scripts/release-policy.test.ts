@@ -138,11 +138,19 @@ describe("private Git release policy", () => {
     );
   });
 
-  it("builds Git dependencies and gates tags on verified upstream main", () => {
+  it("keeps the root maintainer-only and gates tags on verified upstream main", () => {
     const packageJson = JSON.parse(readRepositoryFile("package.json"));
     const release = packageJson["release-it"];
 
-    expect(packageJson.scripts.prepare).toContain("pnpm build");
+    expect(packageJson.private).toBe(true);
+    expect(packageJson.bin).toBeUndefined();
+    expect(packageJson.dependencies).toBeUndefined();
+    for (const hook of ["preinstall", "install", "postinstall", "prepare"]) {
+      expect(packageJson.scripts[hook]).toBeUndefined();
+    }
+    expect(packageJson.repository.url).toBe(
+      "git+https://github.com/cpaikr/krx-cli.git",
+    );
     expect(release.git).toMatchObject({
       requireBranch: "main",
       requireCleanWorkingDir: true,
@@ -155,13 +163,34 @@ describe("private Git release policy", () => {
     expect(release.npm.publish).toBe(false);
   });
 
-  it("certifies tagged Git installs without publishing to npm", () => {
+  it("certifies tagged private native archives without source installation", () => {
     const workflow = readRepositoryFile(".github/workflows/release.yml");
 
-    expect(workflow).toContain("name: Tagged release certification");
+    expect(workflow).toContain("name: Tagged native release certification");
     expect(workflow).toContain('tags:\n      - "v*"');
-    expect(workflow).toContain("Smoke-test Git installation");
+    expect(workflow).toContain("scripts/native-package/assemble.mjs");
+    expect(workflow).toContain("scripts/native-package/pack.mjs");
+    expect(workflow).toContain("scripts/native-package/certify.mjs");
+    expect(workflow).toContain(
+      "macOS ARM64 and Windows x64 remain supported manifest targets",
+    );
+    expect(workflow).not.toContain("pnpm build");
+    expect(workflow).not.toContain("git+file:");
+    expect(workflow).not.toContain("allow-build");
     expect(workflow).not.toContain("npm publish");
     expect(workflow).not.toContain("registry.npmjs.org");
+  });
+
+  it("runs general CI only for pull requests or manual dispatch", () => {
+    const source = readRepositoryFile(".github/workflows/ci.yml");
+    const workflow = YAML.parse(source) as {
+      on?: Record<string, unknown>;
+    };
+    expect(workflow.on?.push).toBeUndefined();
+    expect(workflow.on?.pull_request).toBeDefined();
+    expect(workflow.on).toHaveProperty("workflow_dispatch");
+    expect(source).toContain(
+      "macOS and Windows are intentionally omitted to reduce CI compute cost",
+    );
   });
 });

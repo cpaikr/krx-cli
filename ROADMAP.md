@@ -7,8 +7,10 @@
 legacy baseline, canonical OpenAPI/contracts, and production shared Rust SDK
 are merged. The native Clap CLI, public Node SDK, and production artifact slice
 are also merged after exact-head Blacksmith certification and feedback closure.
-Secure migration promotion, installed-product parity, legacy removal, and the
-atomic package/export cutover remain in the final slice.
+The final branch now passes installed-product parity and migration gates and
+contains the atomic package/export, workflow, documentation, legacy
+TypeScript/JavaScript, and MCP cutover. Final PR review, exact-head Blacksmith
+certification, feedback closure, and merge remain before the goal is complete.
 
 ## Plans
 

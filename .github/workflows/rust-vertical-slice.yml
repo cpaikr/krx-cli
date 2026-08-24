@@ -16,9 +16,13 @@ on:
       - "pnpm-lock.yaml"
       - "rust-toolchain.toml"
       - "scripts/native-package/**"
+      - "scripts/compat-certify.mjs"
+      - "scripts/compat-judge.mjs"
       - "scripts/package-smoke-command.mjs"
       - "scripts/rust-vertical-slice.mjs"
+      - "skills/krx-cli/**"
       - "src/calendar/krx-closures.json"
+      - "tests/compat/**"
       - "tests/scripts/release-policy.test.ts"
       - "tests/scripts/rust-vertical-slice.test.ts"
   workflow_dispatch:
@@ -155,6 +159,13 @@ jobs:
           --tarball target/native-package/download/${{ matrix.target.id }}/*.tgz
           --target ${{ matrix.target.id }}
           --report target/native-package/certification/${{ matrix.target.id }}-node${{ matrix.node }}.json
+
+      - name: Certify frozen installed-product compatibility
+        if: matrix.node == 24
+        shell: bash
+        run: >-
+          node scripts/compat-certify.mjs
+          --candidate-tarball target/native-package/download/${{ matrix.target.id }}/*.tgz
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
