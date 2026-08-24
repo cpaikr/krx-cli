@@ -233,7 +233,7 @@ transitions:
       stealClaimCandidate: "rate-limit.json.lock/.steal.<owner>.tmp"
       stealClaimPublication: in-observed-directory-prepared-file-hard-link-no-replace
       stealClaimRecovery: dead-published-claim-races-one-deterministic-retained-tombstone
-      stealTombstone: ".rate-limit.json.lock.stale-<steal-owner>"
+      stealTombstone: "rate-limit.json.lock.stale-<steal-owner>"
       stealTombstoneRetention: permanent-nonempty-fence
       ownerPublicationRevalidation: no-steal-claim-after-owner-durable
       stealRevalidation:

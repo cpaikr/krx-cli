@@ -473,6 +473,8 @@ mod tests {
             "../../../tests/fixtures/adjusted-stock-prices/oracles.json"
         ))
         .expect("oracle fixture");
+        assert_eq!(oracle.cases.len(), 6, "oracle fixture coverage changed");
+        let mut checked_transitions = false;
         for case in oracle.cases {
             let code = SecurityCode::parse(case.raw[0].get("ISU_CD").expect("security code"))
                 .expect("valid security code");
@@ -494,6 +496,7 @@ mod tests {
             );
             assert_eq!(metadata.cash_dividends, CashDividendTreatment::Excluded);
             if metadata.as_of.as_str() == "20180504" {
+                checked_transitions = true;
                 assert_eq!(
                     metadata.basis_transitions,
                     [
@@ -502,6 +505,7 @@ mod tests {
                 );
             }
         }
+        assert!(checked_transitions, "split transition case is missing");
     }
 
     #[test]

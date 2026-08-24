@@ -433,6 +433,10 @@ fn generate_errors(product: &ProductContract, output: &Path) {
             _ => panic!("afterRetries requires numeric HTTP status matchers"),
         })
         .collect::<Vec<_>>();
+    assert!(
+        !retryable_statuses.is_empty(),
+        "contract must declare at least one afterRetries HTTP status"
+    );
     generated.push_str(&format!(
         "pub(crate) const fn retryable_http_status(status: u16) -> bool {{\n    matches!(status, {})\n}}\n",
         retryable_statuses

@@ -480,6 +480,7 @@ function publishStealClaim(
       mode: 0o600,
       flush: true,
     });
+    if (process.platform !== "win32") fs.chmodSync(candidatePath, 0o600);
     const candidate = fs.lstatSync(candidatePath, { bigint: true });
     candidateIdentity = { device: candidate.dev, inode: candidate.ino };
     const expectedClaim: ClaimObservation = {

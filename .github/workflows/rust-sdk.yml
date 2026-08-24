@@ -6,6 +6,7 @@ on:
       - ".github/workflows/rust-sdk.yml"
       - "Cargo.lock"
       - "Cargo.toml"
+      - "package.json"
       - "contracts/generated/**"
       - "contracts/krx/**"
       - "contracts/product/**"
@@ -51,14 +52,9 @@ jobs:
           --profile minimal
           --component rustfmt,clippy
 
-      - name: Check formatting
-        run: cargo fmt --all --check
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
 
-      - name: Compile the production workspace
-        run: cargo check --locked --workspace --all-targets --all-features
-
-      - name: Lint the production workspace
-        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
-
-      - name: Test the production workspace
-        run: cargo test --locked --workspace --all-features
+      - name: Validate the production Rust SDK
+        run: npm run rust:sdk

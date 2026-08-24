@@ -1091,9 +1091,18 @@ fn validate_plain_lock_owner(owner: &str) -> Result<(), KrxError> {
     let Some((pid, nonce)) = owner.split_once('-') else {
         return Err(invalid_state_path("local lock owner is malformed"));
     };
-    let valid_uuid = Uuid::parse_str(nonce)
-        .ok()
-        .is_some_and(|uuid| uuid.get_version_num() == 4 && uuid.get_variant() == Variant::RFC4122);
+    let valid_uuid_shape = nonce.len() == 36
+        && nonce.bytes().enumerate().all(|(index, byte)| {
+            if matches!(index, 8 | 13 | 18 | 23) {
+                byte == b'-'
+            } else {
+                byte.is_ascii_digit() || matches!(byte, b'a'..=b'f')
+            }
+        });
+    let valid_uuid = valid_uuid_shape
+        && Uuid::parse_str(nonce).ok().is_some_and(|uuid| {
+            uuid.get_version_num() == 4 && uuid.get_variant() == Variant::RFC4122
+        });
     if pid.starts_with('0')
         || pid.parse::<u32>().ok().filter(|value| *value > 0).is_none()
         || !valid_uuid
@@ -2791,6 +2800,9 @@ mod tests {
             "1-00000000-0000-1000-8000-000000000000",
             "1-00000000-0000-4000-c000-000000000000",
             "1-00000000-0000-4000-8000-00000000000A",
+            "1-00000000000040008000000000000000",
+            "1-{00000000-0000-4000-8000-000000000000}",
+            "1-urn:uuid:00000000-0000-4000-8000-000000000000",
         ] {
             assert!(
                 fixture

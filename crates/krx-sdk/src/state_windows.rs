@@ -1469,7 +1469,15 @@ fn validate_plain_lock_owner(owner: &str) -> Result<(), KrxError> {
     {
         return Err(invalid_state_path("local lock owner is malformed"));
     }
-    if uuid.bytes().any(|byte| byte.is_ascii_uppercase()) {
+    let valid_uuid_shape = uuid.len() == 36
+        && uuid.bytes().enumerate().all(|(index, byte)| {
+            if matches!(index, 8 | 13 | 18 | 23) {
+                byte == b'-'
+            } else {
+                byte.is_ascii_digit() || matches!(byte, b'a'..=b'f')
+            }
+        });
+    if !valid_uuid_shape {
         return Err(invalid_state_path("local lock owner is malformed"));
     }
     let uuid =
@@ -2887,6 +2895,9 @@ mod tests {
             "42-4C691FC0-09C4-4C83-904D-D10B1681FF73",
             "42-00000000-0000-0000-0000-000000000000",
             "42-6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+            "42-4c691fc009c44c83904dd10b1681ff73",
+            "42-{4c691fc0-09c4-4c83-904d-d10b1681ff73}",
+            "42-urn:uuid:4c691fc0-09c4-4c83-904d-d10b1681ff73",
         ] {
             assert!(
                 validate_plain_lock_owner(invalid_owner).is_err(),

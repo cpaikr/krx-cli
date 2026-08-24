@@ -41,7 +41,6 @@ struct ClientInner {
     approvals: ApprovalStore,
     cache: CacheStore,
     watchlist: WatchlistStore,
-    state_root: PathBuf,
 }
 
 pub struct ClientBuilder {
@@ -69,7 +68,6 @@ impl ClientBuilder {
                 approvals: ApprovalStore::new(state_root.clone())?,
                 cache,
                 watchlist: WatchlistStore::new(state_root.clone())?,
-                state_root,
             }),
         })
     }
@@ -92,6 +90,8 @@ impl Client {
         &self,
         request: StockSearchRequest,
     ) -> Result<StockSearchResult, KrxError> {
+        let StockSearchRequest { query, options } = request;
+        let request = StockSearchRequest::new(&query, options)?;
         validate_options(&request.options, None)?;
         check_composite_cancellation(&request.options)?;
         let deadline = Instant::now() + Duration::from_millis(OVERALL_TIMEOUT_MS);
@@ -169,6 +169,12 @@ impl Client {
         &self,
         request: WatchlistPricesRequest,
     ) -> Result<WatchlistPricesResult, KrxError> {
+        let WatchlistPricesRequest {
+            date,
+            security_codes,
+            options,
+        } = request;
+        let request = WatchlistPricesRequest::new(date, security_codes, options)?;
         validate_options(&request.options, None)?;
         check_composite_cancellation(&request.options)?;
         let deadline = Instant::now() + Duration::from_millis(OVERALL_TIMEOUT_MS);
@@ -210,7 +216,7 @@ impl Client {
         CredentialHandle {
             manager: self.inner.credentials.clone(),
             approvals: self.inner.approvals.clone(),
-            state_root: self.inner.state_root.clone(),
+            direct: self.inner.direct.clone(),
         }
     }
 
@@ -231,7 +237,7 @@ impl Client {
 pub struct CredentialHandle {
     manager: CredentialManager,
     approvals: ApprovalStore,
-    state_root: PathBuf,
+    direct: DirectQueryClient,
 }
 
 impl CredentialHandle {
@@ -283,10 +289,9 @@ impl CredentialHandle {
         };
         let today = crate::transport::kst_date(SystemTime::now())?;
         let date = crate::calendar::resolve_recent(&today)?.date;
-        let direct =
-            DirectQueryClient::native(self.state_root.clone(), Some(credential.api_key.clone()))?;
-        let result = direct
-            .query_until(
+        let result = self
+            .direct
+            .query_bypass_until(
                 DirectRequest {
                     operation,
                     date,
@@ -296,6 +301,7 @@ impl CredentialHandle {
                         cancellation,
                     },
                 },
+                &credential.api_key,
                 deadline,
             )
             .await;
@@ -386,6 +392,7 @@ impl ClientTransport for DirectTransport {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct DirectQueryClient<T = DirectTransport> {
     credentials: CredentialManager,
     cache: CacheStore,
@@ -498,6 +505,25 @@ where
                     .await
             }
         }
+    }
+
+    async fn query_bypass_until(
+        &self,
+        request: DirectRequest,
+        api_key: &ApiKey,
+        deadline: Instant,
+    ) -> Result<QueryResult, KrxError> {
+        check_request_budget(&request, deadline)?;
+        if !matches!(request.options.cache, CachePolicy::Bypass) {
+            return Err(KrxError::new(
+                KrxErrorCode::InternalFailure,
+                "credential approval probe must bypass the cache",
+            )
+            .for_operation(request.operation));
+        }
+        self.cache.key(request.operation, request.date.clone())?;
+        self.network_query_with_api_key(&request, None, deadline, api_key)
+            .await
     }
 
     pub(crate) async fn range(&self, request: RangeRequest) -> Result<RangeResult, KrxError> {
@@ -697,12 +723,22 @@ where
             .await_until(request, deadline, self.credentials.resolve_required())
             .await?
             .map_err(|error| error.for_operation(request.operation))?;
+        self.network_query_with_api_key(request, cache_write, deadline, &credential.api_key)
+            .await
+    }
+
+    async fn network_query_with_api_key(
+        &self,
+        request: &DirectRequest,
+        cache_write: Option<(&CacheKey, Arc<CacheRefreshLease>)>,
+        deadline: Instant,
+        api_key: &ApiKey,
+    ) -> Result<QueryResult, KrxError> {
         let rows = self
             .await_until(
                 request,
                 deadline,
-                self.transport
-                    .execute_until(request, &credential.api_key, deadline),
+                self.transport.execute_until(request, api_key, deadline),
             )
             .await?
             .map_err(|error| error.for_operation(request.operation))?;
@@ -1144,7 +1180,7 @@ mod tests {
 
     impl Drop for Fixture {
         fn drop(&mut self) {
-            fs::remove_dir_all(&self.parent).unwrap();
+            let _ = fs::remove_dir_all(&self.parent);
         }
     }
 
@@ -1278,6 +1314,37 @@ mod tests {
             b"{}"
         );
         assert!(!fixture.root.join("cache/.leases").exists());
+    }
+
+    #[tokio::test]
+    async fn public_composite_requests_are_revalidated_before_fanout() {
+        let fixture = Fixture::new();
+        let client = ClientBuilder {
+            api_key: Some(ApiKey::parse("test-placeholder").unwrap()),
+        }
+        .build_at(fixture.root.clone())
+        .unwrap();
+
+        let search_error = client
+            .search_stocks(StockSearchRequest {
+                query: "   ".to_owned(),
+                options: CallOptions::default(),
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(search_error.code(), KrxErrorCode::InvalidArgument);
+
+        let prices_error = client
+            .watchlist_prices(WatchlistPricesRequest {
+                date: TradingDate::parse("20260102").unwrap(),
+                security_codes: Vec::new(),
+                options: CallOptions::default(),
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(prices_error.code(), KrxErrorCode::InvalidArgument);
+        assert!(!fixture.root.join("cache").exists());
+        assert!(!fixture.root.join("rate-limit.json").exists());
     }
 
     #[tokio::test]

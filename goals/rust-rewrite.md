@@ -53,13 +53,30 @@ active.
 
 ### Next in-scope action
 
-Commit the reviewed public-SDK checkpoint, create the single production SDK PR,
-and complete its review, feedback, exact-head validation, and merge lifecycle.
+Push the reviewed PR #9 feedback remediation, resolve every verified review
+thread, complete automatic follow-up review and exact-head Blacksmith
+validation, then merge the production SDK PR while preserving its commits.
 Keep CLI and Node adapter implementation out of this slice until that PR is
 complete.
 
 ### Evidence and blockers
 
+- Production SDK PR [#9](https://github.com/cpaikr/krx-cli/pull/9) is open and
+  its original implementation head `1471622` passed both Blacksmith SDK jobs,
+  both Linux native builds, all four Node 22/24 consumers, and the identity
+  aggregator. Codex and CodeRabbit completed reviews on that exact head. The
+  checked remediation accepts the valid public-request, watchlist, workflow,
+  contract, build-generation, cache, shared-client, credential, date, lock
+  grammar, KST, and state-hardening findings; preserves the frozen manual
+  exact-arithmetic GCD and legacy decimal `Retry-After` compatibility; and
+  rejects a Windows continuous-CI expansion under the authorized compute-cost
+  amendment. Five independent Luna/high public, credential, state, cache, and
+  transport rereviews found no blocking defect after two narrow test-hardening
+  follow-ups. The canonical `npm run rust:sdk` passes formatting, locked
+  all-target/all-feature check, strict Clippy, and 147 tests with one
+  intentional interop worker ignored. Full `pnpm verify` passes 49 files and
+  508 tests, production audit, 13 installed-package scenarios, and package
+  smoke. Exact-head push, thread closure, hosted validation, and merge remain.
 - The complete shared Rust SDK now exposes the frozen concrete `Client`,
   builder, direct and range queries, generated composites, capabilities,
   credential and approval operations, bounded cache administration, and
@@ -154,7 +171,7 @@ complete.
   intentional interoperability worker ignored, and strict Clippy. Full
   `pnpm verify` passes 49 files and 507 tests, including the real Node/Rust
   quota interoperability gate, production audit, 13 installed-package
-  scenarios, and package smoke. Native Windows and Linux ARM cross compilation
+  scenarios, and package smoke. Native Windows and Linux ARM cross-compilation
   is unavailable on this macOS host because their SDK/toolchains are absent;
   static review is clean and those targets are not continuous gates under the
   authorized compute-cost amendment.

@@ -37,8 +37,7 @@ impl WatchlistEntry {
         name: &str,
         market: WatchlistMarket,
     ) -> Result<Self, KrxError> {
-        if !valid_isin(isin) || name.trim() != name || name.is_empty() || name.chars().count() > 256
-        {
+        if !valid_entry_fields(isin, security_code, name) {
             return Err(KrxError::new(
                 KrxErrorCode::InvalidArgument,
                 "watchlist entry is invalid",
@@ -130,7 +129,9 @@ fn remove_blocking(state: &StateRoot, selector: &str) -> Result<bool, KrxError> 
     let filtered = entries
         .into_iter()
         .filter(|entry| {
-            let matches = entry.isin == selector || entry.name == selector;
+            let matches = entry.isin == selector
+                || entry.security_code.as_str() == selector
+                || entry.name == selector;
             removed |= matches;
             !matches
         })
@@ -239,17 +240,20 @@ fn valid_isin(value: &str) -> bool {
     bytes.len() == 12 && bytes.starts_with(b"KR") && bytes[2..].iter().all(u8::is_ascii_digit)
 }
 
+fn valid_entry_fields(isin: &str, security_code: &str, name: &str) -> bool {
+    valid_isin(isin)
+        && valid_security_code(security_code)
+        && name.trim() == name
+        && !name.is_empty()
+        && name.chars().count() <= 256
+}
+
 fn invalid_watchlist(message: &'static str) -> KrxError {
     KrxError::new(KrxErrorCode::WatchlistStateInvalid, message)
 }
 
 fn validate_entry_argument(entry: &WatchlistEntry) -> Result<(), KrxError> {
-    if !valid_isin(&entry.isin)
-        || !valid_security_code(entry.security_code.as_str())
-        || entry.name.trim() != entry.name
-        || entry.name.is_empty()
-        || entry.name.chars().count() > 256
-    {
+    if !valid_entry_fields(&entry.isin, entry.security_code.as_str(), &entry.name) {
         return Err(KrxError::new(
             KrxErrorCode::InvalidArgument,
             "watchlist entry is invalid",
@@ -272,17 +276,19 @@ struct WireEntry {
 
 impl WireEntry {
     fn into_entry(self) -> Result<WatchlistEntry, KrxError> {
-        if self.name.trim() != self.name
-            || self.name.is_empty()
-            || self.name.chars().count() > 256
-            || !valid_isin(&self.isin)
-        {
+        if !valid_entry_fields(&self.isin, &self.security_code, &self.name) {
             return Err(invalid_watchlist("watchlist entry is invalid"));
         }
         let market = parse_market(&self.market)
             .ok_or_else(|| invalid_watchlist("watchlist entry has an invalid market"))?;
-        WatchlistEntry::new(&self.isin, &self.security_code, &self.name, market)
-            .map_err(|_| invalid_watchlist("watchlist entry is invalid"))
+        let security_code = SecurityCode::parse(&self.security_code)
+            .map_err(|_| invalid_watchlist("watchlist entry is invalid"))?;
+        Ok(WatchlistEntry {
+            isin: self.isin,
+            security_code,
+            name: self.name,
+            market,
+        })
     }
 }
 
@@ -517,6 +523,23 @@ mod tests {
         let written = fs::read(root.join(WATCHLIST_PATH)).unwrap();
         assert!(written.starts_with(b"{\n  \"version\": 1,"));
         assert_eq!(store.list().await.unwrap().len(), 3);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[tokio::test]
+    async fn removes_an_entry_by_its_six_digit_security_code() {
+        let root = test_root();
+        let store = WatchlistStore::new(root.clone()).unwrap();
+        store
+            .add(
+                WatchlistEntry::new("KR7005930003", "005930", "삼성전자", WatchlistMarket::Kospi)
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert!(store.remove("005930").await.unwrap());
+        assert!(store.list().await.unwrap().is_empty());
         let _ = fs::remove_dir_all(root);
     }
 

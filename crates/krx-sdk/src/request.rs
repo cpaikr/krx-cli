@@ -128,27 +128,9 @@ impl CalendarDate {
 }
 
 fn valid_compact_date(value: &str) -> bool {
-    if value.len() != 8 || !value.bytes().all(|byte| byte.is_ascii_digit()) {
-        return false;
-    }
-    let Some(year) = value[0..4].parse::<u32>().ok() else {
-        return false;
-    };
-    let Some(month) = value[4..6].parse::<u32>().ok() else {
-        return false;
-    };
-    let Some(day) = value[6..8].parse::<u32>().ok() else {
-        return false;
-    };
-    let leap = year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400));
-    let days = match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 if leap => 29,
-        2 => 28,
-        _ => return false,
-    };
-    day > 0 && day <= days
+    value.len() == 8
+        && value.bytes().all(|byte| byte.is_ascii_digit())
+        && Date::strptime("%Y%m%d", value).is_ok_and(|date| date.year() > 0)
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -338,6 +320,7 @@ mod tests {
     fn validates_project_owned_scalar_types() {
         assert!(TradingDate::parse("20240229").is_ok());
         assert!(TradingDate::parse("20230229").is_err());
+        assert!(TradingDate::parse("00000101").is_err());
         assert!(CalendarDate::parse("2026-08-24").is_ok());
         assert!(CalendarDate::parse("2026-02-29").is_err());
         assert!(CalendarDate::parse("2é6-08-24").is_err());

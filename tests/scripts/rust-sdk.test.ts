@@ -74,6 +74,7 @@ function assertDomainPolicySources(sources: {
     '{{\\"date\\":\\"{}\\",\\"previousClose\\":\\"{}\\",\\"previousDate\\":\\"{}\\",\\"ratio\\":{{\\"denominator\\":\\"{}\\",\\"numerator\\":\\"{}\\"}},\\"referencePrice\\":\\"{}\\"}}';
   const required = [
     [sources.build, 'deserialize_with = "ordered_string_map"'],
+    [sources.build, "!retryable_statuses.is_empty()"],
     [sources.request, "pub const MAX_DAYS: usize = 10_000;"],
     [sources.result, "krx-adjustment-transition/v1"],
     [sources.adjustment, "krx-adjustment-transition/v1"],
@@ -132,8 +133,13 @@ function assertPublicSdkSurfaceSources(sources: {
     [publicClient, "pub async fn query("],
     [publicClient, "pub async fn range("],
     [publicClient, "pub async fn search_stocks("],
+    [publicClient, "StockSearchRequest::new(&query, options)?"],
     [publicClient, "pub async fn market_summary("],
     [publicClient, "pub async fn watchlist_prices("],
+    [
+      publicClient,
+      "WatchlistPricesRequest::new(date, security_codes, options)?",
+    ],
     [publicClient, "STOCK_SEARCH_COMPONENTS"],
     [publicClient, "MARKET_SUMMARY_COMPONENTS"],
     [publicClient, "WATCHLIST_PRICE_COMPONENTS"],
@@ -199,6 +205,12 @@ function assertQuotaStateProtocolSource(source: string): void {
   const mismatchStart = publication.indexOf("if claim.owner != claimant");
   const mismatchEnd = publication.indexOf("Ok(Some(claim))", mismatchStart);
   const mismatch = publication.slice(mismatchStart, mismatchEnd);
+  const ownerGrammarStart = source.indexOf("fn validate_plain_lock_owner(");
+  const ownerGrammarEnd = source.indexOf(
+    "fn write_lock_owner(",
+    ownerGrammarStart,
+  );
+  const ownerGrammar = source.slice(ownerGrammarStart, ownerGrammarEnd);
   if (
     atomicStart < 0 ||
     atomicEnd < 0 ||
@@ -221,6 +233,10 @@ function assertQuotaStateProtocolSource(source: string): void {
     publicationEnd < 0 ||
     mismatchStart < 0 ||
     mismatchEnd < 0 ||
+    ownerGrammarStart < 0 ||
+    ownerGrammarEnd < 0 ||
+    !ownerGrammar.includes("nonce.len() == 36") ||
+    !ownerGrammar.includes("matches!(index, 8 | 13 | 18 | 23)") ||
     !publication.includes("let mut published = None;") ||
     !publication.includes("let Some(claim) = &published") ||
     !publication.includes("release_steal_claim(lock_directory, claim);") ||
@@ -519,9 +535,8 @@ function assertWindowsStateProtocolSource(source: string): void {
     !source.includes("delete_open_directory(directory).is_ok()") ||
     ownerGrammarStart < 0 ||
     ownerGrammarEnd < 0 ||
-    !ownerGrammar.includes(
-      "if uuid.bytes().any(|byte| byte.is_ascii_uppercase())",
-    ) ||
+    !ownerGrammar.includes("uuid.len() == 36") ||
+    !ownerGrammar.includes("matches!(index, 8 | 13 | 18 | 23)") ||
     !source.includes("matches!(*suffix, 0x00b9 | 0x00b2 | 0x00b3)") ||
     identityStart < 0 ||
     identityEnd < 0 ||
@@ -682,6 +697,15 @@ function assertNodeQuotaStateProtocolSource(source: string): void {
   const claimStart = source.indexOf("function publishStealClaim(");
   const claimEnd = source.indexOf("function tryStealStaleLock(", claimStart);
   const claimPublication = source.slice(claimStart, claimEnd);
+  const claimWrite = claimPublication.indexOf("fs.writeFileSync(candidatePath");
+  const claimChmod = claimPublication.indexOf(
+    'if (process.platform !== "win32") fs.chmodSync(candidatePath, 0o600);',
+    claimWrite,
+  );
+  const claimInspect = claimPublication.indexOf(
+    "fs.lstatSync(candidatePath",
+    claimChmod,
+  );
   const acquisitionStart = source.indexOf("async function acquireLock(");
   const acquisitionEnd = source.indexOf(
     "/**\n * Atomically reserve one local quota unit",
@@ -715,6 +739,9 @@ function assertNodeQuotaStateProtocolSource(source: string): void {
     !ownerPublication.includes("readLockOwner(lockPath)") ||
     claimStart < 0 ||
     claimEnd < 0 ||
+    claimWrite < 0 ||
+    claimChmod <= claimWrite ||
+    claimInspect <= claimChmod ||
     !claimPublication.includes("claim.owner !== claimant") ||
     acquisitionStart < 0 ||
     acquisitionEnd < 0 ||
@@ -776,6 +803,9 @@ function assertCredentialApprovalProtocolSources(sources: {
     publicRemoveEnd,
   );
   const validateSource = migration.indexOf("migrate_approval_root(");
+  const validateLegacySecret = migration.indexOf(
+    "validate_persisted_api_key(&secret)",
+  );
   const migrationLock = migration.indexOf(
     "acquire_legacy_migration_lock(state)?",
   );
@@ -833,8 +863,11 @@ function assertCredentialApprovalProtocolSources(sources: {
     migrationStart < 0 ||
     migrationEnd < 0 ||
     validateSource < 0 ||
+    validateLegacySecret < 0 ||
     migrationLock < 0 ||
     validateSource <= migrationLock ||
+    validateLegacySecret <= migrationLock ||
+    inspectKeychain <= validateLegacySecret ||
     inspectKeychain <= validateSource ||
     verifyKeychain <= inspectKeychain ||
     writeConfig <= verifyKeychain ||
@@ -1164,6 +1197,7 @@ describe("production Rust SDK gate", () => {
       ".github/workflows/rust-sdk.yml",
       "Cargo.lock",
       "Cargo.toml",
+      "package.json",
       "contracts/generated/**",
       "contracts/krx/**",
       "contracts/product/**",
@@ -1178,15 +1212,13 @@ describe("production Rust SDK gate", () => {
       { arch: "x64", runner: "blacksmith-2vcpu-ubuntu-2404" },
       { arch: "arm64", runner: "blacksmith-2vcpu-ubuntu-2404-arm" },
     ]);
-    expect(
-      job.steps.map((step: { run?: string }) => step.run).filter(Boolean),
-    ).toEqual(
+    expect(job.steps).toEqual(
       expect.arrayContaining([
-        "cargo fmt --all --check",
-        "cargo check --locked --workspace --all-targets --all-features",
-        "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings",
-        "cargo test --locked --workspace --all-features",
+        expect.objectContaining({ run: "npm run rust:sdk" }),
       ]),
+    );
+    expect(JSON.parse(read("package.json")).scripts["rust:sdk"]).toBe(
+      "cargo fmt --all --check && cargo check --locked --workspace --all-targets --all-features && cargo clippy --locked --workspace --all-targets --all-features -- -D warnings && cargo test --locked --workspace --all-features",
     );
   });
 
@@ -1230,7 +1262,7 @@ describe("production Rust SDK gate", () => {
         "in-observed-directory-prepared-file-hard-link-no-replace",
       stealClaimRecovery:
         "dead-published-claim-races-one-deterministic-retained-tombstone",
-      stealTombstone: ".rate-limit.json.lock.stale-<steal-owner>",
+      stealTombstone: "rate-limit.json.lock.stale-<steal-owner>",
       stealTombstoneRetention: "permanent-nonempty-fence",
       ownerPublicationRevalidation: "no-steal-claim-after-owner-durable",
       stealRevalidation: [
@@ -1298,6 +1330,11 @@ describe("production Rust SDK gate", () => {
     expect(() =>
       assertQuotaStateProtocolSource(
         rustState.replace("committed = true;", "committed = false;"),
+      ),
+    ).toThrow(/owner\/claim publication protocol/u);
+    expect(() =>
+      assertQuotaStateProtocolSource(
+        rustState.replace("nonce.len() == 36", "nonce.len() > 0"),
       ),
     ).toThrow(/owner\/claim publication protocol/u);
     expect(() =>
@@ -1627,10 +1664,7 @@ describe("production Rust SDK gate", () => {
     ).toThrow(/Windows quota state/u);
     expect(() =>
       assertWindowsStateProtocolSource(
-        windowsState.replace(
-          "if uuid.bytes().any(|byte| byte.is_ascii_uppercase())",
-          "if false",
-        ),
+        windowsState.replace("uuid.len() == 36", "uuid.len() > 0"),
       ),
     ).toThrow(/Windows quota state/u);
     expect(() =>

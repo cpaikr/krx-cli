@@ -6,6 +6,7 @@ use std::time::{Duration, Instant, SystemTime};
 use futures_util::StreamExt;
 use jiff::Timestamp;
 use jiff::fmt::rfc2822;
+use jiff::tz::{self, TimeZone};
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE, HeaderName, HeaderValue, RETRY_AFTER};
 use url::Url;
 use uuid::Uuid;
@@ -235,6 +236,7 @@ impl Runtime for TokioRuntime {
     }
 }
 
+#[derive(Clone)]
 struct RetryEngine<H, Q, R> {
     http: H,
     quota: Q,
@@ -414,6 +416,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct DirectTransport {
     engine: RetryEngine<ReqwestAdapter, QuotaStore, TokioRuntime>,
 }
@@ -489,21 +492,14 @@ fn auth_header_value(api_key: &ApiKey) -> Result<HeaderValue, AttemptFailure> {
 }
 
 pub(crate) fn kst_date(now: SystemTime) -> Result<TradingDate, KrxError> {
-    let shifted = now
-        .checked_add(Duration::from_secs(9 * 60 * 60))
-        .ok_or_else(|| {
-            KrxError::new(
-                KrxErrorCode::InternalFailure,
-                "system time is outside the supported KST calendar",
-            )
-        })?;
-    let timestamp = Timestamp::try_from(shifted).map_err(|_| {
+    let timestamp = Timestamp::try_from(now).map_err(|_| {
         KrxError::new(
             KrxErrorCode::InternalFailure,
             "system time is outside the supported KST calendar",
         )
     })?;
-    TradingDate::parse(&timestamp.strftime("%Y%m%d").to_string()).map_err(|_| {
+    let kst = timestamp.to_zoned(TimeZone::fixed(tz::offset(9)));
+    TradingDate::parse(&kst.strftime("%Y%m%d").to_string()).map_err(|_| {
         KrxError::new(
             KrxErrorCode::InternalFailure,
             "system time is outside the supported KST calendar",
@@ -1043,6 +1039,12 @@ mod tests {
     fn retry_after_accepts_seconds_and_http_dates() {
         let now = SystemTime::UNIX_EPOCH;
         assert_eq!(parse_retry_after("3", now), Some(Duration::from_secs(3)));
+        assert_eq!(
+            parse_retry_after("1.5", now),
+            Some(Duration::from_millis(1_500))
+        );
+        assert_eq!(parse_retry_after("+3", now), Some(Duration::from_secs(3)));
+        assert_eq!(parse_retry_after("1e1", now), Some(Duration::from_secs(10)));
         assert_eq!(
             parse_retry_after("Thu, 01 Jan 1970 00:00:05 GMT", now),
             Some(Duration::from_secs(5))

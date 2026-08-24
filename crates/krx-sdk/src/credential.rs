@@ -198,7 +198,13 @@ fn migrate_legacy_blocking_with_writer(
     };
     let legacy_secret = match root.remove("apiKey") {
         None => None,
-        Some(Value::String(secret)) if !secret.is_empty() => Some(Zeroizing::new(secret)),
+        Some(Value::String(secret)) => {
+            let secret = Zeroizing::new(secret);
+            if validate_persisted_api_key(&secret).is_err() {
+                return Err(legacy_invalid("legacy configuration credential is invalid"));
+            }
+            Some(secret)
+        }
         Some(_) => {
             return Err(legacy_invalid("legacy configuration credential is invalid"));
         }
@@ -567,17 +573,18 @@ mod tests {
         }
 
         fn write_fixture(&self, name: &str) {
-            fs::create_dir_all(&self.state).unwrap();
-            fs::write(
-                self.state.join(CONFIG_PATH),
-                fs::read(
-                    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                        .join("../../contracts/product/v1/fixtures")
-                        .join(name),
-                )
-                .unwrap(),
+            let bytes = fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../contracts/product/v1/fixtures")
+                    .join(name),
             )
             .unwrap();
+            self.write_config_bytes(&bytes);
+        }
+
+        fn write_config_bytes(&self, bytes: &[u8]) {
+            fs::create_dir_all(&self.state).unwrap();
+            fs::write(self.state.join(CONFIG_PATH), bytes).unwrap();
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt as _;
@@ -966,6 +973,30 @@ mod tests {
             );
             assert_eq!(*backend.sets.lock().unwrap(), 0);
             assert_eq!(fs::read(root.state.join(CONFIG_PATH)).unwrap(), before);
+        }
+    }
+
+    #[tokio::test]
+    async fn invalid_legacy_secret_precedes_all_keychain_access_and_preserves_bytes() {
+        const INVALID: &[u8] = b"{\"version\":0,\"apiKey\":\"   \",\"serviceStatus\":null}\n";
+        for existing in [None, Some("conflicting-key")] {
+            let root = TestRoot::new();
+            root.write_config_bytes(INVALID);
+            let backend = Arc::new(FakeBackend::with_secret(existing));
+            let error = manager_at(
+                root.state.clone(),
+                Arc::new(FakeEnvironment::value(None)),
+                backend.clone(),
+            )
+            .migrate_legacy()
+            .await
+            .unwrap_err();
+
+            assert_eq!(error.code(), KrxErrorCode::LegacyStateInvalid);
+            assert_eq!(*backend.gets.lock().unwrap(), 0);
+            assert_eq!(*backend.sets.lock().unwrap(), 0);
+            assert_eq!(*backend.removes.lock().unwrap(), 0);
+            assert_eq!(fs::read(root.state.join(CONFIG_PATH)).unwrap(), INVALID);
         }
     }
 

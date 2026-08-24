@@ -725,7 +725,7 @@ impl CacheStore {
         let state = self.state.clone();
         let path_for_observation = path.clone();
         let now = SystemTime::now();
-        let stolen = tokio::task::spawn_blocking(move || {
+        tokio::task::spawn_blocking(move || {
             let Some(observed) = state.observe_cache_lease(
                 &path_for_observation,
                 CACHE_LEASE_OWNER_BYTES,
@@ -763,9 +763,8 @@ impl CacheStore {
             )
         })?
         .map_err(|error| error.for_operation(key.operation))?;
-        if stolen {
-            return Ok(None);
-        }
+        // A successful steal only frees the pathname. The caller retries to
+        // acquire the replacement lease.
         Ok(None)
     }
 }
@@ -930,16 +929,14 @@ fn delete_admin_entries(
         .into_iter()
         .filter(|entry| remove.contains(&entry.relative))
         .collect::<Vec<_>>();
-    for batch in targets.chunks(CACHE_PRUNE_DELETE_BATCH_MAXIMUM as usize) {
-        for entry in batch {
-            if state.remove_if_unchanged(
-                &entry.relative,
-                &entry.observed,
-                KrxErrorCode::CacheWriteFailed,
-            )? {
-                result.removed_entries += 1;
-                result.removed_bytes += entry.description.size_bytes;
-            }
+    for entry in &targets {
+        if state.remove_if_unchanged(
+            &entry.relative,
+            &entry.observed,
+            KrxErrorCode::CacheWriteFailed,
+        )? {
+            result.removed_entries += 1;
+            result.removed_bytes += entry.description.size_bytes;
         }
     }
     Ok(result)
