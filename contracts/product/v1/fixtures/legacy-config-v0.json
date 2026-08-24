@@ -1,0 +1,12 @@
+{
+  "apiKey": "fixture-key",
+  "serviceStatus": {
+    "stock": {
+      "approved": true,
+      "checkedAt": "2026-01-02T00:00:00.000Z"
+    }
+  },
+  "preservedUnknown": {
+    "owner": "legacy"
+  }
+}

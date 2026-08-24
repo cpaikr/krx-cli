@@ -1,650 +1,98 @@
 # krx-cli
 
-[License: MIT](LICENSE)
-
-AI 에이전트를 위한 KRX(한국거래소) Open API CLI & MCP 서버입니다.
-
-Claude Code, GPT, Cursor 등의 AI 에이전트가 Bash tool 또는 MCP를 통해 한국 주식시장 데이터(KOSPI, KOSDAQ, ETF, 채권, 파생상품)를 조회할 수 있습니다.
-
-## 특징
-
-- **Agent-Native**: 파이프에서는 JSON, TTY에서는 표, 시맨틱 exit code, 스키마 인트로스펙션
-- **전체 시장 커버리지**: 지수, 주식, ETF/ETN/ELW, 채권, 파생상품, 일반상품, ESG (31개 엔드포인트)
-- **종목 검색**: 종목명으로 검색 후 코드 조회 (`krx stock search`)
-- **시장 요약**: 한 번의 호출로 지수/상승·하락/Top movers 확인 (`krx market summary`)
-- **워치리스트**: 관심 종목 저장 및 일괄 시세 조회 (`krx watchlist`)
-- **기간 조회**: `--from/--to`로 여러 날짜 데이터 병렬 조회
-- **데이터 파이프라인**: `--sort`, `--limit`, `--code` 로 로컬 결과 필터링
-- **파일 캐싱**: 과거 데이터 자동 캐싱으로 rate limit 절약
-- **안전한 사용**: 입력 검증, rate limit 추적, dry-run 지원
-- **서비스 승인 관리**: API별 승인 상태 자동 확인
+KRX(한국거래소) Open API를 위한 네이티브 CLI와 Node.js SDK입니다. 모든 KRX
+동작과 로컬 정책은 공유 Rust SDK가 담당하며, CLI와 Node SDK는 같은 결과,
+오류, 캐시, 할당량, 자격 증명 정책을 사용합니다.
 
 ## 설치
 
-이 포크는 npm 레지스트리에 공개하지 않고 비공개 GitHub 저장소의 릴리스
-태그에서 설치합니다. macOS와 Linux에서 같은 방법을 사용합니다.
-
-### 사전 요구 사항
-
-- Node.js 22 이상
-- pnpm 10.28 이상
-- Git
-- `sjunepark/krx-cli` 저장소 접근 권한
-
-### GitHub SSH 인증
-
-이미 GitHub에 등록한 SSH 키가 있다면 다음 명령으로 접속을 확인합니다.
+배포물은 비공개 GitHub Release 자산입니다. 저장소 접근 권한이 있는 사용자는
+운영체제에 맞는 tarball을 내려받아 설치합니다. 설치 과정에서 소스 빌드나
+lifecycle script를 실행하지 않습니다.
 
 ```bash
-ssh -T git@github.com
-```
-
-SSH 키를 처음 설정한다면 GitHub CLI로 현재 머신의 키를 등록하거나 새로
-만들 수 있습니다.
-
-```bash
-gh auth login --git-protocol ssh --web
-ssh -T git@github.com
-```
-
-조직에서 SSO를 사용하면 SSH 키를 해당 조직에 추가로 승인해야 할 수 있습니다.
-
-### 릴리스 버전 설치
-
-재현 가능한 설치를 위해 브랜치 대신 릴리스 태그를 지정합니다.
-
-```bash
-pnpm add --global --allow-build=krx-cli \
-  "git+ssh://git@github.com/sjunepark/krx-cli.git#<TAG>"
-
+pnpm add --global --ignore-scripts ./krx-cli-1.8.1-linux-x64-gnu.tgz
 krx --version
 krx --help
 ```
 
-`<TAG>`를 실제 릴리스 태그로 바꾸세요. `--allow-build=krx-cli`는 Git에서
-가져온 이 패키지가 설치 중 `dist/`를 빌드하도록 한 번만 허용합니다.
+지원 대상은 macOS ARM64, Linux GNU x64/ARM64, Windows x64입니다. 비용 절감을
+위해 지속 CI는 Linux GNU x64/ARM64와 Node 22/24만 인증합니다.
 
-### 업데이트
+## 자격 증명
 
-새 릴리스 태그를 지정해 설치 명령을 다시 실행합니다. CLI 자체에서는 공개 npm
-패키지와 혼동될 수 있는 자동 업데이트를 제공하지 않습니다.
-
-```bash
-pnpm add --global --allow-build=krx-cli \
-  "git+ssh://git@github.com/sjunepark/krx-cli.git#<NEW_TAG>"
-```
-
-설치된 버전은 `krx --version` 또는 `krx version`으로 확인합니다. 사용할 최신
-버전은 저장소의 GitHub Releases에서 확인합니다.
-
-### 제거
+[KRX Open API](https://openapi.krx.co.kr)에서 키를 발급하고 필요한 서비스를
+승인받으세요. 키는 명령행 인자로 받지 않습니다.
 
 ```bash
-pnpm remove --global krx-cli
-```
-
-### HTTPS 인증을 사용하는 경우
-
-SSH를 사용할 수 없는 환경에서는 GitHub CLI를 Git credential helper로 설정합니다.
-
-```bash
-gh auth login --git-protocol https --web
-gh auth setup-git
-
-pnpm add --global --allow-build=krx-cli \
-  "git+https://github.com/sjunepark/krx-cli.git#<TAG>"
-```
-
-개인 액세스 토큰을 Git URL에 직접 넣지 마세요.
-
-### 로컬 개발 버전 설치
-
-```bash
-git clone git@github.com:sjunepark/krx-cli.git
-cd krx-cli
-pnpm install
-pnpm add --global .
-```
-
-`pnpm install`은 의존성을 설치한 뒤 CLI를 빌드합니다. 소스를 변경한 뒤에는
-`pnpm build`를 다시 실행하세요.
-
-### 접근 문제 확인
-
-설치 전에 특정 릴리스 태그에 접근할 수 있는지 확인할 수 있습니다.
-
-```bash
-git ls-remote \
-  git@github.com:sjunepark/krx-cli.git \
-  "refs/tags/<TAG>"
-```
-
-이 명령이 실패하면 저장소 접근 권한, SSH 키, 조직 SSO 승인 상태를 확인하세요.
-
-### 릴리스 만들기
-
-릴리스는 최신 `main`의 깨끗한 체크아웃에서 만듭니다. 릴리스에 포함할 커밋은
-모두 먼저 upstream `main`에 push되어 있어야 합니다.
-
-```bash
-git switch main
-git pull --ff-only
-pnpm release
-```
-
-`pnpm release`는 현재 브랜치와 upstream 상태를 확인하고 전체 검증을 통과한 뒤
-버전 커밋과 태그를 push하고 GitHub Release를 만듭니다. 태그를 직접 push하지
-마세요. 태그가 push되면 `Tagged release certification` workflow가 패키지와 Git
-설치 경로를 다시 smoke test합니다. 이 workflow는 릴리스를 생성하거나 npm에
-게시하지 않습니다.
-
-## 설정
-
-### 1. API 키 발급
-
-[KRX Open API 포털](https://openapi.krx.co.kr/)에서 회원가입 후 API 키를 발급받습니다.
-공식 [서비스 이용방법](https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp)은
-인증키 신청과 API별 활용 신청 절차를 설명하며,
-[서비스 목록](https://openapi.krx.co.kr/contents/OPP/INFO/service/OPPINFO004.cmd)에서
-현재 제공 API와 데이터 시작일을 확인할 수 있습니다.
-
-### 2. API 키 등록
-
-```bash
-krx auth set
-
-# 자동화에서 영구 저장이 필요할 때 (표준 입력은 터미널에 표시되지 않음)
-printf '%s' "$KRX_API_KEY" | krx auth set --stdin
-
-# 또는 저장하지 않고 환경변수 사용 (저장된 키보다 우선)
-export KRX_API_KEY=<your-api-key>
-
-# 저장된 키 삭제
-krx auth remove
-```
-
-대화형 `auth set`은 키를 argv나 터미널 에코에 노출하지 않습니다. POSIX에서는
-설정 디렉터리를 `0700`, 파일을 `0600`으로 만들고 기존의 안전하지 않은 권한도
-수정합니다. Windows에서는 사용자 프로필의 ACL을 따르며 POSIX `chmod`를
-가정하지 않습니다.
-
-### 3. 서비스 승인 확인
-
-KRX Open API는 카테고리별로 별도 승인이 필요합니다.
-
-```bash
+printf '%s\n' "$KRX_API_KEY" | krx auth set --stdin
 krx auth status
+krx auth check stock
 ```
 
-```json
-{
-  "api_key_set": true,
-  "services": {
-    "index": {
-      "state": "approved",
-      "approved": true,
-      "fresh": true,
-      "checkedAt": "2026-08-04T01:00:00.000Z",
-      "validUntil": "2026-08-04T01:15:00.000Z"
-    },
-    "esg": {
-      "state": "inconclusive",
-      "fresh": true,
-      "checkedAt": "2026-08-04T01:00:00.000Z",
-      "validUntil": "2026-08-04T01:15:00.000Z",
-      "failureType": "authentication",
-      "error": "KRX returned an ambiguous authentication response"
-    }
-  }
-}
-```
+명시적 SDK 키, `KRX_API_KEY`, 운영체제 keychain 순으로 해석합니다. 이전
+평문 설정은 `krx auth migrate`로 한 번만 명시적으로 이전합니다.
 
-`approved`는 `state`가 `approved` 또는 `rejected`일 때만 포함됩니다. 네트워크,
-시간 초과, 모호한 인증 응답은 `inconclusive`이며 서비스 거절로 간주하지 않습니다.
-승인 검사는 일반 데이터 캐시를 우회하고, 동일 자격 증명에 대해 15분 동안 결과를
-신선한 관측값으로 표시합니다. `auth status`와 `auth check` 실행 자체는 항상 KRX를
-다시 확인합니다.
-
-## 사용법
-
-### 지수 조회
+## CLI 예시
 
 ```bash
-krx index list --date 20260310 --market kospi
-krx index list --date 20260310 --market kosdaq
-```
-
-### 주식 조회
-
-```bash
-krx stock list --date 20260310 --market kospi
-krx stock list --date 20260310 --market kosdaq
-krx stock info --market kospi
-krx stock search 삼성전자     # 종목 검색
-```
-
-### 시장 요약
-
-```bash
-krx market summary                    # 최근 거래일 시장 요약
-krx market summary --date 20260310    # 특정 날짜
-```
-
-### 기간 조회
-
-```bash
-krx index list --market kospi --from 20260301 --to 20260310
-krx stock list --market kospi --from 20260301 --to 20260305 --code KR7005930003
-krx stock list --market kospi --from 20260301 --to 20260305 --code KR7005930003 --no-adjusted
-```
-
-KOSPI, KOSDAQ, KONEX 일별 주식 엔드포인트의 기간 조회에 정확한 종목코드를
-지정하면 수정 OHLC가 기본입니다. 원본 `TDD_*`는 그대로 유지되고
-`ADJ_TDD_*`와 정확한 `ADJ_FACTOR`가 추가됩니다. `adjustment` 메타데이터에서
-기준일, 계산 방식, 전환 경계를 확인하세요. 수정값은 현금배당 재투자를 포함하지
-않으므로 총수익률이 아닙니다. 입력이 불완전하거나 검증되지 않으면 원본 행으로
-대체하지 않고 데이터 없는 integrity 실패를 반환합니다. `--no-adjusted`는 이
-정확한 종목 기간 조회만 원본 전용 결과로 되돌립니다.
-
-### 정렬 및 제한
-
-```bash
-krx stock list --date 20260310 --market kospi --sort FLUC_RT --limit 10
-krx stock list --date 20260310 --market kospi --sort ACC_TRDVAL --asc --limit 5
-```
-
-### 워치리스트
-
-```bash
-krx watchlist add 삼성전자          # 종목 검색 후 워치리스트 추가
-krx watchlist remove 삼성전자       # 정확한 이름으로 제거
-krx watchlist remove KR7005930003   # 종목코드로 제거
-krx watchlist list                   # 워치리스트 조회
-krx watchlist show                   # 워치리스트 종목 시세 조회
-krx watchlist show --date 20260310  # 특정 날짜 시세
-```
-
-### 캐시 관리
-
-```bash
-krx cache status    # 캐시 현황 조회
-krx cache clear     # 캐시 전체 삭제
-krx stock list --market kospi --date 20260310 --refresh  # 해당 항목만 갱신
-```
-
-과거 응답은 기본 7일 동안 유효하며 `KRX_CACHE_MAX_AGE_HOURS`로 조정할 수
-있습니다. `--refresh`는 일치하는 날짜/엔드포인트만 다시 받아 원자적으로 교체하고,
-`--no-cache`는 읽기와 쓰기를 모두 건너뜁니다. 버전, 손상 격리, 동시 쓰기 계약은
-[캐시 수명주기 문서](docs/CACHE.md)를 참고하세요.
-
-### 요청 안정성 및 승인 확인
-
-캐시되지 않은 KRX 요청은 시도당 15초, 전체 45초로 제한됩니다. 네트워크
-오류, 타임아웃 및 HTTP 408/429/500/502/503/504만 재시도하며 `Retry-After`와
-지터가 포함된 지수 백오프를 적용합니다. 각 실제 HTTP 시도는 KST 날짜와 API
-키별 로컬 카운터에 원자적으로 먼저 예약됩니다. 이 카운터는 보조 지표이며
-KRX 서버의 한도가 최종 기준입니다. 자세한 계약은
-[요청 안정성 문서](docs/HTTP-RELIABILITY.md)를 참고하세요.
-
-`krx auth status`와 `krx auth check`는 데이터 캐시를 사용하지 않습니다. 승인
-결과는 현재 API 키에만 연결되고 15분 후 오래된 상태로 표시됩니다. 네트워크
-오류, 타임아웃, 빈 응답 및 판별할 수 없는 HTTP 401은 승인 거절이 아니라
-`inconclusive`로 보고됩니다.
-
-HTTP 401은 잘못된 키와 미승인 카테고리를 안정적으로 구분하지 못하므로 exit code
-`4`는 인증 형태의 모호한 접근 실패를 뜻합니다. 명시적인 HTTP 403만 서비스
-미승인으로 분류해 exit code `6`을 사용합니다.
-
-### 복합 결과 완전성
-
-기간 조회, 종목 검색, 시장 요약, 워치리스트 시세는 여러 KRX 요청을 결합하므로
-항상 JSON envelope로 `data`와 `completeness`를 함께 반환합니다.
-`completeness.state`는 `complete`, `partial`, `empty`, `failed` 중 하나이며,
-`requested`, `succeeded`, `failed`, `skipped` 파티션으로 누락 원인을 기계적으로
-확인할 수 있습니다. 시장 요약에서 실패한 입력은 빈 배열이나 파생된 0이 아니라
-`null`로 표시됩니다.
-
-부분 성공은 데이터를 출력하면서 stderr에 경고하고 exit code `7`을 사용합니다.
-정상적인 빈 결과는 `empty`와 exit code `3`으로 구분됩니다. MCP에서 결과가
-잘리더라도 `_truncated`와 `completeness`가 같은 envelope에 유지됩니다. 자세한
-계약과 호환성 범위는 [복합 결과 문서](docs/COMPOSITE-RESULTS.md)를 참고하세요.
-
-### ETF/ETN/ELW 조회
-
-```bash
-krx etp list --date 20260310 --type etf
-krx etp list --date 20260310 --type etn
-```
-
-### 채권 조회
-
-```bash
-krx bond list --date 20260310 --market kts
-krx bond list --date 20260310 --market general
-krx bond list --date 20260310 --market small
-```
-
-### 파생상품 조회
-
-```bash
-krx derivative list --date 20260310 --type futures
-krx derivative list --date 20260310 --type options
-krx derivative list --date 20260310 --type futures-kospi
-krx derivative list --date 20260310 --type futures-kosdaq
-krx derivative list --date 20260310 --type options-kospi
-krx derivative list --date 20260310 --type options-kosdaq
-```
-
-### 일반상품 조회
-
-```bash
-krx commodity list --date 20260310 --type gold
-krx commodity list --date 20260310 --type oil
-krx commodity list --date 20260310 --type emission
-```
-
-### ESG 조회
-
-```bash
-krx esg list --date 20260310 --type index
-krx esg list --date 20260310 --type sri-bond
-```
-
-### 스키마 조회
-
-```bash
+krx stock list --date 20260821 --market kospi --output json
+krx stock list --from 20260801 --to 20260821 --code 005930
+krx stock search 삼성전자
+krx market summary --date 20260821
+krx cache inspect --limit 20
 krx schema --all
-krx schema stock.stk_bydd_trd
 ```
 
-주식 일별 스키마는 KRX 원본 `responseFields`와 krx-cli가 계산하는
-`derivedOutput`을 provenance로 구분합니다.
+전체 명령과 옵션은 `krx --help` 및 하위 명령의 `--help`가 권위입니다. 출력과
+exit code 계약은 [docs/CLI-CONTRACT.md](docs/CLI-CONTRACT.md)를 참고하세요.
 
-## 루트 조회 옵션
+## Node.js SDK
 
-이 옵션들은 루트에서 파싱되지만 명령별 적용 범위가 다릅니다. 행 필터와 파일 저장은
-엔드포인트 행 조회에 적용되고, 복합 명령은 JSON 완전성 envelope를 유지합니다.
-정확한 적용 범위는 [CLI 계약 문서](docs/CLI-CONTRACT.md)의 표를 참고하세요.
+동일한 target tarball을 프로젝트 의존성으로 설치하면 ESM 루트에서 공개 SDK를
+가져올 수 있습니다. 네이티브 binding은 공개 subpath가 아닙니다.
 
-| 옵션                    | 설명                                            | 기본값                         |
-| ----------------------- | ----------------------------------------------- | ------------------------------ |
-| `-o, --output <format>` | 출력 형식: json, table, ndjson, csv             | json (파이프) / table (터미널) |
-| `-f, --fields <fields>` | 출력 필드 필터 (쉼표 구분)                      | 전체                           |
-| `--code <isuCd>`        | 종목코드 필터 (ISU_CD)                          | -                              |
-| `--sort <field>`        | 결과 정렬 기준 필드                             | -                              |
-| `--asc`                 | 오름차순 정렬 (기본: 내림차순)                  | -                              |
-| `--offset <n>`          | 처음 N개 건너뛰기 (페이지네이션)                | -                              |
-| `--limit <n>`           | 결과 개수 제한                                  | -                              |
-| `--from <date>`         | 기간 조회 시작일 (YYYYMMDD)                     | -                              |
-| `--to <date>`           | 기간 조회 종료일 (YYYYMMDD)                     | -                              |
-| `--no-cache`            | 캐시 읽기와 쓰기를 모두 건너뜀                  | -                              |
-| `--refresh`             | 일치하는 과거 캐시를 다시 받아 교체             | -                              |
-| `--filter <expression>` | 필터 표현식 (예: "FLUC_RT > 5")                 | -                              |
-| `--save <path>`         | 결과를 파일로 저장                              | -                              |
-| `--retries <n>`         | 재시도 가능한 실패의 최대 재시도 횟수 (기본: 3) | -                              |
-| `--dry-run`             | API 호출 없이 요청 내용 출력                    | -                              |
-| `-v, --verbose`         | 상세 로그 (stderr)                              | -                              |
+```js
+import { KrxClient, KrxError } from "krx-cli";
 
-`krx stock list --no-adjusted`는 정확한 종목코드가 있는 기간 조회의 수정주가
-기본값만 끕니다. 단일일/전체시장 조회는 항상 기존 원본 계약입니다.
-
-단일 엔드포인트 행 출력은 TTY에서는 `table`, 파이프 또는 리다이렉션에서는
-`json`이 기본입니다. 기간 조회와 다른 복합 명령은 완전성 정보를 보존하기 위해
-항상 JSON envelope를 반환합니다. 전체 사용자 계약은
-[CLI 계약 문서](docs/CLI-CONTRACT.md)를 참고하세요.
-
-## Exit Codes
-
-| 코드 | 정확한 조건                                                        |
-| ---: | ------------------------------------------------------------------ |
-|    0 | 보고할 실패나 필수 결과 누락 없이 명령 완료                        |
-|    1 | upstream, 네트워크, timeout, 취소, 잘못된 응답 또는 로컬 상태 오류 |
-|    2 | 잘못되었거나 불완전한 인자/입력                                    |
-|    3 | 요청한 시장 데이터 또는 로컬 대상이 없음                           |
-|    4 | API 키가 없거나 KRX HTTP 401인 모호한 인증/승인 실패               |
-|    5 | 로컬 quota admission 거절 또는 KRX HTTP 429                        |
-|    6 | KRX HTTP 403으로 명시된 서비스 미승인                              |
-|    7 | 일부 구성요소가 실패했지만 사용 가능한 데이터를 반환한 복합 결과   |
-
-## AI 에이전트 연동
-
-krx-cli는 AI 에이전트가 Bash tool로 직접 호출하도록 설계되었습니다. 연동은 2단계입니다:
-
-1. **CLI 로컬 등록** — 현재 체크아웃의 `krx` 바이너리
-2. **스킬 설치** — 에이전트에게 사용법과 서비스 이용신청 절차를 알려주는
-   `skills/krx-cli/` 패키지
-
-### Step 1: CLI 로컬 등록
-
-위의 [로컬 설치](#로컬-설치)를 완료합니다.
-
-### Step 2: 스킬 설치
-
-[skills.sh](https://skills.sh)를 통해 `skills/krx-cli/` 패키지를 에이전트에
-등록합니다.
-
-```bash
-# 모든 에이전트에 글로벌 설치 (권장)
-npx skills add sjunepark/krx-cli -g
-
-# 특정 에이전트만 지정
-npx skills add sjunepark/krx-cli -g -a claude-code
-npx skills add sjunepark/krx-cli -g -a cursor
-
-# 프로젝트 단위 설치 (팀 공유 시)
-npx skills add sjunepark/krx-cli
-```
-
-### Step 3: API 키 설정
-
-```bash
-krx auth set
-# 또는
-export KRX_API_KEY=<your-api-key>
-```
-
-### 지원 에이전트
-
-skills.sh는 40개 이상의 에이전트를 지원합니다:
-
-| 에이전트       | 스킬 설치 경로              |
-| -------------- | --------------------------- |
-| Claude Code    | `~/.claude/skills/`         |
-| Cursor         | `~/.cursor/skills/`         |
-| GitHub Copilot | `~/.github-copilot/skills/` |
-| Cline          | `~/.cline/skills/`          |
-| Windsurf       | `~/.windsurf/skills/`       |
-| 기타           | `~/.agents/skills/`         |
-
-### 사용 예시
-
-스킬 설치 후 에이전트에게 자연어로 요청합니다:
-
-```
-"오늘 코스피 지수 보여줘"
-→ krx index list --date 20260310 --market kospi --fields IDX_NM,CLSPRC_IDX,FLUC_RT
-
-"삼성전자 주가 알려줘"
-→ krx stock list --date 20260310 --market kospi --fields ISU_NM,TDD_CLSPRC,FLUC_RT -o json
-
-"금 시세 확인해줘"
-→ krx commodity list --date 20260310 --type gold
-
-"어떤 API가 승인되어 있어?"
-→ krx auth status
-
-"로그인된 KRX 탭에서 아직 신청하지 않은 API를 모두 이용신청해줘"
-→ 사용자에게 공유받은 인증된 브라우저 탭에서 endpoint별 신청 workflow 실행
-```
-
-서비스 이용신청은 외부 계정 상태를 변경하므로 사용자가 명시적으로 신청을 요청한
-경우에만 실행합니다. 이 branch에는 사용자가 공유한 인증된 탭을 조작할 수 있는
-브라우저 제어 기능이 필요합니다. Codex/ChatGPT에서는 Chrome connector가 이
-기능을 제공할 수 있으며, CAPTCHA나 로그인 입력은 사용자가 직접 처리합니다.
-
-### 스킬 관리
-
-```bash
-npx skills list -g          # 설치된 스킬 확인
-npx skills check             # 업데이트 확인
-npx skills update            # 업데이트
-npx skills remove krx-cli    # 제거
-```
-
-### 수동 연동 (skills.sh 없이)
-
-skill 디렉터리 전체를 에이전트 설정 디렉터리에 복사할 수도 있습니다. 참조 및
-workflow 파일이 필요하므로 `SKILL.md`만 단독으로 복사하지 않습니다:
-
-```bash
-# Claude Code
-mkdir -p ~/.claude/skills && cp -R skills/krx-cli ~/.claude/skills/
-test -f ~/.claude/skills/krx-cli/SKILL.md
-[ ! -f ~/.claude/skills/krx-cli.md ] || mv -i ~/.claude/skills/krx-cli.md ~/.claude/krx-cli.md.legacy
-
-# Cursor
-mkdir -p ~/.cursor/skills && cp -R skills/krx-cli ~/.cursor/skills/
-test -f ~/.cursor/skills/krx-cli/SKILL.md
-[ ! -f ~/.cursor/skills/krx-cli.md ] || mv -i ~/.cursor/skills/krx-cli.md ~/.cursor/krx-cli.md.legacy
-```
-
-마지막 명령은 새 디렉터리 설치를 확인한 뒤, 이전 문서가 안내했던 단일 파일
-`krx-cli.md`가 남아 있으면 agent discovery 경로 밖의 `.legacy` 백업으로 옮깁니다.
-두 정의가 동시에 활성화되는 것을 방지하면서 기존 파일은 복구할 수 있게 보존합니다.
-
-## MCP 서버
-
-CLI 외에 MCP(Model Context Protocol) 서버도 제공합니다. 두 가지 전송 방식을 지원합니다:
-
-| 전송 방식       | 바이너리    | 지원 클라이언트                            |
-| --------------- | ----------- | ------------------------------------------ |
-| stdio           | `krx-mcp`   | Claude Desktop                             |
-| Streamable HTTP | `krx serve` | Bearer 헤더를 지원하는 원격 MCP 클라이언트 |
-
-KRX API 키는 `krx auth set`으로 등록한 것이 자동으로 사용되며,
-`KRX_API_KEY`가 있으면 환경변수가 우선합니다.
-`krx-mcp`도 [로컬 설치](#로컬-설치) 과정에서 `krx`와 함께 등록됩니다.
-
-### Claude Desktop (stdio)
-
-설정 파일 위치:
-
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "krx": {
-      "command": "krx-mcp"
-    }
-  }
+const client = new KrxClient();
+try {
+  const result = await client.query({
+    operation: "stock_stk_bydd_trd",
+    date: "20260821",
+  });
+  console.log(result.data);
+} catch (error) {
+  if (error instanceof KrxError) console.error(error.kind, error.code);
+  else throw error;
 }
 ```
 
-설정 후 앱을 재시작하면 MCP 도구가 활성화됩니다.
-stdio 전송은 네트워크 포트를 열지 않고 로컬 클라이언트가 자식 프로세스를 직접
-실행하므로 별도 Bearer 토큰이 없습니다. 로컬 OS 계정과 설정 파일 접근 권한이
-보안 경계입니다.
+타입 계약은 `contracts/product/v1/node-sdk.d.ts`, Rust 공개 계약은
+`contracts/product/v1/rust-sdk-consumer.rs`에 고정되어 있습니다.
 
-### Streamable HTTP
+## Agent skill
 
-HTTP 전송은 로컬 바인딩도 포함해 모든 `/mcp` 요청에 Bearer 인증을 요구합니다.
-32자 이상의 고엔트로피 단일 사용자 토큰을 환경변수로 설정하고, 클라이언트가
-`Authorization: Bearer <token>` 헤더를 전송하도록 구성하세요.
+저장소의 중첩 skill 전체를 설치합니다.
 
 ```bash
-# 기본 루프백 서버
-export KRX_MCP_TOKEN="$(openssl rand -hex 32)"
-krx serve --port 3000
-
-# 비루프백 바인딩에는 DNS rebinding 방지용 Host 허용 목록도 필수
-export KRX_MCP_ALLOWED_HOSTS="mcp.example.com"
-krx serve --host 0.0.0.0 --port 3000
+npx skills add cpaikr/krx-cli
+# 또는 저장소 checkout에서
+cp -R skills/krx-cli ~/.agents/skills/
 ```
 
-HTTP 전송은 네트워크 서비스입니다. 공개 배포는 TLS와 인증 헤더 전달을 지원하는
-역방향 프록시 뒤에서만 사용하세요.
-정적 토큰은 단일 사용자 전체 권한 자격 증명으로, 보유자는 관심종목 추가/삭제도
-수행할 수 있습니다. 토큰을 공유하는 다중 사용자 운영은 지원하지 않으며 OAuth
-또는 identity-aware proxy가 필요합니다. 기본 제한은 클라이언트당 분당 120개
-요청과 활성 세션 10개, 전체 세션 100개, 세션 유휴 시간 30분입니다.
+이전 단일 파일을 사용했다면 충돌 방지를 위해 `krx-cli.md.legacy`로 이름을
+바꾼 뒤 `skills/krx-cli/` 디렉터리를 설치하세요. 네이티브 tarball에도 같은
+skill 디렉터리가 포함됩니다.
 
-인증이 필요 없는 health check는 상태와 버전만 노출합니다:
-`http://localhost:3000/health`.
-
-### 제공 Tool
-
-| Tool                 | 설명                                                                 |
-| -------------------- | -------------------------------------------------------------------- |
-| `krx_index`          | 지수 일별시세 (KOSPI/KOSDAQ/KRX/채권/파생)                           |
-| `krx_stock`          | 주식 일별매매정보 + 종목 기본정보; 정확한 종목 기간은 수정 OHLC 기본 |
-| `krx_etp`            | ETF/ETN/ELW 일별매매정보                                             |
-| `krx_bond`           | 채권 일별매매정보 (국채/일반/소액)                                   |
-| `krx_derivative`     | 선물/옵션 일별매매정보                                               |
-| `krx_commodity`      | 금/석유/배출권 일별매매정보                                          |
-| `krx_esg`            | ESG 지수/채권/ETP 정보                                               |
-| `krx_search`         | 종목명 검색 (KOSPI + KOSDAQ)                                         |
-| `krx_market_summary` | 시장 요약 (지수/상승·하락/Top movers/거래량)                         |
-| `krx_watchlist`      | 관심종목 관리 (추가/제거/조회/시세)                                  |
-| `krx_schema`         | 엔드포인트 응답 필드 스키마 조회                                     |
-| `krx_rate_limit`     | 일일 API 호출 현황 조회                                              |
-
-### 제공 Resource
-
-MCP Resource로 읽기 전용 상태 데이터를 노출합니다.
-
-| Resource               | 설명                               |
-| ---------------------- | ---------------------------------- |
-| `krx://watchlist`      | 워치리스트 종목 목록 (JSON)        |
-| `krx://rate-limit`     | 일일 API 호출 현황 (JSON)          |
-| `krx://service-status` | 카테고리별 서비스 승인 상태 (JSON) |
-
-### 활용 가이드
-
-AI 에이전트와 함께 할 수 있는 다양한 활용 사례는 [에이전트 활용 가이드](docs/AGENT-USE-CASES.md)를 참고하세요. 포트폴리오 모니터링, 시장 분석 리포트, 종목 스크리닝, 백테스트 등 11가지 구체적인 시나리오를 소개합니다.
-
-### 사용 예시
-
-MCP 클라이언트에서 자연어로 요청하면 됩니다:
-
-```
-"오늘 코스피 지수 보여줘"
-→ krx_index tool 호출 (endpoint: "kospi_dd_trd")
-
-"삼성전자 주가 알려줘"
-→ krx_stock tool 호출 (endpoint: "stk_bydd_trd", fields: ["ISU_NM", "TDD_CLSPRC", "FLUC_RT"])
-
-"삼성전자 1년 수정주가 보여줘"
-→ krx_stock tool 호출 (endpoint: "stk_bydd_trd", date_from/date_to, isuCd; adjusted 기본 true)
-
-"오늘 API 몇 번 호출했어?"
-→ krx_rate_limit tool 호출
-```
-
-## 개발
+## 유지보수
 
 ```bash
-pnpm install
-pnpm verify       # pull request와 release를 막는 결정적 CI gate
-
-# 선택적 수동 agent 시나리오: build, claude CLI, 유료 인증 세션 필요
-pnpm build
-pnpm test:e2e
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm verify
+pnpm contract:dry-run
 ```
 
-`test:e2e`는 모델 출력과 외부 서비스 상태에 의존하므로 일반 CI나 release gate에서
-실행하지 않습니다. 테스트 계층은 [테스트 문서](docs/TESTING.md)를 참고하세요.
-
-KRX upstream 계약 드리프트는 일반 테스트와 분리된 opt-in 검사로 확인합니다.
-`pnpm contract:dry-run`은 네트워크나 일일 할당량을 사용하지 않고 정확한 호출
-계획을 출력합니다. 자격 증명, 31회 상한, 공식 명세 비교 및 업데이트 절차는
-[KRX 계약 테스트 문서](docs/KRX-CONTRACT-TESTING.md)를 참고하세요.
-
-기본 날짜와 기간 조회는 KST 기준 [KRX 거래일 캘린더](docs/KRX-CALENDAR.md)를
-사용하여 공휴일과 거래소 휴장일을 호출 전에 제외합니다. 캘린더 범위 밖의
-명시적 과거 조회는 결과의 `calendar` 메타데이터에 fallback 상태를 표시합니다.
-
-## 라이선스
-
-MIT
+구조와 불변식은 [ARCHITECTURE.md](ARCHITECTURE.md), 검증 경계는
+[docs/TESTING.md](docs/TESTING.md)에 정리되어 있습니다. 첫 tag 또는 GitHub
+Release 생성은 이 저장소 변경의 범위에 포함되지 않습니다.

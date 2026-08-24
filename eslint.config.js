@@ -6,5 +6,16 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     ignores: ["dist/", "node_modules/", "*.config.*"],
+    languageOptions: {
+      globals: {
+        AbortSignal: "readonly",
+        Buffer: "readonly",
+        fetch: "readonly",
+        process: "readonly",
+        structuredClone: "readonly",
+        URL: "readonly",
+        URLSearchParams: "readonly",
+      },
+    },
   },
 );

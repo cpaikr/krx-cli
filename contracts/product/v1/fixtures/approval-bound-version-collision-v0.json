@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "preservedUnknown": {
+    "owner": "legacy"
+  },
+  "serviceStatus": {
+    "stock": {
+      "state": "approved",
+      "approved": true,
+      "checkedAt": "2026-01-03T12:00:00.000Z",
+      "validUntil": "2026-01-03T12:15:00.000Z",
+      "credentialId": "66e7c82b49bb291dd09c8e020448311c4a7bb96aeb5c5db769f66812b13a50b5"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "krx-native-targets/v1",
+  "distribution": {
+    "format": "npm-tgz",
+    "visibility": "private-github-release-asset",
+    "installBuild": false,
+    "registryAccess": false,
+    "publicBindingSubpath": false,
+    "nodeMajors": [22, 24],
+    "continuousCertificationTargets": ["linux-x64-gnu", "linux-arm64-gnu"],
+    "assetNameTemplate": "krx-cli-{version}-{target}.tgz"
+  },
+  "targets": [
+    {
+      "id": "darwin-arm64",
+      "rustTarget": "aarch64-apple-darwin",
+      "nodePlatform": "darwin",
+      "nodeArch": "arm64",
+      "nodeLibc": null,
+      "nodeBinding": "native/krx.darwin-arm64.node",
+      "executable": "bin/krx"
+    },
+    {
+      "id": "linux-x64-gnu",
+      "rustTarget": "x86_64-unknown-linux-gnu",
+      "nodePlatform": "linux",
+      "nodeArch": "x64",
+      "nodeLibc": "glibc",
+      "nodeBinding": "native/krx.linux-x64-gnu.node",
+      "executable": "bin/krx"
+    },
+    {
+      "id": "linux-arm64-gnu",
+      "rustTarget": "aarch64-unknown-linux-gnu",
+      "nodePlatform": "linux",
+      "nodeArch": "arm64",
+      "nodeLibc": "glibc",
+      "nodeBinding": "native/krx.linux-arm64-gnu.node",
+      "executable": "bin/krx"
+    },
+    {
+      "id": "win32-x64-msvc",
+      "rustTarget": "x86_64-pc-windows-msvc",
+      "nodePlatform": "win32",
+      "nodeArch": "x64",
+      "nodeLibc": null,
+      "nodeBinding": "native/krx.win32-x64-msvc.node",
+      "executable": "bin/krx.exe"
+    }
+  ]
+}

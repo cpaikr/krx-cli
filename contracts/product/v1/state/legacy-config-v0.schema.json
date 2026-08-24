@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://krx-cli.invalid/contracts/state/legacy-config-v0.schema.json",
+  "title": "Legacy krx-cli configuration",
+  "type": "object",
+  "properties": {
+    "apiKey": {
+      "type": "string",
+      "minLength": 1
+    },
+    "serviceStatus": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

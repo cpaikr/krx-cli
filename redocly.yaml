@@ -1,0 +1,12 @@
+extends:
+  - recommended-strict
+
+rules:
+  # KRX returns provider errors both as HTTP errors and as 200 response
+  # envelopes. Each operation's `default` response is therefore the accurate
+  # non-2xx contract; inventing one representative 4xx status would weaken it.
+  operation-4xx-response: off
+  # OpenAPI 3.1 adopts JSON Schema semantics, where an `anyOf` branch may
+  # require a property declared by its parent schema. Redocly treats each
+  # branch as isolated even though the complete KrxError schema is valid.
+  no-required-schema-properties-undefined: off

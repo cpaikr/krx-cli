@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "role": "non-authoritative-reviewed-evidence",
+  "reviewedAt": "2026-08-12",
+  "sources": {
+    "catalog": "https://openapi.krx.co.kr/contents/OPP/INFO/service/OPPINFO004.cmd",
+    "legacySchema": "tests/compat/oracles/schema-all.json",
+    "baselineMerge": "3732598e461ec5d78bd1121dbbe86d56aa658376"
+  },
+  "sharedWire": {
+    "serverUrl": "https://data-dbg.krx.co.kr",
+    "method": "POST",
+    "authHeaderName": "AUTH_KEY",
+    "requestMediaType": "application/json",
+    "requestContentType": "application/json; charset=utf-8",
+    "requestDateField": "basDd",
+    "successEnvelopeField": "OutBlock_1",
+    "errorFields": {
+      "code": "respCode",
+      "message": "respMsg"
+    }
+  }
+}

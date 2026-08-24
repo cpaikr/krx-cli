@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "service": "krx-cli",
+  "account": "default",
+  "secret": "fixture-key"
+}

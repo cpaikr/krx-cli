@@ -1,0 +1,87 @@
+[
+  {
+    "path": [],
+    "commands": [
+      "auth",
+      "index",
+      "stock",
+      "etp",
+      "bond",
+      "derivative",
+      "commodity",
+      "esg",
+      "schema",
+      "cache",
+      "market",
+      "watchlist",
+      "version",
+      "serve"
+    ],
+    "options": [
+      "version",
+      "output",
+      "fields",
+      "dry-run",
+      "verbose",
+      "code",
+      "sort",
+      "asc",
+      "offset",
+      "limit",
+      "no-cache",
+      "refresh",
+      "from",
+      "to",
+      "filter",
+      "save",
+      "retries",
+      "help"
+    ]
+  },
+  { "path": ["auth"], "commands": ["set", "remove", "status", "check"] },
+  { "path": ["auth", "set"], "options": ["stdin", "help"] },
+  { "path": ["auth", "remove"] },
+  { "path": ["auth", "status"] },
+  { "path": ["auth", "check"] },
+  { "path": ["index"], "commands": ["list"] },
+  { "path": ["index", "list"], "options": ["date", "market", "help"] },
+  { "path": ["stock"], "commands": ["list", "info", "search"] },
+  {
+    "path": ["stock", "list"],
+    "options": ["date", "market", "no-adjusted", "help"]
+  },
+  { "path": ["stock", "info"], "options": ["market", "help"] },
+  { "path": ["stock", "search"] },
+  { "path": ["etp"], "commands": ["list"] },
+  { "path": ["etp", "list"], "options": ["date", "type", "help"] },
+  { "path": ["bond"], "commands": ["list"] },
+  { "path": ["bond", "list"], "options": ["date", "market", "help"] },
+  { "path": ["derivative"], "commands": ["list"] },
+  {
+    "path": ["derivative", "list"],
+    "options": ["date", "type", "help"]
+  },
+  { "path": ["commodity"], "commands": ["list"] },
+  {
+    "path": ["commodity", "list"],
+    "options": ["date", "type", "help"]
+  },
+  { "path": ["esg"], "commands": ["list"] },
+  { "path": ["esg", "list"], "options": ["date", "type", "help"] },
+  { "path": ["schema"], "options": ["all", "help"] },
+  { "path": ["cache"], "commands": ["status", "clear"] },
+  { "path": ["cache", "status"] },
+  { "path": ["cache", "clear"] },
+  { "path": ["serve"], "options": ["port", "host", "help"] },
+  { "path": ["market"], "commands": ["summary"] },
+  { "path": ["market", "summary"], "options": ["date", "help"] },
+  {
+    "path": ["watchlist"],
+    "commands": ["add", "remove", "list", "show"]
+  },
+  { "path": ["watchlist", "add"] },
+  { "path": ["watchlist", "remove"] },
+  { "path": ["watchlist", "list"] },
+  { "path": ["watchlist", "show"], "options": ["date", "help"] },
+  { "path": ["version"], "options": ["help"] }
+]

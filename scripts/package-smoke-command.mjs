@@ -1,5 +1,22 @@
 import { join } from "node:path";
 
+export function parseNpmPackReport(stdout) {
+  const starts = [0];
+  for (const match of stdout.matchAll(/\r?\n(?=\[)/g)) {
+    starts.push(match.index + match[0].length);
+  }
+
+  for (const start of starts.reverse()) {
+    try {
+      const parsed = JSON.parse(stdout.slice(start).trim());
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // npm 10 can write prepare lifecycle output before its JSON report.
+    }
+  }
+  throw new Error("npm pack did not emit a JSON array report");
+}
+
 export function installedBinCommand(
   installRoot,
   name,

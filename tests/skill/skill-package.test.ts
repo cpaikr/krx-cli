@@ -10,11 +10,17 @@ const repositoryRoot = resolve(
 const skillRoot = resolve(repositoryRoot, "skills/krx-cli");
 
 function readRepositoryFile(path: string): string {
-  return readFileSync(resolve(repositoryRoot, path), "utf8");
+  return readFileSync(resolve(repositoryRoot, path), "utf8").replaceAll(
+    "\r\n",
+    "\n",
+  );
 }
 
 function readSkillFile(path: string): string {
-  return readFileSync(resolve(skillRoot, path), "utf8");
+  return readFileSync(resolve(skillRoot, path), "utf8").replaceAll(
+    "\r\n",
+    "\n",
+  );
 }
 
 describe("krx-cli skill package", () => {
@@ -98,13 +104,15 @@ describe("krx-cli skill package", () => {
   });
 
   it("ships the nested skill and documents whole-directory installation", () => {
-    const packageJson = JSON.parse(readRepositoryFile("package.json"));
+    const packageJson = JSON.parse(
+      readRepositoryFile("packages/node/package.json"),
+    );
     const readme = readRepositoryFile("README.md");
 
     expect(packageJson.files).toContain("skills");
     expect(packageJson.files).not.toContain("SKILL.md");
-    expect(packageJson.scripts).not.toHaveProperty("sync-skill-version");
-    expect(readme).toContain("npx skills add sjunepark/krx-cli");
+    expect(packageJson.scripts ?? {}).not.toHaveProperty("sync-skill-version");
+    expect(readme).toContain("npx skills add cpaikr/krx-cli");
     expect(readme).toContain("cp -R skills/krx-cli");
     expect(readme).toContain("krx-cli.md.legacy");
   });

@@ -1,0 +1,202 @@
+[
+  {
+    "id": "version",
+    "args": ["--version"],
+    "expect": { "code": 0, "stdout": "{{version}}\n", "stderr": "" }
+  },
+  {
+    "id": "root-help",
+    "args": ["--help"],
+    "expect": {
+      "code": 0,
+      "stdoutIncludes": [
+        "Usage: krx",
+        "stock",
+        "market",
+        "watchlist",
+        "schema",
+        "auth",
+        "cache"
+      ],
+      "stdoutExcludes": ["update"],
+      "stderr": ""
+    }
+  },
+  {
+    "id": "command-inventory",
+    "commandInventory": true
+  },
+  {
+    "id": "schema-inventory",
+    "args": ["schema", "--all"],
+    "expect": {
+      "code": 0,
+      "schemaCount": 31,
+      "schemaOracle": true,
+      "stderr": ""
+    }
+  },
+  {
+    "id": "invalid-output",
+    "args": ["--output", "xml", "schema", "--all"],
+    "expect": {
+      "code": 2,
+      "stderrIncludes": ["invalid", "json, table, ndjson, csv"]
+    }
+  },
+  {
+    "id": "missing-credential",
+    "args": ["--dry-run", "stock", "list", "--date", "20260102"],
+    "withoutApiKey": true,
+    "expect": {
+      "code": 4,
+      "stdout": "",
+      "stderrIncludes": ["No API key configured"]
+    }
+  },
+  {
+    "id": "dry-run-redaction",
+    "args": [
+      "--dry-run",
+      "--code",
+      "005930",
+      "stock",
+      "list",
+      "--market",
+      "kospi",
+      "--date",
+      "20260102"
+    ],
+    "expect": {
+      "code": 0,
+      "json": {
+        "method": "POST",
+        "endpoint": "/svc/apis/sto/stk_bydd_trd",
+        "params": { "basDd": "20260102" },
+        "clientFilter": { "ISU_CD": "005930" },
+        "adjusted": false,
+        "headers": { "AUTH_KEY": "***" }
+      },
+      "stderr": ""
+    }
+  },
+  {
+    "id": "cached-json-row",
+    "args": [
+      "--output",
+      "json",
+      "stock",
+      "list",
+      "--market",
+      "kospi",
+      "--date",
+      "20260102"
+    ],
+    "cache": "kospiStocks",
+    "expect": { "code": 0, "jsonFixture": "kospiStocks", "stderr": "" }
+  },
+  {
+    "id": "cached-verbose-observations",
+    "args": [
+      "--verbose",
+      "--output",
+      "json",
+      "stock",
+      "list",
+      "--market",
+      "kospi",
+      "--date",
+      "20260102"
+    ],
+    "cache": "kospiStocks",
+    "expect": {
+      "code": 0,
+      "jsonFixture": "kospiStocks",
+      "stderr": "[verbose] endpoint: /svc/apis/sto/stk_bydd_trd\n[verbose] cache hit — /svc/apis/sto/stk_bydd_trd\n[verbose] pipeline: 2 → 2 rows\n"
+    }
+  },
+  {
+    "id": "cached-row-pipeline",
+    "args": [
+      "--output",
+      "json",
+      "--fields",
+      "ISU_SRT_CD,FLUC_RT",
+      "--sort",
+      "FLUC_RT",
+      "--asc",
+      "--offset",
+      "1",
+      "--limit",
+      "1",
+      "stock",
+      "list",
+      "--market",
+      "kospi",
+      "--date",
+      "20260102"
+    ],
+    "cache": "kospiStocks",
+    "expect": {
+      "code": 0,
+      "json": [{ "ISU_SRT_CD": "005930", "FLUC_RT": "2.50" }],
+      "stderr": ""
+    }
+  },
+  {
+    "id": "empty-result-exit",
+    "args": ["watchlist", "remove", "__compat_missing__"],
+    "expect": {
+      "code": 3,
+      "stdout": "",
+      "stderr": "Error: '__compat_missing__' not found in watchlist\n"
+    }
+  },
+  {
+    "id": "adjusted-stock-range",
+    "args": [
+      "--output",
+      "json",
+      "--from",
+      "20180427",
+      "--to",
+      "20180504",
+      "--code",
+      "005930",
+      "stock",
+      "list",
+      "--market",
+      "kospi"
+    ],
+    "cache": "adjustedSamsungSplit",
+    "expect": {
+      "code": 0,
+      "adjustmentOracle": true,
+      "stderr": ""
+    }
+  },
+  {
+    "id": "partial-market-summary",
+    "args": ["market", "summary", "--date", "20260102"],
+    "cache": "partialMarketSummary",
+    "expect": {
+      "code": 7,
+      "completeness": {
+        "state": "partial",
+        "succeeded": ["kospiIndex", "kosdaqIndex", "kospiStocks"],
+        "failed": ["kosdaqStocks"]
+      },
+      "stderr": "Warning: Market summary is partial; failed component(s): kosdaqStocks\n"
+    }
+  },
+  {
+    "id": "cache-status",
+    "args": ["--output", "json", "cache", "status"],
+    "cache": "kospiStocks",
+    "expect": {
+      "code": 0,
+      "jsonSubset": { "files": 1, "dates": 1 },
+      "stderr": ""
+    }
+  }
+]

@@ -1,40 +1,25 @@
-# Dependency security
+# Dependency and artifact security
 
-Both distributed entrypoints are bundled by esbuild. Production dependencies can
-therefore become part of `dist/cli.js` and `dist/mcp.js` even when they are not
-present as separate files in an installed package. The locked production tree
-and rebuilt package artifact are the security boundary.
+The shipped target tarball is dependency-free and has no lifecycle scripts.
+It contains one native executable, one private target binding, the public ESM
+facade and declarations, and the packaged skill. Installation must use a
+prebuilt private release asset with scripts disabled; Git/source installation
+is not supported.
 
-## Policy
+Rust dependencies are exact-pinned in `Cargo.toml` and `Cargo.lock`. The
+maintainer-only Node toolchain is locked by `pnpm-lock.yaml` and never enters
+the release archive. `pnpm audit:prod` therefore verifies that the root has no
+production dependency graph.
 
-- `pnpm audit:prod` must report no known production vulnerabilities at any
-  severity.
-- `pnpm-lock.yaml` is the source of truth for an audit. Historical issue counts
-  and an unlocked manifest resolution are not release evidence.
-- Dependency changes must rebuild both entrypoints and pass the packed-package
-  smoke test before release.
-- CI and release installation must use `pnpm install --frozen-lockfile`.
+`pnpm rust:security` applies `deny.toml` to the complete all-feature Rust graph.
+It rejects advisories, unapproved licenses, banned dependency forms, unknown
+registries, and Git dependencies. Duplicate transitive versions remain visible
+warnings because platform credential and TLS stacks currently require them.
+Monthly Cargo Dependabot updates and GitHub vulnerability alerts provide the
+repository-side update and notification path.
 
-There are currently no accepted production advisory exceptions. If an
-exception becomes necessary, record the advisory identifier, affected locked
-path and bundle, reachability analysis, mitigation, owner, and expiry here
-before weakening the gate. High and critical advisories are never accepted for
-release.
-
-## Maintenance
-
-Dependabot checks npm and GitHub Actions dependencies monthly in grouped updates.
-Security updates may arrive outside that cadence. Review updates by regenerating
-the lockfile and running:
-
-```bash
-pnpm audit:prod
-pnpm check
-pnpm test:coverage
-pnpm build
-pnpm test:package
-```
-
-The tagged-release certification workflow packs, installs, and smoke-tests a
-tarball from the same tagged source distributed through private Git installs; a
-manifest-only dependency update is not remediation.
+`scripts/native-package/assemble.mjs`, `pack.mjs`, and `certify.mjs` reject
+path traversal, symbolic links, missing or mismatched native files, incorrect
+platform/architecture/libc, and non-executable Unix binaries. Package exports
+do not expose the binding. Continuous certification installs the exact Linux
+archives with scripts disabled under Node 22 and 24.

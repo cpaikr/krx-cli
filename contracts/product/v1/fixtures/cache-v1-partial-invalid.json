@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "fetchedAt": "2026-01-03T00:00:00.000Z",
+  "endpoint": "/svc/apis/sto/stk_bydd_trd",
+  "params": [["basDd", "20260102"]],
+  "data": [{ "BAS_DD": "20260102", "ISU_CD": "KR7005930003" }]
+}

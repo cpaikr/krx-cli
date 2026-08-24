@@ -1,0 +1,25 @@
+[package]
+name = "krx-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "krx"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+icu_collator = "=2.3.1"
+icu_locale = "=2.3.1"
+krx-sdk = { path = "../krx-sdk" }
+jiff.workspace = true
+serde_json.workspace = true
+rpassword = "=7.4.0"
+tokio.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+serde.workspace = true

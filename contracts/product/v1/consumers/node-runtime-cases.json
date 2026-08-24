@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "esm-named-import",
+      "expect": "KrxClient and KrxError import from package root"
+    },
+    {
+      "id": "invalid-date",
+      "input": "2026-01-02",
+      "expectError": "invalid_request/invalid_date"
+    },
+    {
+      "id": "empty-explicit-api-key",
+      "input": "",
+      "expectError": "invalid_request/invalid_argument",
+      "fallthrough": false
+    },
+    {
+      "id": "abort-signal",
+      "expectError": "cancelled/request_cancelled"
+    },
+    {
+      "id": "async-event-loop",
+      "expect": "event loop advances while native query is pending"
+    },
+    {
+      "id": "abort-listener-cleanup",
+      "expect": "AbortSignal listener is removed after resolve and reject"
+    },
+    {
+      "id": "sync-panic-contained",
+      "expectError": "internal/internal_failure"
+    },
+    {
+      "id": "async-panic-contained",
+      "expectError": "internal/internal_failure"
+    },
+    {
+      "id": "adjusted-range-requires-exact-eligible-security",
+      "expectError": "invalid_request/conflicting_options"
+    },
+    {
+      "id": "error-instance",
+      "expect": "error instanceof KrxError"
+    },
+    {
+      "id": "secret-redaction",
+      "secret": "consumer-fixture-secret",
+      "forbiddenIn": [
+        "message",
+        "stack",
+        "providerCode",
+        "operationId",
+        "cause",
+        "details",
+        "rawBody",
+        "dependencyMessage"
+      ]
+    },
+    {
+      "id": "supported-node-majors",
+      "versions": [22, 24]
+    },
+    {
+      "id": "unsupported-native-target",
+      "expectError": "local_state/unsupported_platform"
+    },
+    {
+      "id": "declaration-package-locality",
+      "expect": "every declaration import resolves inside dist"
+    },
+    {
+      "id": "private-native-binding",
+      "expect": "native binding has no public package subpath"
+    }
+  ]
+}

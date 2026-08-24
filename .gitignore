@@ -1,10 +1,14 @@
 node_modules/
+.DS_Store
 dist/
+!packages/node/dist/
+!packages/node/dist/*.js
 *.tsbuildinfo
 .env
 .krx-cli/
 coverage/
 tests/e2e/reports/
 artifacts/
+target/
 
 .env.local
