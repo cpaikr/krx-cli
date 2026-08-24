@@ -21,6 +21,10 @@ zeroize.workspace = true
 [target.'cfg(unix)'.dependencies]
 rustix.workspace = true
 
+[target.'cfg(windows)'.dependencies]
+cap-std.workspace = true
+windows-sys.workspace = true
+
 [build-dependencies]
 serde.workspace = true
 serde_json.workspace = true

@@ -23,6 +23,7 @@ function read(path: string): string {
 }
 
 const workspaceDependencyLines = [
+  'cap-std = "=4.0.3"',
   'clap = { version = "=4.6.6", features = ["derive"] }',
   'futures-util = "=0.3.34"',
   'jiff = { version = "=0.2.35", default-features = false, features = ["serde", "std"] }',
@@ -43,6 +44,7 @@ const workspaceDependencyLines = [
   'url = "=2.5.8"',
   'uuid = { version = "=1.25.0", features = ["serde", "v4"] }',
   'zeroize = { version = "=1.9.0", features = ["derive"] }',
+  'windows-sys = { version = "=0.61.2", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_SystemServices", "Win32_System_Threading"] }',
 ] as const;
 
 function assertWorkspaceDependencyPins(source: string): void {
@@ -125,6 +127,289 @@ function assertQuotaStateProtocolSource(source: string): void {
   }
 }
 
+function assertWindowsStateProtocolSource(source: string): void {
+  const atomicStart = source.indexOf("pub(crate) fn atomic_write(");
+  const atomicEnd = source.indexOf(
+    "pub(crate) fn try_acquire_plain_lock(",
+    atomicStart,
+  );
+  const atomicWrite = source.slice(atomicStart, atomicEnd);
+  const fileSync = atomicWrite.indexOf("file.sync_all()");
+  const atomicRename = atomicWrite.indexOf("rename_open_handle(");
+  const renameCommitted = atomicWrite.indexOf("renamed = true;");
+  const parentFlush = atomicWrite.indexOf("flush_directory(");
+  const rootStart = source.indexOf("fn open_absolute_root(");
+  const rootEnd = source.indexOf("fn open_relative_directories(", rootStart);
+  const rootTraversal = source.slice(rootStart, rootEnd);
+  const createStart = source.indexOf("fn create_child_directory(");
+  const directoryStart = source.indexOf("fn open_child_directory(");
+  const directoryCreate = source.slice(createStart, directoryStart);
+  const directoryEnd = source.indexOf(
+    "fn validate_directory_security(",
+    directoryStart,
+  );
+  const directoryOpen = source.slice(directoryStart, directoryEnd);
+  const fileStart = source.indexOf("fn open_secure_file(");
+  const fileEnd = source.indexOf("fn read_file(", fileStart);
+  const fileOpen = source.slice(fileStart, fileEnd);
+  const readStart = source.indexOf("fn read_file(");
+  const readEnd = source.indexOf("fn publish_protocol_file(", readStart);
+  const boundedRead = source.slice(readStart, readEnd);
+  const publicationStart = source.indexOf("fn publish_protocol_file(");
+  const publicationEnd = source.indexOf(
+    "fn read_protocol_file(",
+    publicationStart,
+  );
+  const publication = source.slice(publicationStart, publicationEnd);
+  const candidateSync = publication.indexOf("file.sync_all()");
+  const publicationLink = publication.indexOf(
+    "link_open_handle(&file, directory, OsStr::new(destination))",
+  );
+  const cleanupFlush = publication.indexOf("let candidate_sync =");
+  const cleanupDecision = publication.indexOf("if candidate_sync.is_err()");
+  const resultPropagation = publication.lastIndexOf("\n    result\n");
+  const rollbackCalls =
+    publication.match(/release_protocol_file\(/gu)?.length ?? 0;
+  const guardedRollbackCalls =
+    publication.match(/!release_protocol_file\(/gu)?.length ?? 0;
+  const protocolOpenStart = source.indexOf("fn open_protocol_file(");
+  const protocolOpenEnd = source.indexOf(
+    "fn release_protocol_file(",
+    protocolOpenStart,
+  );
+  const protocolOpen = source.slice(protocolOpenStart, protocolOpenEnd);
+  const releaseStart = protocolOpenEnd;
+  const releaseEnd = source.indexOf("fn abandon_new_lock(", releaseStart);
+  const release = source.slice(releaseStart, releaseEnd);
+  const abandonEnd = source.indexOf(
+    "fn validate_existing_lock_directory(",
+    releaseEnd,
+  );
+  const abandon = source.slice(releaseEnd, abandonEnd);
+  const tombstoneStart = source.indexOf("fn move_plain_lock_to_tombstone(");
+  const tombstoneEnd = source.indexOf(
+    "fn validate_retained_plain_lock(",
+    tombstoneStart,
+  );
+  const tombstone = source.slice(tombstoneStart, tombstoneEnd);
+  const securityStart = source.indexOf("fn validate_handle_security(");
+  const aclStart = source.indexOf("fn validate_acl_writers(", securityStart);
+  const securityEnd = aclStart;
+  const security = source.slice(securityStart, securityEnd);
+  const aclEnd = source.indexOf("fn token_user_sid(", aclStart);
+  const acl = source.slice(aclStart, aclEnd);
+  const rightsStart = source.indexOf("fn effective_writable_rights(");
+  const rightsEnd = source.indexOf("fn well_known_sid(", rightsStart);
+  const rights = source.slice(rightsStart, rightsEnd);
+  const writableStart = source.indexOf("fn writable_rights()");
+  const writableEnd = source.indexOf(
+    "fn aligned_information_buffer(",
+    writableStart,
+  );
+  const writable = source.slice(writableStart, writableEnd);
+  const renameStart = source.indexOf("fn rename_open_handle(");
+  const renameEnd = source.indexOf("fn link_open_handle(", renameStart);
+  const rename = source.slice(renameStart, renameEnd);
+  const linkStart = renameEnd;
+  const linkEnd = source.indexOf("fn delete_open_handle(", linkStart);
+  const link = source.slice(linkStart, linkEnd);
+  const deleteStart = linkEnd;
+  const deleteEnd = source.indexOf("fn flush_directory(", deleteStart);
+  const deletion = source.slice(deleteStart, deleteEnd);
+  const flushStart = deleteEnd;
+  const flushEnd = source.indexOf("fn directory_identity(", flushStart);
+  const flush = source.slice(flushStart, flushEnd);
+  const identityStart = source.indexOf("fn handle_identity(");
+  const identityEnd = source.indexOf("#[cfg(test)]", identityStart);
+  const identity = source.slice(identityStart, identityEnd);
+  const forbiddenPathMutations = [
+    ".create_dir(",
+    ".rename(",
+    ".hard_link(",
+    ".remove_file(",
+    ".remove_open_dir(",
+    "std::fs::rename(",
+    "std::fs::remove_dir(",
+  ];
+
+  if (
+    atomicStart < 0 ||
+    atomicEnd < 0 ||
+    fileSync < 0 ||
+    atomicRename <= fileSync ||
+    renameCommitted <= atomicRename ||
+    parentFlush <= renameCommitted ||
+    !atomicWrite.includes("if result.is_err() && !renamed") ||
+    !atomicWrite.includes("delete_open_handle(file.as_raw_handle())") ||
+    rootStart < 0 ||
+    rootEnd < 0 ||
+    !rootTraversal.includes("Dir::from_std_file(ambient)") ||
+    !rootTraversal.includes("FILE_FLAG_OPEN_REPARSE_POINT") ||
+    !rootTraversal.includes("let opened = if is_root") ||
+    !rootTraversal.includes("open_traversal_directory(") ||
+    createStart < 0 ||
+    !directoryCreate.includes("NtCreateFile(") ||
+    !directoryCreate.includes("RootDirectory: parent.as_raw_handle().cast()") ||
+    !directoryCreate.includes(
+      "FILE_DIRECTORY_FILE | NT_FILE_OPEN_REPARSE_POINT",
+    ) ||
+    directoryStart < 0 ||
+    directoryEnd < 0 ||
+    !directoryOpen.includes("parent.open_with(leaf, &options)") ||
+    !directoryOpen.includes("FILE_FLAG_OPEN_REPARSE_POINT") ||
+    !directoryOpen.includes("validate_directory_security(&directory") ||
+    fileStart < 0 ||
+    fileEnd < 0 ||
+    !fileOpen.includes("parent.open_with(leaf, &options)") ||
+    !fileOpen.includes("FILE_FLAG_OPEN_REPARSE_POINT") ||
+    !fileOpen.includes(
+      "validate_handle_security(file.as_raw_handle(), error_code)",
+    ) ||
+    readStart < 0 ||
+    readEnd < 0 ||
+    boundedRead.indexOf("let before = file_metadata_identity") < 0 ||
+    boundedRead.indexOf("if before.size > maximum_bytes") < 0 ||
+    boundedRead.indexOf(".read_to_end(&mut bytes)") < 0 ||
+    boundedRead.indexOf("let after = file_metadata_identity") < 0 ||
+    boundedRead.indexOf("if before != after") < 0 ||
+    boundedRead.indexOf("if before.size > maximum_bytes") <=
+      boundedRead.indexOf("let before = file_metadata_identity") ||
+    boundedRead.indexOf(".read_to_end(&mut bytes)") <=
+      boundedRead.indexOf("if before.size > maximum_bytes") ||
+    boundedRead.indexOf("let after = file_metadata_identity") <=
+      boundedRead.indexOf(".read_to_end(&mut bytes)") ||
+    boundedRead.indexOf("if before != after") <=
+      boundedRead.indexOf("let after = file_metadata_identity") ||
+    publicationStart < 0 ||
+    publicationEnd < 0 ||
+    candidateSync < 0 ||
+    publicationLink <= candidateSync ||
+    !publication.includes("let mut published = None;") ||
+    !publication.includes("release_protocol_file(") ||
+    !publication.includes("let mut cleanup_failed = false;") ||
+    !publication.includes(
+      "if result.is_err()\n        && let Some(observation) = &published\n    {",
+    ) ||
+    !publication.includes("if cleanup_failed {") ||
+    !publication.includes("if !release_protocol_file(") ||
+    !publication.includes(
+      "if candidate_sync.is_err() {\n        cleanup_failed = true;",
+    ) ||
+    cleanupFlush < 0 ||
+    cleanupDecision <= cleanupFlush ||
+    resultPropagation <= cleanupDecision ||
+    publication.slice(0, cleanupFlush).includes("result?") ||
+    rollbackCalls === 0 ||
+    rollbackCalls !== guardedRollbackCalls ||
+    protocolOpenStart < 0 ||
+    protocolOpenEnd < 0 ||
+    !protocolOpen.includes("let identity = file_metadata_identity") ||
+    !protocolOpen.includes("let after = file_metadata_identity") ||
+    !protocolOpen.includes("if identity != after") ||
+    releaseStart < 0 ||
+    releaseEnd < 0 ||
+    !release.includes(
+      "open_protocol_file(directory, leaf, true, error_code, label)",
+    ) ||
+    !release.includes("delete_open_handle(file.as_raw_handle())") ||
+    !release.includes("local protocol removal sync failed") ||
+    !release.includes(".is_ok()") ||
+    !abandon.includes("delete_open_directory(directory).is_ok()") ||
+    !abandon.includes("local lock parent sync failed") ||
+    tombstoneStart < 0 ||
+    tombstoneEnd < 0 ||
+    !tombstone.includes("rename_open_handle(&observed.directory") ||
+    securityStart < 0 ||
+    securityEnd < 0 ||
+    !security.includes("GetSecurityInfo(") ||
+    !security.includes("EqualSid(owner, user_sid.as_mut_ptr().cast())") ||
+    !security.includes(
+      "if unsafe { EqualSid(owner, user_sid.as_mut_ptr().cast()) } == 0",
+    ) ||
+    !security.includes("validate_acl_writers(") ||
+    !security.includes(
+      "for sid_type in [WinWorldSid, WinAuthenticatedUserSid]",
+    ) ||
+    !security.includes(
+      "effective_writable_rights(dacl, sid_type, error_code)",
+    ) ||
+    aclStart < 0 ||
+    aclEnd < 0 ||
+    !acl.includes("GetAclInformation(") ||
+    !acl.includes("GetAce(") ||
+    !acl.includes("WinLocalSystemSid") ||
+    !acl.includes("WinBuiltinAdministratorsSid") ||
+    !acl.includes("for index in 0..information.AceCount") ||
+    !acl.includes(
+      ") || unsafe { (*allowed).Mask } & writable_rights() == 0\n        {\n            continue;\n        }",
+    ) ||
+    !acl.includes("if u32::from(ace_type) != ACCESS_ALLOWED_ACE_TYPE") ||
+    !acl.includes("EqualSid(sid, owner) != 0") ||
+    !acl.includes("EqualSid(sid, system_sid.as_mut_ptr().cast()) != 0") ||
+    !acl.includes(
+      "EqualSid(sid, administrators_sid.as_mut_ptr().cast()) != 0",
+    ) ||
+    !acl.includes(
+      'if !approved {\n            return Err(state_error(\n                error_code,\n                "local state ACL permits a foreign writer",\n            ));\n        }',
+    ) ||
+    !acl.includes("local state ACL permits a foreign writer") ||
+    rightsStart < 0 ||
+    rightsEnd < 0 ||
+    !rights.includes(
+      'if unsafe { GetEffectiveRightsFromAclW(dacl, &trustee, &mut rights) } != 0 {\n        return Err(state_error(error_code, "local state ACL inspection failed"));\n    }',
+    ) ||
+    !rights.includes("Ok(rights & writable_rights() != 0)") ||
+    writableStart < 0 ||
+    writableEnd < 0 ||
+    !writable.includes("GENERIC_ALL") ||
+    !writable.includes("GENERIC_WRITE") ||
+    !writable.includes("FILE_GENERIC_WRITE") ||
+    !writable.includes("FILE_WRITE_DATA") ||
+    !writable.includes("FILE_APPEND_DATA") ||
+    !writable.includes("FILE_WRITE_EA") ||
+    !writable.includes("FILE_WRITE_ATTRIBUTES") ||
+    !writable.includes("FILE_DELETE_CHILD") ||
+    !writable.includes("DELETE") ||
+    !writable.includes("WRITE_DAC") ||
+    !writable.includes("WRITE_OWNER") ||
+    !writable.includes(
+      "GENERIC_ALL\n        | GENERIC_WRITE\n        | FILE_GENERIC_WRITE\n        | FILE_WRITE_DATA\n        | FILE_APPEND_DATA\n        | FILE_WRITE_EA\n        | FILE_WRITE_ATTRIBUTES\n        | FILE_DELETE_CHILD\n        | DELETE\n        | WRITE_DAC\n        | WRITE_OWNER",
+    ) ||
+    renameStart < 0 ||
+    renameEnd < 0 ||
+    !rename.includes("SetFileInformationByHandle(") ||
+    !rename.includes("FileRenameInfo") ||
+    linkStart < 0 ||
+    linkEnd < 0 ||
+    !link.includes("NtSetInformationFile(") ||
+    !link.includes("FileLinkInformation") ||
+    !link.includes("(*information).Anonymous.ReplaceIfExists = false") ||
+    deleteStart < 0 ||
+    deleteEnd < 0 ||
+    !deletion.includes("FileDispositionInfo") ||
+    !deletion.includes("DeleteFile: true") ||
+    !deletion.includes("fn delete_open_directory(directory: Dir)") ||
+    flushStart < 0 ||
+    flushEnd < 0 ||
+    !flush.includes("FlushFileBuffers(directory.as_raw_handle().cast())") ||
+    !flush.includes("== 0") ||
+    !source.includes("delete_open_directory(directory).is_ok()") ||
+    !source.includes("byte.is_ascii_uppercase()") ||
+    !source.includes("matches!(*suffix, 0x00b9 | 0x00b2 | 0x00b3)") ||
+    identityStart < 0 ||
+    identityEnd < 0 ||
+    !identity.includes("GetFileInformationByHandle(") ||
+    !identity.includes(
+      "left.volume_serial == right.volume_serial && left.file_index == right.file_index",
+    ) ||
+    forbiddenPathMutations.some((mutation) => source.includes(mutation))
+  ) {
+    throw new Error(
+      "Windows quota state must preserve handle-relative no-follow security and atomic publication",
+    );
+  }
+}
+
 function assertNodeQuotaStateProtocolSource(source: string): void {
   const ownerStart = source.indexOf("function publishLockOwner(");
   const ownerEnd = source.indexOf("function publishStealClaim(", ownerStart);
@@ -195,6 +480,7 @@ describe("production Rust SDK gate", () => {
     expect(sdk).not.toMatch(/probes|clap|napi/u);
     assertWorkspaceDependencyPins(workspace);
     for (const [name, version] of [
+      ["cap-std", "4.0.3"],
       ["serde", "1.0.229"],
       ["serde_json", "1.0.151"],
       ["serde-saphyr", "1.1.0"],
@@ -203,6 +489,7 @@ describe("production Rust SDK gate", () => {
       ["rustix", "1.1.4"],
       ["tokio-util", "0.7.19"],
       ["zeroize", "1.9.0"],
+      ["windows-sys", "0.61.2"],
     ]) {
       expect(lock).toMatch(
         new RegExp(
@@ -217,6 +504,12 @@ describe("production Rust SDK gate", () => {
         workspace.replace('sha2 = "=0.11.0"', 'sha2 = "0.11"'),
       ),
     ).toThrow(/workspace dependency contract is missing sha2/u);
+    expect(sdk).toContain(
+      "[target.'cfg(unix)'.dependencies]\nrustix.workspace = true",
+    );
+    expect(sdk).toContain(
+      "[target.'cfg(windows)'.dependencies]\ncap-std.workspace = true\nwindows-sys.workspace = true",
+    );
   });
 
   it("derives production wire tables into Cargo output from canonical artifacts", () => {
@@ -411,6 +704,252 @@ describe("production Rust SDK gate", () => {
         ),
       ),
     ).toThrow(/owner\/claim publication protocol/u);
+
+    const windowsState = read("crates/krx-sdk/src/state_windows.rs");
+    const sdkRoot = read("crates/krx-sdk/src/lib.rs");
+    expect(sdkRoot).toContain("#[cfg(any(unix, windows))]\nmod quota;");
+    expect(sdkRoot).toContain(
+      '#[cfg(windows)]\n#[path = "state_windows.rs"]\nmod state;',
+    );
+    expect(() => assertWindowsStateProtocolSource(windowsState)).not.toThrow();
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          ".custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT);",
+          ".custom_flags(FILE_FLAG_BACKUP_SEMANTICS);",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace("let candidate_sync =", "let _candidate_sync ="),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "    let candidate_sync =\n",
+          "    let published_result = result?;\n    let candidate_sync =\n",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace("if result.is_err()", "if false"),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "if result.is_err()\n        && let Some(observation) = &published",
+          "if result.is_err()\n        && false\n        && let Some(observation) = &published",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace("if cleanup_failed {", "if false {"),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "open_traversal_directory(&current, component, error_code)?",
+          "open_child_directory(\n                &current,\n                component,\n                false,\n                sensitivity,\n                error_code,\n            )?",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "if unsafe { EqualSid(owner, user_sid.as_mut_ptr().cast()) } == 0",
+          "if false",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "link_open_handle(&file, directory, OsStr::new(destination))",
+          "directory.hard_link(candidate, directory, destination)",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "(*allowed).Mask } & writable_rights() == 0",
+          "(*allowed).Mask } & writable_rights() != 0",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "(*allowed).Mask } & writable_rights() == 0",
+          "(*allowed).Mask } & writable_rights() == 0 || true",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace("if !approved", "if false"),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace("if !approved {", "if !approved && false {"),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          /fn writable_rights\(\) -> u32 \{[\s\S]*?\n\}\n\nfn aligned_information_buffer/u,
+          "fn writable_rights() -> u32 {\n    0\n}\n\nfn aligned_information_buffer",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          /fn writable_rights\(\) -> u32 \{[\s\S]*?\n\}\n\nfn aligned_information_buffer/u,
+          (block) => block.replaceAll("|", "&"),
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          / {8}let approved = unsafe \{[\s\S]*?\n {8}\};/u,
+          "        let approved = true;",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "for sid_type in [WinWorldSid, WinAuthenticatedUserSid]",
+          "for sid_type in []",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "Ok(rights & writable_rights() != 0)",
+          "Ok(false)",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "if unsafe { GetEffectiveRightsFromAclW(dacl, &trustee, &mut rights) } != 0",
+          "if false",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "if unsafe { GetEffectiveRightsFromAclW(dacl, &trustee, &mut rights) } != 0 {",
+          "if unsafe { GetEffectiveRightsFromAclW(dacl, &trustee, &mut rights) } != 0 && false {",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "(*information).Anonymous.ReplaceIfExists = false;",
+          "(*information).Anonymous.ReplaceIfExists = true;",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "matches!(*suffix, 0x00b9 | 0x00b2 | 0x00b3)",
+          "false",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "        GetSecurityInfo(\n            handle,",
+          "        GetNamedSecurityInfoW(\n            handle,",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "unsafe { GetAce(dacl, index, &mut raw_ace) }",
+          "unsafe { GetAceRemoved(dacl, index, &mut raw_ace) }",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "if uuid.bytes().any(|byte| byte.is_ascii_uppercase())",
+          "if false",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "            FileDispositionInfo,\n            (&raw const information).cast(),",
+          "            FileBasicInfo,\n            (&raw const information).cast(),",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace("DeleteFile: true", "DeleteFile: false"),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "if unsafe { FlushFileBuffers(directory.as_raw_handle().cast()) } == 0",
+          "if false",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "if candidate_sync.is_err() {",
+          "if candidate_sync.is_err() && false {",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "left.volume_serial == right.volume_serial",
+          "true",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "left.volume_serial == right.volume_serial && left.file_index == right.file_index",
+          "left.volume_serial == right.volume_serial || left.file_index == right.file_index",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "validate_handle_security(file.as_raw_handle(), error_code)?;",
+          "let _ = file.as_raw_handle();",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
   });
 
   it.skipIf(process.platform === "win32")(

@@ -52,12 +52,30 @@ Complete shared Rust SDK for all supported KRX behavior and local policy.
 ### Next in-scope action
 
 Complete the remaining frozen `crates/krx-sdk` surface in the same production
-SDK PR: add the Windows secure-state implementation, then credential and
-approval resolution, transport, cache/offline policy, and legacy migration.
-Keep CLI and Node adapter implementation out of this slice.
+SDK PR: add credential and approval resolution, transport, cache/offline
+policy, and legacy migration. Keep CLI and Node adapter implementation out of
+this slice.
 
 ### Evidence and blockers
 
+- The reviewed Windows state substrate now matches the frozen shared quota
+  protocol with handle-rooted no-follow traversal and exact-handle create,
+  link, rename, deletion, and cleanup. Local state enforces current-user
+  ownership, fail-closed writable-ACL policy, bounded identity-stable reads,
+  durable atomic writes, lowercase canonical owners, reserved-device-path
+  rejection, and permanent nonempty tombstone fences. The Windows target
+  passes locked all-target/all-feature check and strict Clippy; runtime Windows
+  execution is not a continuous gate under the authorized compute-cost
+  amendment. Independent parity and security rereviews are clean, and the
+  source mutation gate rejects traversal, ACL, identity, publication,
+  rollback, cleanup, and durability regressions. Numeric PID liveness remains
+  intentionally byte-compatible with the frozen Node/Unix PID-UUID grammar;
+  process-creation identity was rejected as contract divergence. Tombstone
+  reclamation was rejected because the frozen policy is
+  `permanent-nonempty-fence`. Full `pnpm verify` passes 49 files and 506 tests,
+  the production audit, 13 installed-package scenarios, and package smoke;
+  host all-feature tests pass 55 tests with the intentional interop worker
+  ignored, while the actual Node/Rust quota interoperability gate passes.
 - The reviewed shared quota checkpoint implements byte-compatible Node/Rust
   KST-day reservation with exact SHA-256 credential identities, strict bounded
   v0/v1 decoding, fail-closed byte preservation, 10,000-entry/count caps, and

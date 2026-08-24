@@ -54,7 +54,7 @@ mod operation;
         reason = "quota reservation is consumed by the private transport in this SDK PR"
     )
 )]
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 mod quota;
 #[cfg_attr(
     not(test),
@@ -74,6 +74,9 @@ mod range;
 mod request;
 mod result;
 #[cfg(unix)]
+mod state;
+#[cfg(windows)]
+#[path = "state_windows.rs"]
 mod state;
 
 pub use error::{KrxError, KrxErrorCode, KrxErrorKind};
