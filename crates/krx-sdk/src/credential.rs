@@ -381,7 +381,7 @@ fn persisted_api_key(value: String) -> Result<ApiKey, KrxError> {
 }
 
 fn validate_persisted_api_key(value: &str) -> Result<(), KrxError> {
-    if value.is_empty() || value.chars().any(char::is_whitespace) {
+    if !crate::request::valid_api_key_value(value) {
         return Err(KrxError::new(
             KrxErrorCode::CredentialReadFailed,
             "persisted credential is invalid",

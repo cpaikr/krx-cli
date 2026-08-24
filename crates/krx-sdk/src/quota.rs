@@ -6,13 +6,14 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::credential::credential_fingerprint;
+use crate::operation::QUOTA_PER_KST_DAY;
 use crate::state::{ReadSensitivity, StateRoot};
 use crate::{ApiKey, Cancellation, KrxError, KrxErrorCode, TradingDate};
 
 const QUOTA_PATH: &str = "rate-limit.json";
 const QUOTA_LOCK_PATH: &str = "rate-limit.json.lock";
 const QUOTA_READ_BOUND: u64 = 2 * 1024 * 1024;
-const DAILY_LIMIT: u32 = 10_000;
+const DAILY_LIMIT: u32 = QUOTA_PER_KST_DAY;
 const MAX_CREDENTIALS: usize = 10_000;
 const LOCK_POLL: Duration = Duration::from_millis(25);
 const LOCK_TIMEOUT: Duration = Duration::from_millis(5_000);
@@ -71,12 +72,34 @@ impl QuotaStore {
         date: &TradingDate,
         cancellation: &Cancellation,
     ) -> Result<QuotaReservation, KrxError> {
+        self.reserve_with_deadline(api_key, date, cancellation, None)
+            .await
+    }
+
+    pub(crate) async fn reserve_until(
+        &self,
+        api_key: &ApiKey,
+        date: &TradingDate,
+        cancellation: &Cancellation,
+        call_deadline: Instant,
+    ) -> Result<QuotaReservation, KrxError> {
+        self.reserve_with_deadline(api_key, date, cancellation, Some(call_deadline))
+            .await
+    }
+
+    async fn reserve_with_deadline(
+        &self,
+        api_key: &ApiKey,
+        date: &TradingDate,
+        cancellation: &Cancellation,
+        call_deadline: Option<Instant>,
+    ) -> Result<QuotaReservation, KrxError> {
         let state = self.state.clone();
         let fingerprint = credential_fingerprint(api_key);
         let date = date.clone();
         let cancellation = cancellation.clone();
         tokio::task::spawn_blocking(move || {
-            reserve_blocking(&state, &fingerprint, &date, &cancellation)
+            reserve_blocking(&state, &fingerprint, &date, &cancellation, call_deadline)
         })
         .await
         .map_err(|_| KrxError::new(KrxErrorCode::InternalFailure, "local quota worker failed"))?
@@ -88,8 +111,10 @@ fn reserve_blocking(
     fingerprint: &str,
     date: &TradingDate,
     cancellation: &Cancellation,
+    call_deadline: Option<Instant>,
 ) -> Result<QuotaReservation, KrxError> {
-    let deadline = Instant::now() + LOCK_TIMEOUT;
+    let lock_deadline = Instant::now() + LOCK_TIMEOUT;
+    let deadline = call_deadline.map_or(lock_deadline, |deadline| deadline.min(lock_deadline));
     let owner = format!("{}-{}", std::process::id(), Uuid::new_v4());
     let lock = loop {
         if cancellation.is_cancelled() {
@@ -115,6 +140,9 @@ fn reserve_blocking(
             continue;
         }
         if Instant::now() >= deadline {
+            if call_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
+                return Err(quota_deadline_error(cancellation));
+            }
             return Err(KrxError::new(
                 KrxErrorCode::QuotaLockTimeout,
                 "timed out waiting for the local quota lock",
@@ -124,6 +152,11 @@ fn reserve_blocking(
     };
 
     let mut data = read_quota(state, fingerprint)?;
+    if cancellation.is_cancelled()
+        || call_deadline.is_some_and(|deadline| Instant::now() >= deadline)
+    {
+        return Err(quota_deadline_error(cancellation));
+    }
     let existing_count = data
         .credentials
         .get(fingerprint)
@@ -156,6 +189,11 @@ fn reserve_blocking(
     let mut bytes = serde_json::to_vec_pretty(&data)
         .map_err(|_| invalid_quota("local quota state could not be serialized"))?;
     bytes.push(b'\n');
+    if cancellation.is_cancelled()
+        || call_deadline.is_some_and(|deadline| Instant::now() >= deadline)
+    {
+        return Err(quota_deadline_error(cancellation));
+    }
     state.atomic_write(QUOTA_PATH, &bytes, KrxErrorCode::QuotaStateIoFailed)?;
     drop(lock);
     Ok(QuotaReservation {
@@ -163,6 +201,20 @@ fn reserve_blocking(
         remaining: DAILY_LIMIT - count,
         reserved: true,
     })
+}
+
+fn quota_deadline_error(cancellation: &Cancellation) -> KrxError {
+    if cancellation.is_cancelled() {
+        KrxError::new(
+            KrxErrorCode::RequestCancelled,
+            "request was cancelled while waiting for the local quota lock",
+        )
+    } else {
+        KrxError::new(
+            KrxErrorCode::DeadlineExceeded,
+            "request deadline expired while waiting for the local quota lock",
+        )
+    }
 }
 
 fn read_quota(state: &StateRoot, fingerprint: &str) -> Result<QuotaV1, KrxError> {
@@ -333,6 +385,20 @@ mod tests {
             .await
             .expect_err("cancelled");
         assert_eq!(error.code(), KrxErrorCode::RequestCancelled);
+        assert!(!fixture.quota_path().exists());
+    }
+
+    #[tokio::test]
+    async fn expired_call_deadline_does_not_touch_quota_state() {
+        let fixture = TestStore::new();
+        let key = ApiKey::parse("deadline-key").expect("key");
+        let date = TradingDate::parse("20260102").expect("date");
+        let error = fixture
+            .store
+            .reserve_until(&key, &date, &Cancellation::new(), Instant::now())
+            .await
+            .expect_err("expired deadline");
+        assert_eq!(error.code(), KrxErrorCode::DeadlineExceeded);
         assert!(!fixture.quota_path().exists());
     }
 

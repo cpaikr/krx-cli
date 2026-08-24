@@ -2,6 +2,7 @@ use std::fmt;
 use std::time::Duration;
 
 use jiff::civil::Date;
+use reqwest::header::HeaderValue;
 use tokio_util::sync::CancellationToken;
 use zeroize::Zeroizing;
 
@@ -13,7 +14,7 @@ pub struct ApiKey(Zeroizing<String>);
 impl ApiKey {
     pub fn parse(value: &str) -> Result<Self, KrxError> {
         let value = value.trim();
-        if value.is_empty() || value.chars().any(char::is_whitespace) {
+        if !valid_api_key_value(value) {
             return Err(KrxError::new(
                 KrxErrorCode::InvalidArgument,
                 "API key must be a non-empty token",
@@ -29,6 +30,12 @@ impl ApiKey {
     pub(crate) fn from_exact(value: String) -> Self {
         Self(Zeroizing::new(value))
     }
+}
+
+pub(crate) fn valid_api_key_value(value: &str) -> bool {
+    !value.is_empty()
+        && !value.chars().any(char::is_whitespace)
+        && HeaderValue::from_str(value).is_ok()
 }
 
 impl fmt::Debug for ApiKey {
@@ -55,6 +62,10 @@ impl Cancellation {
 
     pub(crate) async fn cancelled(&self) {
         self.0.cancelled().await;
+    }
+
+    pub(crate) fn child(&self) -> Self {
+        Self(self.0.child_token())
     }
 }
 
@@ -226,9 +237,11 @@ impl Default for CallOptions {
     fn default() -> Self {
         Self {
             cache: CachePolicy::Prefer {
-                max_age: Duration::from_secs(168 * 60 * 60),
+                max_age: Duration::from_secs(
+                    crate::operation::DEFAULT_CACHE_MAX_AGE_HOURS * 60 * 60,
+                ),
             },
-            retries: 3,
+            retries: crate::operation::DEFAULT_RETRIES,
             cancellation: Cancellation::new(),
         }
     }
@@ -338,6 +351,7 @@ mod tests {
         assert_eq!(key.expose(), "fixture-token");
         assert_eq!(format!("{key:?}"), "ApiKey([REDACTED])");
         assert!(ApiKey::parse("embedded space").is_err());
+        assert!(ApiKey::parse("embedded\0control").is_err());
     }
 
     #[test]

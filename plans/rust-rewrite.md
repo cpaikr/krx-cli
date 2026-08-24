@@ -151,6 +151,18 @@ crates/krx-cli   crates/krx-node
 - Use reqwest with Rustls and disabled redirects. The application owns every
   retry and reserves quota before every outbound attempt; configure the
   transport so it cannot perform an uncounted automatic retry.
+- The private transport accepts zero through three retries, uses the legacy
+  one-second base and ten-second cap with 50–100% jitter, and treats a valid
+  `Retry-After` delta or HTTP date as authoritative only when the entire delay
+  fits before the call-wide deadline. The client establishes that 45-second
+  deadline before credential resolution and carries it through quota admission,
+  every send and body read, and retry sleep. Cancellation wins at each boundary.
+- Disable ambient system-proxy discovery so the custom `AUTH_KEY` credential is
+  bound to the canonical KRX origin. Mark its header value sensitive before
+  request construction, reject credentials that cannot form an HTTP header
+  before local quota changes, keep unsuccessful response bodies opaque, and cap
+  successful streamed bodies at 64 MiB to match the largest accepted cache
+  object.
 - `crates/krx-node` exposes a small asynchronous project-owned interface using
   napi-rs. It projects stable values and errors, accepts cancellation, and does
   not expose Rust internals, HTTP-library types, raw bodies, credentials,

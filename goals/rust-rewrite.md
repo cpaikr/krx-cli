@@ -52,12 +52,34 @@ Complete shared Rust SDK for all supported KRX behavior and local policy.
 ### Next in-scope action
 
 Complete the remaining frozen `crates/krx-sdk` surface in the same production
-SDK PR: add the private retrying transport, cache/offline/singleflight policy,
-cache migration, range orchestration, and public client handles. Keep CLI and
-Node adapter implementation out of this slice.
+SDK PR: add cache/offline/singleflight policy, cache migration, range
+orchestration, and public client handles over the completed private transport.
+Keep CLI and Node adapter implementation out of this slice.
 
 ### Evidence and blockers
 
+- The reviewed private transport checkpoint uses one reusable reqwest 0.13.4
+  Rustls client with redirects, ambient proxies, and automatic retries
+  disabled. It derives retry statuses, defaults, timeouts, cache age, and daily
+  quota from the frozen product contracts; accepts only zero through three
+  retries; reserves quota immediately before every actual attempt using the
+  current KST day; and carries cancellation plus the call-wide deadline across
+  quota waits, sends, full body streams, and retry sleeps. The exact legacy
+  one-second/ten-second 50–100% jitter and delta-seconds/HTTP-date
+  `Retry-After` policy is preserved, including saturating arbitrary-length
+  integer delays so they cannot fall back to an extra request. The custom
+  `AUTH_KEY` value is validated and marked sensitive before quota mutation,
+  unsuccessful bodies remain opaque, successful streamed bodies are bounded at
+  64 MiB, and quota deadline expiry cannot write state. Independent contract
+  and security rereviews are clean. The exact checkpoint passes workspace
+  formatting, locked all-target/all-feature check, 100 Rust tests with one
+  intentional interoperability worker ignored, and strict Clippy. Full
+  `pnpm verify` passes 49 files and 507 tests, including the real Node/Rust
+  quota interoperability gate, production audit, 13 installed-package
+  scenarios, and package smoke. Native Windows and Linux ARM cross compilation
+  is unavailable on this macOS host because their SDK/toolchains are absent;
+  static review is clean and those targets are not continuous gates under the
+  authorized compute-cost amendment.
 - The reviewed credential and approval checkpoint derives the native keyring
   service/account, environment source, approval TTL, and fixed category probes
   from the frozen product contracts. Resolution is strictly explicit,

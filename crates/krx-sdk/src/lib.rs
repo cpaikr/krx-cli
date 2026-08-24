@@ -31,13 +31,6 @@ mod completeness;
     )
 )]
 mod composites;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "consumed by the private client engine in this SDK PR"
-    )
-)]
 mod conformer;
 #[cfg_attr(
     not(test),
@@ -47,13 +40,6 @@ mod conformer;
     )
 )]
 mod credential;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "generated mappings are consumed by later SDK modules"
-    )
-)]
 mod error;
 #[cfg_attr(
     not(test),
@@ -80,13 +66,6 @@ mod quota;
     )
 )]
 mod range;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "private accessors are consumed by later SDK modules"
-    )
-)]
 mod request;
 mod result;
 #[cfg(unix)]
@@ -94,6 +73,15 @@ mod state;
 #[cfg(windows)]
 #[path = "state_windows.rs"]
 mod state;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the private transport is consumed by the client engine in this SDK PR"
+    )
+)]
+#[cfg_attr(test, allow(dead_code))]
+mod transport;
 
 pub use approval::{ApprovalObservation, ApprovalState};
 pub use credential::{CredentialMigrationResult, CredentialSource, CredentialStatus};

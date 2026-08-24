@@ -20,6 +20,11 @@ struct ProductContract {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ProductDefaults {
+    retries: u8,
+    attempt_timeout_ms: u64,
+    overall_timeout_ms: u64,
+    cache_max_age_hours: u64,
+    quota_per_kst_day: u32,
     approval_ttl_seconds: u64,
 }
 
@@ -130,6 +135,8 @@ struct ProductHttpMapping {
     #[serde(rename = "match")]
     matcher: Value,
     code: String,
+    #[serde(default)]
+    after_retries: bool,
 }
 
 #[derive(Deserialize)]
@@ -412,6 +419,28 @@ fn generate_errors(product: &ProductContract, output: &Path) {
         "        _ => KrxErrorCode::{},\n    }}\n}}\n",
         fallback.expect("fallback HTTP mapping")
     ));
+    let retryable_statuses = product
+        .errors
+        .http_mappings
+        .iter()
+        .filter(|mapping| mapping.after_retries)
+        .flat_map(|mapping| match &mapping.matcher {
+            Value::Number(status) => vec![status.as_u64().expect("HTTP status integer")],
+            Value::Array(statuses) => statuses
+                .iter()
+                .map(|status| status.as_u64().expect("HTTP status integer"))
+                .collect(),
+            _ => panic!("afterRetries requires numeric HTTP status matchers"),
+        })
+        .collect::<Vec<_>>();
+    generated.push_str(&format!(
+        "pub(crate) const fn retryable_http_status(status: u16) -> bool {{\n    matches!(status, {})\n}}\n",
+        retryable_statuses
+            .iter()
+            .map(u64::to_string)
+            .collect::<Vec<_>>()
+            .join(" | ")
+    ));
     let provider = product
         .errors
         .http_mappings
@@ -469,6 +498,26 @@ fn generate_operations(document: &Value, product: &ProductContract, output: &Pat
     generated.push_str(&format!(
         "pub(crate) const PROVIDER_MESSAGE_FIELD: &str = {};\n",
         literal(provider_message)
+    ));
+    generated.push_str(&format!(
+        "pub(crate) const DEFAULT_RETRIES: u8 = {};\n",
+        product.defaults.retries
+    ));
+    generated.push_str(&format!(
+        "pub(crate) const ATTEMPT_TIMEOUT_MS: u64 = {};\n",
+        product.defaults.attempt_timeout_ms
+    ));
+    generated.push_str(&format!(
+        "pub(crate) const OVERALL_TIMEOUT_MS: u64 = {};\n",
+        product.defaults.overall_timeout_ms
+    ));
+    generated.push_str(&format!(
+        "pub(crate) const DEFAULT_CACHE_MAX_AGE_HOURS: u64 = {};\n",
+        product.defaults.cache_max_age_hours
+    ));
+    generated.push_str(&format!(
+        "pub(crate) const QUOTA_PER_KST_DAY: u32 = {};\n",
+        product.defaults.quota_per_kst_day
     ));
 
     for (index, operation) in operations.iter().enumerate() {

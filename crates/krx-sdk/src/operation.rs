@@ -88,6 +88,11 @@ mod tests {
     #[test]
     fn generated_catalog_covers_every_closed_operation_once() {
         assert!(!OFFICIAL_SERVER.is_empty());
+        assert_eq!(DEFAULT_RETRIES, 3);
+        assert_eq!(ATTEMPT_TIMEOUT_MS, 15_000);
+        assert_eq!(OVERALL_TIMEOUT_MS, 45_000);
+        assert_eq!(DEFAULT_CACHE_MAX_AGE_HOURS, 168);
+        assert_eq!(QUOTA_PER_KST_DAY, 10_000);
         let descriptions = capabilities();
         assert_eq!(descriptions.len(), OperationId::ALL.len());
         for (expected, actual) in OperationId::ALL.iter().zip(descriptions) {
