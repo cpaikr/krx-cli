@@ -1,6 +1,6 @@
 # Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK
 
-Status: active
+Status: complete
 
 ## Outcome
 
@@ -22,40 +22,43 @@ publication decision.
 
 ## Current state
 
-- Contract PR #8 and production SDK PR #9 are merged. The shared Rust SDK now
-  implements every supported KRX operation plus the frozen domain, credential,
-  quota, cache, offline, and local-state policy.
-- Production adapter PR #10 is merged: `crates/krx-cli` is the
-  native Clap CLI, `crates/krx-node` is the private napi-rs boundary, and
-  `packages/node` is the public typed facade. Production archive assembly and
-  clean-install certification cover all four supported target definitions;
-  continuous Blacksmith certification covers Linux GNU x64/ARM64 under Node 22
-  and 24. Exact-head hosted SDK and native-package certification, review
-  remediation, feedback closure, and merge are complete.
-- The final cutover branch promotes the native package and executable, retains
-  the maintainer-only contract and calendar workspace, and removes the legacy
-  TypeScript protocol/domain runtime, JavaScript CLI, MCP surface, source-build
-  lifecycle, and disposable probe. The root package has no runtime dependency,
-  bin, export, shipped-file, or install-hook surface. Release and contract-drift
-  workflows consume assembled native artifacts.
-- Installed-product parity passes 14 frozen compatibility scenarios plus the
-  two frozen v1-to-v2 cache migration postconditions against the exact native
-  archive, including deterministic diagnostic observations and strict legacy
-  cache rejection. The no-data, schema, and adjustment mutants are rejected by
-  their named scenarios. Secure credential, approval, cache, quota, offline,
-  watchlist, and local-state migrations are exercised through the shared Rust
-  implementation.
-- `ARCHITECTURE.md`, the CLI/composite/cache/security/testing documents, README,
-  canonical contract guides, and packaged skill now describe only the native
-  product. The cutover scanner finds one HTTP conformer and no dormant legacy
-  or MCP runtime path.
-- Local validation passes 135 maintainer tests, 14 public Node facade tests,
-  155 Rust tests with one intentional interop worker ignored, strict Clippy,
-  calendar freshness, Rust advisory/license/source policy, and the production
-  dependency audit. A fresh host
-  `darwin-arm64` archive passes clean-install certification under Node 24 with
-  portable SHA-256
-  `3c84bab73759ca8b4fed59da39da01b19efe2e4562a7f8d272d97b16f69a8789`.
+- Contract PR #8, shared Rust SDK PR #9, native CLI and Node SDK PR #10, and
+  final atomic-cutover PR #11 are merged on `main`. PR #11 merged as
+  `da55147cfef976f73c0f1a328a8bc48e95142a58` with its 58 implementation and
+  review commits preserved.
+- `crates/krx-sdk` implements every supported KRX operation and the frozen
+  domain, credential, approval, quota, cache, offline, watchlist, and
+  local-state policy. `crates/krx-cli` is the native Clap executable,
+  `crates/krx-node` is the private napi-rs boundary, and `packages/node` is the
+  public typed facade.
+- The atomic cutover promotes the native package and executable while removing
+  the legacy TypeScript protocol/domain runtime, JavaScript CLI, MCP surface,
+  source-build lifecycle, and disposable probe. The cutover scanner finds one
+  HTTP conformer and no dormant legacy or MCP runtime path.
+- Exact head `df3cf9d` passes 138 maintainer tests, 14 public Node facade tests,
+  and 185 Rust tests with one intentional interop worker ignored, plus strict
+  formatting, all-target/all-feature checks, Clippy, current calendar and
+  contract validation, Cargo advisory/license/source policy, and the
+  production dependency audit.
+- A clean detached-worktree `darwin-arm64` archive passes clean-install
+  certification under Node 24 with portable SHA-256
+  `038e5e200a5bb85602f53d81e073b96223c8fcbc1548b5f260b24666f84b8064`.
+  It passes all 14 frozen compatibility scenarios, both v1-to-v2 cache
+  migration postconditions, and all three named mutation checks.
+- Exact-head general CI run
+  [32735382336](https://github.com/cpaikr/krx-cli/actions/runs/32735382336)
+  passes Node 22/24. Native run
+  [32735382507](https://github.com/cpaikr/krx-cli/actions/runs/32735382507)
+  passes Blacksmith Linux GNU x64/ARM64 builds, all four unchanged-archive Node
+  consumers, and the target-independent identity aggregator. All four Codex
+  threads are resolved with no outside-diff finding or active review.
+  CodeRabbit's single authorized full-review attempt was skipped because 294
+  files exceeded its 150-file limit, not because of quota.
+- macOS ARM64 and Windows x64 remain supported artifact targets but are
+  intentionally omitted from continuous CI solely to reduce compute cost.
+  Linux GNU x64/ARM64 under Node 22/24 remains the continuous certification
+  boundary. Creating the first tag or GitHub Release remains outside this
+  completed plan.
 - The recoverable legacy baseline is merge commit `3732598e461ec5d78bd1121dbbe86d56aa658376`.
   Its deterministic gate passes on Ubuntu and Windows under Node 22 and 24,
   the public contract-drift dry run passes for all 31 operations, and the
@@ -551,8 +554,7 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Complete the required code review over the locally complete, clean-checkout-
-validated cutover, then deliver the final PR through exact-head Blacksmith Linux
-GNU x64/ARM64 certification, feedback closure, and merge. Creating the first
-tag or GitHub Release remains excluded; publication design remains a separately
-authorized decision.
+None. Every in-scope implementation, validation, review, feedback, merge, and
+planning-reconciliation result is complete. Creating the first tag or GitHub
+Release remains excluded; publication design requires a separately authorized
+decision.

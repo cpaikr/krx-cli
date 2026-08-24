@@ -2,15 +2,7 @@
 
 ## Current
 
-[Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK](plans/rust-rewrite.md)
-— active under [the durable goal contract](goals/rust-rewrite.md). The green
-legacy baseline, canonical OpenAPI/contracts, and production shared Rust SDK
-are merged. The native Clap CLI, public Node SDK, and production artifact slice
-are also merged after exact-head Blacksmith certification and feedback closure.
-The final branch now passes installed-product parity and migration gates and
-contains the atomic package/export, workflow, documentation, legacy
-TypeScript/JavaScript, and MCP cutover. Final PR review, exact-head Blacksmith
-certification, feedback closure, and merge remain before the goal is complete.
+_None._
 
 ## Plans
 
@@ -19,6 +11,18 @@ _None._
 ## Tasks
 
 _None._
+
+## Completed
+
+[Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK](plans/rust-rewrite.md)
+— completed under [the durable goal contract](goals/rust-rewrite.md). The
+shared Rust SDK, native Clap CLI, public Node SDK, secure local-state behavior,
+certified private native artifacts, and atomic legacy/MCP cutover are merged on
+`main`. Continuous Blacksmith certification covers Linux GNU x64/ARM64 under
+Node 22/24; macOS ARM64 and Windows x64 remain supported artifact targets but
+are intentionally omitted from continuous CI solely to reduce compute cost.
+Creating the first tag or GitHub Release remains a separate publication
+decision.
 
 ## Baseline
 
@@ -30,6 +34,6 @@ drift check, update the checked-in KRX calendar before uncovered years or
 exceptional closures, and keep dependencies and GitHub Actions current without
 weakening the production audit or packed-artifact release gate.
 
-These obligations remain in force during and after the queued rewrite. The
-rewrite may replace their implementation only after its cutover and acceptance
-gates pass; it does not remove the operational duties.
+These obligations remain in force after the completed rewrite. The rewrite
+replaced their implementation only after its cutover and acceptance gates
+passed; it does not remove the operational duties.
