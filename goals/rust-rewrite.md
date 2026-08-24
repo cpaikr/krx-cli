@@ -65,10 +65,11 @@ legacy TypeScript deletion, and MCP removal in the final atomic-cutover PR.
 
 ### Evidence and blockers
 
-- The adapter implementation is locally complete and its three final focused
-  rereviews are clean. The native CLI drives every supported command through
-  `krx-sdk`, preserves the frozen rendering, validation, diagnostics, and exit
-  behavior, and uses pinned `rpassword` 7.4.0 solely for cross-platform
+- The adapter implementation and review remediation are locally complete, and
+  the final CLI, Node, and artifact rereviews are clean. The native CLI drives
+  every supported command through `krx-sdk`, preserves the frozen rendering,
+  validation, core diagnostic grammar, and exit behavior, and uses pinned
+  `rpassword` 7.4.0 solely for cross-platform
   no-echo credential input; credential-bearing argv remains forbidden. The
   public Node facade owns one reusable native client, validates the frozen
   request policy strictly, contains synchronous and asynchronous Rust panics,
@@ -78,18 +79,25 @@ legacy TypeScript deletion, and MCP removal in the final atomic-cutover PR.
   requests or manual dispatch on `blacksmith-2vcpu-ubuntu-2404` and
   `blacksmith-2vcpu-ubuntu-2404-arm`; comments record that macOS ARM64 and
   Windows x64 remain supported but are omitted from continuous CI to reduce
-  compute cost. Hosted adapter-PR certification remains pending.
-- The final local adapter checkpoint passes workspace formatting, locked
-  all-target/all-feature check, strict Clippy, 18 native CLI tests, eight
-  native Node-boundary tests, and 149 SDK tests with the one intentional
-  interoperability worker ignored. The public Node facade passes 13 tests and
-  the focused SDK/artifact mutation gate passes 36 tests. Full `pnpm verify`
-  passes 49 files and 514 tests, contract generation and types, lint,
+  compute cost. Full dynamic verbose observations for cache, quota, retry,
+  request timing, and range/calendar decisions require a shared SDK observation
+  seam and remain explicitly assigned to the final black-box parity result;
+  cutover remains blocked until those differences are fixed or classified.
+  Adapter PR #10's initial exact head passed both Blacksmith Linux builds, all
+  four Node 22/24 consumers, and the identity aggregator. Its 18 review threads
+  are locally remediated or contract-disposed; the new exact head and hosted
+  rerun remain pending.
+- The final local adapter-remediation checkpoint passes workspace formatting,
+  locked all-target/all-feature check, strict Clippy, 20 native CLI tests,
+  eight native Node-boundary tests, and 150 SDK tests with the one intentional
+  interoperability worker ignored. The public Node facade passes 14 tests and
+  the focused SDK/artifact mutation gate passes 38 tests. Full `pnpm verify`
+  passes 49 files and 516 tests, contract generation and types, lint,
   TypeScript checking, production audit, 13 installed-package scenarios, and
   packed-package smoke. A fresh release build, assembly, pack, and clean-install
   certification passes for the host `darwin-arm64` target under Node 24 with
   portable SHA-256
-  `5e1d73081f964803e1b31ce07275a4ebf7ee57b6b3971519c1f78fbe85821115`.
+  `904b24002be491fdf4774da948c412218a665a6b59cdf02c6e4c0f1b804dfb9a`.
 - The configured origin is the transferred private `cpaikr/krx-cli`
   repository. Its retained branch and PR history remain the delivery
   authority.
