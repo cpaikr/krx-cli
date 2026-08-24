@@ -6,9 +6,9 @@ CLI and MCP queries retain their existing row-array output.
 
 The frozen Rust and Node SDK contracts preserve this envelope. An
 all-component provider failure is a returned composite with `state: "failed"`;
-call-wide cancellation, invalid input, and local-state failure reject the SDK
-call with the stable project error catalog. The native CLI projects both paths
-back to the exit semantics below.
+call-wide cancellation, invalid input, local-state failure, and internal SDK
+invariant failure reject the SDK call with the stable project error catalog.
+The native CLI projects both paths back to the exit semantics below.
 
 ```json
 {
@@ -40,8 +40,8 @@ The four states are:
   `skipped` rather than `succeeded`.
 - `failed`: every requested component failed without a call-wide SDK failure;
   `error` and `errorType` retain the primary typed failure. Call-wide
-  cancellation, invalid input, and local-state failures reject the SDK call
-  instead of returning a composite envelope.
+  cancellation, invalid input, local-state failures, and internal SDK invariant
+  failures reject the SDK call instead of returning a composite envelope.
 
 Eligible exact-code stock ranges are adjusted by default and add an
 `adjustment` object with method/version, actual `asOf`, rounding, raw and

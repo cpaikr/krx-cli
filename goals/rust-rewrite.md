@@ -43,19 +43,195 @@ Goal contract
 ### Completed included results
 
 - Green frozen legacy baseline and mutation-tested compatibility judge.
+- Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Current in-scope result
 
-Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
+Complete shared Rust SDK for all supported KRX behavior and local policy. The
+implementation is complete locally; its production PR delivery lifecycle is
+active.
 
 ### Next in-scope action
 
-Refresh the complete feedback surface for contract delivery PR #8 and merge the
-reviewed contract authority. Production Rust remains blocked until that PR is
+Push the reviewed PR #9 feedback remediation, resolve every verified review
+thread, complete automatic follow-up review and exact-head Blacksmith
+validation, then merge the production SDK PR while preserving its commits.
+Keep CLI and Node adapter implementation out of this slice until that PR is
 complete.
 
 ### Evidence and blockers
 
+- Production SDK PR [#9](https://github.com/cpaikr/krx-cli/pull/9) is open and
+  its original implementation head `1471622` passed both Blacksmith SDK jobs,
+  both Linux native builds, all four Node 22/24 consumers, and the identity
+  aggregator. Codex and CodeRabbit completed reviews on that exact head. The
+  checked remediation accepts the valid public-request, watchlist, workflow,
+  contract, build-generation, cache, shared-client, credential, date, lock
+  grammar, KST, and state-hardening findings; preserves the frozen manual
+  exact-arithmetic GCD and legacy decimal `Retry-After` compatibility; and
+  rejects a Windows continuous-CI expansion under the authorized compute-cost
+  amendment. Five independent Luna/high public, credential, state, cache, and
+  transport rereviews found no blocking defect after two narrow test-hardening
+  follow-ups. The canonical `npm run rust:sdk` passes formatting, locked
+  all-target/all-feature check, strict Clippy, and 147 tests with one
+  intentional interop worker ignored. Full `pnpm verify` passes 49 files and
+  508 tests, production audit, 13 installed-package scenarios, and package
+  smoke. Exact-head push, thread closure, hosted validation, and merge remain.
+- The complete shared Rust SDK now exposes the frozen concrete `Client`,
+  builder, direct and range queries, generated composites, capabilities,
+  credential and approval operations, bounded cache administration, and
+  strict watchlist administration over the single private direct-query engine.
+  Composite and range fan-out share one 45-second call deadline; ranges retain
+  deterministic date order with concurrency five; KONEX remains present; and
+  the unchanged frozen external Rust consumer compiles directly against the
+  public crate. Cache administration derives every limit from the migration
+  contract, prefers v2 on equal-time retention, rejects an oversized prune
+  request before traversal, recognizes only exact platform temporary names,
+  and bases conditional deletion, age, and byte accounting on the securely
+  observed object. Unix and Windows cache enumeration is capability-rooted and
+  never follows symlink or reparse children. Watchlist reads are strict and
+  bounded, first mutation migrates v0 to v1 under the shared lock, concurrent
+  writers preserve order, and invalid public arguments remain typed as
+  `invalid_argument`. Three independent public/range, cache/security, and
+  watchlist/migration reviews are clean after applying the cache parser,
+  Windows recursion, descriptor-time/accounting, prune-bound, v2-preference,
+  and traversal fixes. Workspace formatting, locked all-target/all-feature
+  check and strict Clippy pass; 144 Rust tests pass with the one intentional
+  interoperability worker ignored; all eight SDK mutation/interoperability
+  tests pass; and full `pnpm verify` passes 49 files and 508 tests, production
+  audit, 13 installed-package scenarios, and package smoke. Native Windows
+  cross-check remains unavailable on this macOS host because `aws-lc-sys`
+  requires absent Windows SDK headers; the Windows source mutation gate passes
+  under the approved reduced-CI policy.
+- The reviewed private direct-query checkpoint now composes validation,
+  credential resolution, transport, cache policy, offline behavior, and the
+  call-wide deadline without exposing a partial public client. Offline returns
+  valid stale v1/v2 entries without credential, quota, network, or refresh
+  lease effects; online probes are non-mutating until the lease owner rechecks;
+  bypass never touches cache state; and every blocking online mutation retains
+  the exact lease even if the awaiting caller is cancelled. State-root-scoped
+  singleflight shares the successful producer response by v2 key, including
+  empty or current/future responses that policy intentionally does not cache,
+  while waiter cancellation cannot cancel the producer. Cross-process waiters
+  accept a logical v2 generation published after their baseline even when the
+  lease is free before their first mkdir; v1-to-v2 promotion preserves the
+  generation and cannot satisfy network-forcing Refresh. Fresh v1 contention
+  waits for lease-owned promotion instead of returning without migration.
+  Unix stale recovery publishes one live exact claim in the observed lease,
+  revalidates pathname, owner, and claim before rename, and rejects claimed new
+  acquisitions, closing the paused two-stealer replacement race. Windows keeps
+  its exact-handle rename/delete protocol and bounded incomplete-owner
+  observation. The structural mutation gate rejects loss of state-root flight
+  isolation, shared-result publication, refresh-generation comparison, creator
+  claim checks, and exact claimant revalidation. Independent contract and
+  security/concurrency rereviews are clean. Workspace formatting, strict
+  all-target/all-feature Clippy, 130 Rust tests with one intentional
+  interoperability worker ignored, the seven-test SDK mutation/source gate,
+  and full `pnpm verify` with 49 files and 507 tests pass. Native Windows
+  cross-check remains unavailable on this macOS host because `aws-lc-sys`
+  requires absent Windows SDK headers; the Windows source mutation gate passes.
+- The reviewed private cache-core checkpoint derives canonical v1/v2 keys,
+  paths, schema identities, size limits, and timestamp bounds from the frozen
+  product contracts. It strictly decodes exact operation rows and parameters,
+  rejects empty/current/future writes, prefers valid v2 while allowing a valid
+  v1 fallback after invalid-v2 quarantine, and conditionally quarantines or
+  removes only identity-and-content-matching observations. Oversized entries
+  are classified invalid without an unbounded read and are preserved when
+  exact-content mutation cannot be proven. Online v1 promotion publishes a
+  durable v2 entry before conditional v1 cleanup, and concurrent replacement
+  tests prove newer legacy files are not removed. Windows cache mutations use
+  exact validated handles and writable parent flushing. POSIX rejects links,
+  foreign ownership, unsafe parents, and changed observations but accepts the
+  documented final same-user pathname race because Linux and macOS lack one
+  portable exact-handle conditional rename/unlink primitive; the residual is
+  confined to credential-independent, refetchable cache data. Independent
+  contract and security rereviews are clean. The private operational methods
+  remain unreachable until the next layer adds lease-protected v2 rechecks,
+  valid-v2 legacy cleanup, singleflight, and offline/client orchestration.
+  Workspace formatting, 110 Rust tests with one intentional interoperability
+  worker ignored, strict all-target/all-feature Clippy, the seven-test SDK
+  mutation/source gate, and diff validation pass. Native Windows cross-check
+  remains unavailable on this macOS host because `aws-lc-sys` requires absent
+  Windows SDK headers; the Windows source mutation gate passes.
+- The reviewed private transport checkpoint uses one reusable reqwest 0.13.4
+  Rustls client with redirects, ambient proxies, and automatic retries
+  disabled. It derives retry statuses, defaults, timeouts, cache age, and daily
+  quota from the frozen product contracts; accepts only zero through three
+  retries; reserves quota immediately before every actual attempt using the
+  current KST day; and carries cancellation plus the call-wide deadline across
+  quota waits, sends, full body streams, and retry sleeps. The exact legacy
+  one-second/ten-second 50–100% jitter and delta-seconds/HTTP-date
+  `Retry-After` policy is preserved, including saturating arbitrary-length
+  integer delays so they cannot fall back to an extra request. The custom
+  `AUTH_KEY` value is validated and marked sensitive before quota mutation,
+  unsuccessful bodies remain opaque, successful streamed bodies are bounded at
+  64 MiB, and quota deadline expiry cannot write state. Independent contract
+  and security rereviews are clean. The exact checkpoint passes workspace
+  formatting, locked all-target/all-feature check, 100 Rust tests with one
+  intentional interoperability worker ignored, and strict Clippy. Full
+  `pnpm verify` passes 49 files and 507 tests, including the real Node/Rust
+  quota interoperability gate, production audit, 13 installed-package
+  scenarios, and package smoke. Native Windows and Linux ARM cross-compilation
+  is unavailable on this macOS host because their SDK/toolchains are absent;
+  static review is clean and those targets are not continuous gates under the
+  authorized compute-cost amendment.
+- The reviewed credential and approval checkpoint derives the native keyring
+  service/account, environment source, approval TTL, and fixed category probes
+  from the frozen product contracts. Resolution is strictly explicit,
+  environment, keychain, then missing; invalid present sources never fall
+  through. Keyring 4.1.6 uses only native platform stores, with the rejected
+  database fallback graph absent. Credential rotation acquires the
+  legacy-secret-sensitive config lock, atomically clears credential-bound
+  approvals before its sole keychain write, and requires zeroized exact
+  readback. A partial write with exact readback reconciles, while every failure
+  path is fail-closed and performs no restorative write that could resurrect a
+  concurrently removed credential. Removal is keychain-only and does not
+  create, inspect, or wait on local filesystem state. Approval persistence is
+  strict, fingerprint-bound, redacted, 900-second UTC-millisecond state in the
+  single config authority, with merge-on-write concurrency and exact legacy
+  classification. Explicit plaintext migration validates the complete secure
+  source before keychain access, preserves exact bytes, distinguishes
+  pre-/post-commit failures, and rolls back only a newly created still-matching
+  credential. Unix and Windows use non-repairing secret-sensitive lock paths
+  for migration. Independent contract and security rereviews are clean. The
+  exact checkpoint passes 87 Rust tests with one intentional interop worker
+  ignored, the real Node/Rust interoperability gate, host and Windows locked
+  all-feature checks and strict Clippy, the seven-test mutation/source gate,
+  and full `pnpm verify` with 49 files and 507 tests, production audit, 13
+  installed-package scenarios, and package smoke.
+- The reviewed Windows state substrate now matches the frozen shared quota
+  protocol with handle-rooted no-follow traversal and exact-handle create,
+  link, rename, deletion, and cleanup. Local state enforces current-user
+  ownership, fail-closed writable-ACL policy, bounded identity-stable reads,
+  durable atomic writes, lowercase canonical owners, reserved-device-path
+  rejection, and permanent nonempty tombstone fences. The Windows target
+  passes locked all-target/all-feature check and strict Clippy; runtime Windows
+  execution is not a continuous gate under the authorized compute-cost
+  amendment. Independent parity and security rereviews are clean, and the
+  source mutation gate rejects traversal, ACL, identity, publication,
+  rollback, cleanup, and durability regressions. Numeric PID liveness remains
+  intentionally byte-compatible with the frozen Node/Unix PID-UUID grammar;
+  process-creation identity was rejected as contract divergence. Tombstone
+  reclamation was rejected because the frozen policy is
+  `permanent-nonempty-fence`. Full `pnpm verify` passes 49 files and 506 tests,
+  the production audit, 13 installed-package scenarios, and package smoke;
+  host all-feature tests pass 55 tests with the intentional interop worker
+  ignored, while the actual Node/Rust quota interoperability gate passes.
+- The reviewed shared quota checkpoint implements byte-compatible Node/Rust
+  KST-day reservation with exact SHA-256 credential identities, strict bounded
+  v0/v1 decoding, fail-closed byte preservation, 10,000-entry/count caps, and
+  successful-write-only pruning. On Unix, the Rust state substrate uses
+  descriptor-relative no-follow traversal, current-user ownership, strict
+  `0700`/`0600` modes, durable atomic writes, and crash-recoverable plain-mkdir
+  locks. Prepared hard-link owner/claim publication, identity-and-byte
+  revalidation, retained deterministic tombstones, and identity-safe failed
+  acquisition cleanup close replacement and paused-stealer races across both
+  runtimes. Independent security/concurrency review is clean. `pnpm verify`
+  passes 49 files and 506 tests, production audit, 13 installed-package
+  scenarios, and package smoke; all-feature workspace format/check/strict
+  Clippy pass, with 55 Rust tests passing and the intentional Node interop
+  worker ignored because its mixed-runtime execution passed in the product
+  gate. Windows secure state remains the next platform implementation.
 - The repository transfer to private `cpaikr/krx-cli` preserved PR #8 and its
   branch topology. The checked amendment routes every Actions job to
   Blacksmith, removes the duplicate native branch-push matrix, retains all four
@@ -68,6 +244,14 @@ complete.
   passes both Linux builds, all four unchanged-archive Node consumers, and the
   Linux package-identity aggregator at `b9620e5`. No branch-push native run was
   created.
+- Contract delivery PR
+  [#8](https://github.com/cpaikr/krx-cli/pull/8) merged as `68256d2` after exact
+  documentation-head Blacksmith run
+  [32677605199](https://github.com/cpaikr/krx-cli/actions/runs/32677605199)
+  passed both Linux builds, all four Node consumers, and the identity
+  aggregator. The final feedback collection covered `1a7e158`, found all 19
+  threads resolved with no outside-diff findings or active review, and
+  CodeRabbit was successful.
 - Contract delivery PR
   [#8](https://github.com/cpaikr/krx-cli/pull/8) completed its initial
   13-job four-target matrix at `c085b94`; all native builds, eight Node
@@ -277,7 +461,6 @@ complete.
   no Actions `KRX_API_KEY` secret. Deterministic calendar and dry-run contract
   validation remain separate and do not require that credential; provisioning
   the live secret requires external authority.
-- Current boundary classification: contract-authority and public-contract
-  freeze work is included; Rust production implementation remains the next
-  semantic result and will not begin until this contract slice completes its
-  review PR.
+- Current boundary classification: contract authority is merged. Production
+  `crates/krx-sdk` implementation is active; native CLI, Node binding/facade,
+  parity cutover, and legacy removal remain later semantic results.

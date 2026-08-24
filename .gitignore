@@ -7,5 +7,6 @@ dist/
 coverage/
 tests/e2e/reports/
 artifacts/
+target/
 
 .env.local

@@ -151,6 +151,18 @@ crates/krx-cli   crates/krx-node
 - Use reqwest with Rustls and disabled redirects. The application owns every
   retry and reserves quota before every outbound attempt; configure the
   transport so it cannot perform an uncounted automatic retry.
+- The private transport accepts zero through three retries, uses the legacy
+  one-second base and ten-second cap with 50–100% jitter, and treats a valid
+  `Retry-After` delta or HTTP date as authoritative only when the entire delay
+  fits before the call-wide deadline. The client establishes that 45-second
+  deadline before credential resolution and carries it through quota admission,
+  every send and body read, and retry sleep. Cancellation wins at each boundary.
+- Disable ambient system-proxy discovery so the custom `AUTH_KEY` credential is
+  bound to the canonical KRX origin. Mark its header value sensitive before
+  request construction, reject credentials that cannot form an HTTP header
+  before local quota changes, keep unsuccessful response bodies opaque, and cap
+  successful streamed bodies at 64 MiB to match the largest accepted cache
+  object.
 - `crates/krx-node` exposes a small asynchronous project-owned interface using
   napi-rs. It projects stable values and errors, accepts cancellation, and does
   not expose Rust internals, HTTP-library types, raw bodies, credentials,
@@ -170,8 +182,20 @@ crates/krx-cli   crates/krx-node
   Clap 4.6.6, reqwest 0.13.4, Tokio 1.53.1, tokio-util 0.7.19, napi-rs 3.12.2,
   napi-derive 3.6.3, napi-build 2.4.1, keyring-rs 4.1.6, serde 1.0.229,
   serde_json 1.0.151, serde-saphyr 1.1.0, thiserror 2.0.20, url 2.5.8,
-  zeroize 1.9.0, and futures-util 0.3.34. The contract gate rejects drift and
-  the heavyweight fallback credential-database feature graph.
+  zeroize 1.9.0, futures-util 0.3.34, sha2 0.11.0, uuid 1.25.0, jiff 0.2.35,
+  num-bigint 0.5.1, Unix-only rustix 1.1.4, and Windows-only cap-std 4.0.3 and
+  windows-sys 0.61.2. SHA-256 identity, OS-random UUID-v4 lock identities,
+  canonical UTC/KST time handling, unbounded exact adjustment factors, and
+  descriptor-relative no-follow state traversal use those maintained crates
+  rather than project-owned cryptography, randomness, timestamp parsing,
+  big-integer arithmetic, or unsafe syscall bindings. On Windows, cap-std's
+  `NtCreateFile`-backed directory capabilities keep traversal relative to open
+  handles. The narrow windows-sys surface validates reparse attributes, handle
+  identity, current-user ownership, and every effective ACL writer; native
+  handle-rooted create, link, rename, and disposition operations also keep
+  publication, atomic replacement, and cleanup bound to the exact opened
+  object. The contract gate rejects drift and the heavyweight fallback
+  credential-database feature graph.
 
 ### Rust SDK and native CLI
 
@@ -190,6 +214,27 @@ crates/krx-cli   crates/krx-node
   private substitutable seams only around filesystem, clocks/timers,
   environment, and keychain, plus one true-external KRX HTTP seam whose
   production adapter is reqwest/Rustls and whose test adapter is scripted.
+- Preserve the legacy market-summary numeric fallback at the derived boundary:
+  malformed or out-of-range rate, volume, and value strings contribute zero.
+  The SDK exposes `u64` totals and uses saturating addition so derived summaries
+  cannot wrap; unavailable stock markets remain absent, never synthetic zero
+  observations.
+- Composite call-wide cancellation, invalid-request, local-state, and internal
+  invariant failures reject the call. When more than one is observed,
+  `compositePriority` selects deterministically; invalid requests are normally
+  rejected before fan-out. Internal failures are call-wide because a broken
+  SDK invariant cannot be represented as usable component data.
+- The frozen four-state rule treats a provider failure beside a safely skipped
+  calendar closure as `partial`, matching `docs/COMPOSITE-RESULTS.md`; this is
+  an intentional correction to the legacy range reducer's `failed` result.
+- `DateRange::new` accepts at most 10,000 inclusive calendar dates and returns
+  `invalid_argument` before allocation when the bound is exceeded. Its fields
+  remain private so callers cannot construct an unvalidated range.
+- Adjustment `basisTransitions` strings use the lossless compact JSON grammar
+  `krx-adjustment-transition/v1`, with exact field order `date`,
+  `previousClose`, `previousDate`, `ratio` (`denominator`, `numerator`), then
+  `referencePrice`. The values are canonical decimal strings and the grammar
+  is regression-tested byte-for-byte for adapter parity.
 - Build `crates/krx-cli` with Clap derive. Model the command tree with `Parser`
   and `Subcommand`, reusable option groups with `Args`, and closed command-line
   values with `ValueEnum`. Parser-level constraints reject invalid or
@@ -256,6 +301,29 @@ crates/krx-cli   crates/krx-node
   same entry. Retain one shared per-credential KST-day quota counter across any
   temporary legacy/candidate coexistence; never let two engines admit separate
   10,000-call budgets.
+- Fence stale shared-quota lock replacement with a prepared owner-only file
+  created inside the observed lock directory and published as
+  `rate-limit.json.lock/steal` by an atomic no-replace hard link. Keeping the
+  prepared source inside the observed directory makes a pathname replacement
+  lose the source instead of attaching the claim to a new lock. Revalidate the
+  owner-only directory plus bounded no-follow owner file, their identities and
+  bytes, the dead owner process, and the claim identity before rename. Move the
+  stale directory to the deterministic claim-derived path
+  `rate-limit.json.lock.stale-<steal-owner>` and retain its owner and claim as a
+  permanent nonempty tombstone. Multiple processes may recover the same dead
+  published claimant; the retained destination ensures a paused loser cannot
+  later rename a newly acquired live lock after the winner has moved the stale
+  one.
+- Publish each new shared-quota lock owner from an owner-only prepared file
+  inside the created lock directory, using a no-replace hard link only after
+  the complete owner bytes and file metadata are durable. Readers therefore
+  observe either no owner during ordinary acquisition/teardown turnover or one
+  complete canonical owner, never a partial direct write.
+- Before returning a newly created quota lock, revalidate that its pathname
+  still names the created directory. Failed acquisition abandons only its own
+  owner through the open directory descriptor and never removes the directory
+  pathname, because that pathname may already name a replacement contender;
+  bounded stale recovery later fences the ownerless original.
 - Add explicit `--offline`. Offline operations never resolve a credential or
   perform network access and may return a validated stale entry. They identify
   cache source, fetch time, and freshness; a miss or invalid entry is a typed
@@ -267,6 +335,14 @@ crates/krx-cli   crates/krx-node
   format after a successful online use or refresh; offline hits return the
   validated version-1 entry without mutation or refresh-lease acquisition. Do
   not bulk-convert unknown or corrupt files.
+- Conditional cache cleanup and quarantine retain an opaque file identity and
+  exact bytes, reopen through secured no-follow parents, and revalidate both
+  immediately before mutation. Windows mutates the exact open handle. POSIX
+  has no portable identity-conditional rename or unlink across both supported
+  Linux and macOS targets, leaving a final same-user pathname-replacement race
+  between revalidation and the syscall. This accepted residual is confined to
+  credential-independent, refetchable cache data; links, foreign ownership,
+  unsafe parent traversal, and observed replacements remain fail-closed.
 
 ### Runtime and private distribution
 
@@ -450,8 +526,8 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Deliver one contract-authority PR that makes the validated OpenAPI document the
-sole maintained KRX wire source; freezes executable Rust, Node, CLI, error, and
-all persisted-state migration contracts; and records the certified disposable
-candidate proof. Complete feedback, re-review, and merge before production
-`crates/krx-*` implementation begins.
+Deliver the complete frozen `crates/krx-sdk` surface in one production SDK PR,
+using reviewable commits for the all-operation catalog and strict conformer,
+transport/retry/cancellation/quota and domain behavior, then credential,
+cache/offline, local-state, and migration policy. Do not begin the native CLI
+or Node adapter implementation until the SDK PR completes feedback and merge.

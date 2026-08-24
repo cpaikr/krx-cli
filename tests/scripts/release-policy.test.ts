@@ -84,6 +84,7 @@ describe("private Git release policy", () => {
       ".github/workflows/contract-drift.yml",
       ".github/workflows/release.yml",
       ".github/workflows/rust-vertical-slice.yml",
+      ".github/workflows/rust-sdk.yml",
     ].map(readRepositoryFile);
 
     for (const workflow of workflows) assertBlacksmithWorkflow(workflow);
@@ -93,6 +94,9 @@ describe("private Git release policy", () => {
     );
     expect(workflows[3]).toContain(
       "continuous CI intentionally omits them to reduce compute cost",
+    );
+    expect(workflows[4]).toContain(
+      "tests are omitted from continuous CI to reduce compute cost",
     );
   });
 
