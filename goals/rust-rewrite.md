@@ -43,16 +43,18 @@ Goal contract
 ### Completed included results
 
 - Green frozen legacy baseline and mutation-tested compatibility judge.
+- Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 
 ### Current in-scope result
 
-Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
+Complete shared Rust SDK for all supported KRX behavior and local policy.
 
 ### Next in-scope action
 
-Refresh the complete feedback surface for contract delivery PR #8 and merge the
-reviewed contract authority. Production Rust remains blocked until that PR is
-complete.
+Deliver the complete frozen `crates/krx-sdk` surface in one production SDK PR,
+organized as reviewable commits for strict all-operation conforming, transport
+and domain policy, then secure local state and migration. Keep CLI and Node
+adapter implementation out of this slice.
 
 ### Evidence and blockers
 
@@ -68,6 +70,14 @@ complete.
   passes both Linux builds, all four unchanged-archive Node consumers, and the
   Linux package-identity aggregator at `b9620e5`. No branch-push native run was
   created.
+- Contract delivery PR
+  [#8](https://github.com/cpaikr/krx-cli/pull/8) merged as `68256d2` after exact
+  documentation-head Blacksmith run
+  [32677605199](https://github.com/cpaikr/krx-cli/actions/runs/32677605199)
+  passed both Linux builds, all four Node consumers, and the identity
+  aggregator. The final feedback collection covered `1a7e158`, found all 19
+  threads resolved with no outside-diff findings or active review, and
+  CodeRabbit was successful.
 - Contract delivery PR
   [#8](https://github.com/cpaikr/krx-cli/pull/8) completed its initial
   13-job four-target matrix at `c085b94`; all native builds, eight Node
@@ -277,7 +287,6 @@ complete.
   no Actions `KRX_API_KEY` secret. Deterministic calendar and dry-run contract
   validation remain separate and do not require that credential; provisioning
   the live secret requires external authority.
-- Current boundary classification: contract-authority and public-contract
-  freeze work is included; Rust production implementation remains the next
-  semantic result and will not begin until this contract slice completes its
-  review PR.
+- Current boundary classification: contract authority is merged. Production
+  `crates/krx-sdk` implementation is active; native CLI, Node binding/facade,
+  parity cutover, and legacy removal remain later semantic results.

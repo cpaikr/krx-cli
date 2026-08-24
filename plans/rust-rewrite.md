@@ -450,8 +450,8 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Deliver one contract-authority PR that makes the validated OpenAPI document the
-sole maintained KRX wire source; freezes executable Rust, Node, CLI, error, and
-all persisted-state migration contracts; and records the certified disposable
-candidate proof. Complete feedback, re-review, and merge before production
-`crates/krx-*` implementation begins.
+Deliver the complete frozen `crates/krx-sdk` surface in one production SDK PR,
+using reviewable commits for the all-operation catalog and strict conformer,
+transport/retry/cancellation/quota and domain behavior, then credential,
+cache/offline, local-state, and migration policy. Do not begin the native CLI
+or Node adapter implementation until the SDK PR completes feedback and merge.
