@@ -1,6 +1,6 @@
 # Goal: Rust SDK, native CLI, and Node SDK rewrite
 
-Status: active
+Status: complete
 Planning scope: ROADMAP.md
 
 ## Original contract
@@ -55,34 +55,40 @@ Goal contract
 
 ### Current in-scope result
 
-Deliver the locally complete atomic cutover through final review, exact-head
-hosted certification, feedback closure, merge, and post-merge planning
-reconciliation.
+All included results are complete. The shared Rust SDK, native Clap CLI, public
+Node SDK, secure local-state behavior, certified private native artifacts, and
+atomic removal of the legacy TypeScript/JavaScript/MCP runtime are merged on
+`main`.
 
 ### Next in-scope action
 
-Complete required code review, create the final atomic-cutover PR, pass
-exact-head Blacksmith Linux GNU x64/ARM64 gates, address all feedback, merge
-while preserving commits, and reconcile the durable goal and roadmap on the
-merged repository. Clean-checkout validation is already complete.
+None. Creating the first tag or GitHub Release remains explicitly excluded
+from this goal and requires a separate publication decision.
 
 ### Evidence and blockers
 
-- The locally complete atomic-cutover branch passes the one-conformer legacy
-  absence gate, canonical OpenAPI and product-contract validation, 135
-  maintainer tests, 14 public Node facade tests, 155 Rust tests with one
-  intentional interoperability worker ignored, strict Clippy, current calendar
-  validation, Cargo advisory/license/source enforcement, and a clean production
-  dependency audit. A fresh host
-  `darwin-arm64` archive contains the native CLI, private binding, public Node
-  declarations/facade, and portable skill; it passes clean-install
-  certification under Node 24 with portable SHA-256
-  `3c84bab73759ca8b4fed59da39da01b19efe2e4562a7f8d272d97b16f69a8789`.
-  The exact same archive passes all 14 frozen compatibility scenarios and both
-  frozen cache-migration postconditions; the no-data, schema, and adjustment
-  mutants are rejected by their named scenarios. Monthly Cargo Dependabot and
-  GitHub vulnerability alerts are enabled. Final PR review, hosted exact-head
-  validation, feedback closure, and merge remain.
+- Final implementation PR
+  [#11](https://github.com/cpaikr/krx-cli/pull/11) merged as
+  `da55147cfef976f73c0f1a328a8bc48e95142a58` with all 58 implementation and
+  review commits preserved. Exact head `df3cf9d` passes 138 maintainer tests,
+  14 public Node facade tests, and 185 Rust tests with one intentional
+  interoperability worker ignored, plus strict formatting, all-target and
+  all-feature checks, Clippy, canonical contract validation, current calendar
+  validation, Cargo advisory/license/source enforcement, and the production
+  dependency audit. A clean detached-worktree `darwin-arm64` archive passes
+  Node 24 certification with portable SHA-256
+  `038e5e200a5bb85602f53d81e073b96223c8fcbc1548b5f260b24666f84b8064`,
+  all 14 frozen compatibility scenarios, both cache-migration postconditions,
+  and all three named mutation checks. Exact-head general CI run
+  [32735382336](https://github.com/cpaikr/krx-cli/actions/runs/32735382336)
+  passes Node 22/24, and native run
+  [32735382507](https://github.com/cpaikr/krx-cli/actions/runs/32735382507)
+  passes both Blacksmith Linux builds, all four unchanged-archive consumers,
+  and the identity aggregator. The final feedback collection found every
+  Codex thread resolved, no outside-diff finding, and no active review.
+  CodeRabbit's single authorized retry was skipped because 294 files exceeded
+  its 150-file limit; this was not a quota failure. No in-scope blocker
+  remains.
 - Adapter PR [#10](https://github.com/cpaikr/krx-cli/pull/10) merged as
   `9bd9bb5` with all seven reviewed commits preserved. Its final feedback
   collection covered exact head `9d28167`, found all 18 threads resolved with
@@ -536,10 +542,10 @@ merged repository. Clean-checkout validation is already complete.
   no Actions `KRX_API_KEY` secret. Deterministic calendar and dry-run contract
   validation remain separate and do not require that credential; provisioning
   the live secret requires external authority.
-- Current boundary classification: contract authority, the production shared
-  Rust SDK, native CLI, Node binding/facade, and production packaging are
-  merged on `codex/rust-rewrite-integration`. Installed-product parity,
-  migration promotion, atomic package/export cutover, legacy TypeScript and
-  JavaScript removal, and MCP removal are complete on the final branch. Review,
-  exact-head hosted certification, feedback closure, merge, and post-merge
-  planning reconciliation remain.
+- Final boundary classification: contract authority, the production shared
+  Rust SDK, native CLI, Node binding/facade, production packaging,
+  installed-product parity, migration promotion, atomic package/export
+  cutover, legacy TypeScript and JavaScript removal, and MCP removal are merged
+  on `main`. Exact-head hosted certification and feedback closure are complete;
+  only the separately authorized first tag or GitHub Release can publish the
+  certified private artifacts.
