@@ -542,7 +542,7 @@ from this goal and requires a separate publication decision.
   no Actions `KRX_API_KEY` secret. Deterministic calendar and dry-run contract
   validation remain separate and do not require that credential; provisioning
   the live secret requires external authority.
-- Final boundary classification: contract authority, the production shared
+- Final boundary classification: contract authority, the production-shared
   Rust SDK, native CLI, Node binding/facade, production packaging,
   installed-product parity, migration promotion, atomic package/export
   cutover, legacy TypeScript and JavaScript removal, and MCP removal are merged
