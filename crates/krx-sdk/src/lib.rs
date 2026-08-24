@@ -10,6 +10,14 @@ mod adjustment;
     not(test),
     expect(
         dead_code,
+        reason = "approval persistence is consumed by the private client engine in this SDK PR"
+    )
+)]
+mod approval;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
         reason = "calendar selection is consumed by ranges and default-date resolution"
     )
 )]
@@ -31,6 +39,14 @@ mod composites;
     )
 )]
 mod conformer;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "credential resolution is consumed by the private client engine in this SDK PR"
+    )
+)]
+mod credential;
 #[cfg_attr(
     not(test),
     expect(
@@ -79,6 +95,8 @@ mod state;
 #[path = "state_windows.rs"]
 mod state;
 
+pub use approval::{ApprovalObservation, ApprovalState};
+pub use credential::{CredentialMigrationResult, CredentialSource, CredentialStatus};
 pub use error::{KrxError, KrxErrorCode, KrxErrorKind};
 pub use operation::{
     ApprovalCategory, OperationDescription, OperationFieldDescription, OperationId,

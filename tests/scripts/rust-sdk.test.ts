@@ -87,6 +87,15 @@ function assertDomainPolicySources(sources: {
 }
 
 function assertQuotaStateProtocolSource(source: string): void {
+  const atomicStart = source.indexOf("fn atomic_write_observed_inner(");
+  const atomicEnd = source.indexOf(
+    "pub(crate) fn try_acquire_plain_lock(",
+    atomicStart,
+  );
+  const atomicWrite = source.slice(atomicStart, atomicEnd);
+  const atomicRename = atomicWrite.indexOf("rustix::fs::renameat(");
+  const commitMarker = atomicWrite.indexOf("committed = true;");
+  const directorySync = atomicWrite.indexOf("rustix::fs::fsync(&parent)");
   const ownerStart = source.indexOf("fn write_lock_owner(");
   const ownerEnd = source.indexOf("fn abandon_new_lock(", ownerStart);
   const ownerPublication = source.slice(ownerStart, ownerEnd);
@@ -102,6 +111,13 @@ function assertQuotaStateProtocolSource(source: string): void {
   const mismatchEnd = publication.indexOf("Ok(Some(claim))", mismatchStart);
   const mismatch = publication.slice(mismatchStart, mismatchEnd);
   if (
+    atomicStart < 0 ||
+    atomicEnd < 0 ||
+    atomicRename < 0 ||
+    commitMarker <= atomicRename ||
+    directorySync <= commitMarker ||
+    !atomicWrite.includes("let mut committed = false;") ||
+    !atomicWrite.includes("result.map_err(|error| (error, committed))") ||
     ownerStart < 0 ||
     ownerEnd < 0 ||
     ownerSync < 0 ||
@@ -240,7 +256,9 @@ function assertWindowsStateProtocolSource(source: string): void {
     renameCommitted <= atomicRename ||
     parentFlush <= renameCommitted ||
     !atomicWrite.includes("if result.is_err() && !renamed") ||
+    !atomicWrite.includes("let mut renamed = false;") ||
     !atomicWrite.includes("delete_open_handle(file.as_raw_handle())") ||
+    !atomicWrite.includes("result.map_err(|error| (error, renamed))") ||
     rootStart < 0 ||
     rootEnd < 0 ||
     !rootTraversal.includes("Dir::from_std_file(ambient)") ||
@@ -469,6 +487,148 @@ function assertNodeQuotaStateProtocolSource(source: string): void {
   }
 }
 
+function assertCredentialApprovalProtocolSources(sources: {
+  readonly approval: string;
+  readonly build: string;
+  readonly credential: string;
+}): void {
+  const migrationStart = sources.credential.indexOf(
+    "fn migrate_legacy_blocking(",
+  );
+  const migrationEnd = sources.credential.indexOf(
+    "fn verify_backend(",
+    migrationStart,
+  );
+  const migration = sources.credential.slice(migrationStart, migrationEnd);
+  const setStart = sources.credential.indexOf("fn set_blocking(");
+  const setEnd = sources.credential.indexOf(
+    "fn migrate_legacy_blocking(",
+    setStart,
+  );
+  const setMutation = sources.credential.slice(setStart, setEnd);
+  const setLock = setMutation.indexOf(
+    "let _lock = acquire_config_lock(state)?;",
+  );
+  const clearApprovals = setMutation.indexOf(
+    "clear_for_rotation_locked(state)?;",
+    setLock,
+  );
+  const setCredential = setMutation.indexOf(
+    "let write_error = backend.set(secret).err();",
+    clearApprovals,
+  );
+  const verifyCredential = setMutation.indexOf(
+    "verify_backend(backend, secret)",
+    setCredential,
+  );
+  const publicRemoveStart = sources.credential.indexOf(
+    "pub(crate) async fn remove(&self)",
+  );
+  const publicRemoveEnd = sources.credential.indexOf(
+    "pub(crate) async fn migrate_legacy(&self)",
+    publicRemoveStart,
+  );
+  const publicRemove = sources.credential.slice(
+    publicRemoveStart,
+    publicRemoveEnd,
+  );
+  const validateSource = migration.indexOf("migrate_approval_root(");
+  const migrationLock = migration.indexOf(
+    "acquire_legacy_migration_lock(state)?",
+  );
+  const inspectKeychain = migration.indexOf("let existing = backend.get()?");
+  const verifyKeychain = migration.indexOf("verify_backend(backend, &secret)");
+  const writeConfig = migration.indexOf("write(state, &root)", verifyKeychain);
+  const commitAwareRollback = migration.indexOf(
+    "if created && !committed && !rollback_created_backend(backend, &secret)",
+    writeConfig,
+  );
+  const recordStart = sources.approval.indexOf("fn record_blocking(");
+  const recordEnd = sources.approval.indexOf(
+    "pub(crate) fn clear_for_rotation_blocking(",
+    recordStart,
+  );
+  const record = sources.approval.slice(recordStart, recordEnd);
+  const lock = record.indexOf("let _lock = acquire_config_lock(state)?;");
+  const reread = record.indexOf("read_config_for_write(", lock);
+  const legacyStart = sources.approval.indexOf("fn is_legacy_observation(");
+  const legacyEnd = sources.approval.indexOf(
+    "fn validate_observation(",
+    legacyStart,
+  );
+  const legacyClassifier = sources.approval.slice(legacyStart, legacyEnd);
+  const configLockStart = sources.approval.indexOf(
+    "fn acquire_config_lock_with_error(",
+  );
+  const configLockEnd = sources.approval.indexOf(
+    "fn canonical_timestamp(",
+    configLockStart,
+  );
+  const configLock = sources.approval.slice(configLockStart, configLockEnd);
+  const required = [
+    [sources.build, 'join("contracts/product/v1/migrations.yaml")'],
+    [sources.build, "pub(crate) const KEYRING_SERVICE"],
+    [sources.build, "pub(crate) const APPROVAL_TTL_SECONDS"],
+    [
+      sources.credential,
+      "keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT)",
+    ],
+    [sources.credential, "tokio::task::spawn_blocking"],
+    [sources.credential, "rollback_created_backend(backend, &secret)"],
+    [sources.credential, "match backend.get()"],
+    [sources.approval, "if persisted.credential_id != fingerprint"],
+    [sources.approval, "ReadSensitivity::LegacySecret"],
+    [sources.approval, "try_acquire_legacy_secret_plain_lock"],
+    [sources.approval, 'message.replace(exact_secret, "[REDACTED]")'],
+    [
+      sources.approval,
+      "checked_at.checked_add(Duration::from_secs(APPROVAL_TTL_SECONDS))",
+    ],
+  ] as const;
+  if (
+    required.some(([source, marker]) => !source.includes(marker)) ||
+    migrationStart < 0 ||
+    migrationEnd < 0 ||
+    validateSource < 0 ||
+    migrationLock < 0 ||
+    validateSource <= migrationLock ||
+    inspectKeychain <= validateSource ||
+    verifyKeychain <= inspectKeychain ||
+    writeConfig <= verifyKeychain ||
+    commitAwareRollback <= writeConfig ||
+    setStart < 0 ||
+    setEnd < 0 ||
+    publicRemoveStart < 0 ||
+    publicRemoveEnd < 0 ||
+    setLock < 0 ||
+    clearApprovals <= setLock ||
+    setCredential <= clearApprovals ||
+    verifyCredential <= setCredential ||
+    setMutation.includes("restore_backend") ||
+    !publicRemove.includes("spawn_blocking(move || backend.remove())") ||
+    publicRemove.includes("StateRoot") ||
+    publicRemove.includes("acquire_config_lock") ||
+    recordStart < 0 ||
+    recordEnd < 0 ||
+    lock < 0 ||
+    reread <= lock ||
+    legacyStart < 0 ||
+    legacyEnd < 0 ||
+    configLockStart < 0 ||
+    configLockEnd < 0 ||
+    !configLock.includes(
+      'error_code,\n                "timed out waiting for the configuration lock"',
+    ) ||
+    !["state", "validUntil", "credentialId", "failureType", "error"].every(
+      (field) => legacyClassifier.includes(`"${field}"`),
+    )
+  ) {
+    throw new Error(
+      "Rust credential and approval protocol is incomplete or reordered",
+    );
+  }
+}
+
 describe("production Rust SDK gate", () => {
   it("owns a pinned workspace without probe or adapter dependencies", () => {
     const workspace = read("Cargo.toml");
@@ -485,6 +645,7 @@ describe("production Rust SDK gate", () => {
       ["serde_json", "1.0.151"],
       ["serde-saphyr", "1.1.0"],
       ["jiff", "0.2.35"],
+      ["keyring", "4.1.6"],
       ["num-bigint", "0.5.1"],
       ["rustix", "1.1.4"],
       ["tokio-util", "0.7.19"],
@@ -507,9 +668,105 @@ describe("production Rust SDK gate", () => {
     expect(sdk).toContain(
       "[target.'cfg(unix)'.dependencies]\nrustix.workspace = true",
     );
+    expect(sdk).toContain("keyring.workspace = true");
+    for (const forbidden of ["db-keystore", "turso", "libsql"]) {
+      expect(lock).not.toMatch(new RegExp(`name = "${forbidden}"`, "u"));
+    }
     expect(sdk).toContain(
       "[target.'cfg(windows)'.dependencies]\ncap-std.workspace = true\nwindows-sys.workspace = true",
     );
+  });
+
+  it("freezes credential, keychain, approval, and migration ordering", () => {
+    const sources = {
+      approval: read("crates/krx-sdk/src/approval.rs"),
+      build: read("crates/krx-sdk/build.rs"),
+      credential: read("crates/krx-sdk/src/credential.rs"),
+    };
+    expect(() =>
+      assertCredentialApprovalProtocolSources(sources),
+    ).not.toThrow();
+    expect(() =>
+      assertCredentialApprovalProtocolSources({
+        ...sources,
+        credential: sources.credential.replace(
+          "let existing = backend.get()?",
+          "let existing = None",
+        ),
+      }),
+    ).toThrow(/credential and approval protocol/u);
+    expect(() =>
+      assertCredentialApprovalProtocolSources({
+        ...sources,
+        credential: sources.credential.replace(
+          "spawn_blocking(move || backend.remove())",
+          "spawn_blocking(move || remove_blocking(backend.as_ref(), &state))",
+        ),
+      }),
+    ).toThrow(/credential and approval protocol/u);
+    expect(() =>
+      assertCredentialApprovalProtocolSources({
+        ...sources,
+        credential: sources.credential.replace(
+          "let write_error = backend.set(secret).err();",
+          "let write_error = None;",
+        ),
+      }),
+    ).toThrow(/credential and approval protocol/u);
+    expect(() =>
+      assertCredentialApprovalProtocolSources({
+        ...sources,
+        credential: sources.credential.replace(
+          "clear_for_rotation_locked(state)?;",
+          "let _ = state;",
+        ),
+      }),
+    ).toThrow(/credential and approval protocol/u);
+    expect(() =>
+      assertCredentialApprovalProtocolSources({
+        ...sources,
+        approval: sources.approval.replace(
+          "if persisted.credential_id != fingerprint",
+          "if false",
+        ),
+      }),
+    ).toThrow(/credential and approval protocol/u);
+    expect(() =>
+      assertCredentialApprovalProtocolSources({
+        ...sources,
+        approval: sources.approval.replace(
+          'message.replace(exact_secret, "[REDACTED]")',
+          "message.to_owned()",
+        ),
+      }),
+    ).toThrow(/credential and approval protocol/u);
+    expect(() =>
+      assertCredentialApprovalProtocolSources({
+        ...sources,
+        credential: sources.credential.replace(
+          "if created && !committed && !rollback_created_backend(backend, &secret)",
+          "if created && !rollback_created_backend(backend, &secret)",
+        ),
+      }),
+    ).toThrow(/credential and approval protocol/u);
+    expect(() =>
+      assertCredentialApprovalProtocolSources({
+        ...sources,
+        approval: sources.approval.replace(
+          '        "credentialId",\n        "failureType",',
+          '        "other",\n        "failureType",',
+        ),
+      }),
+    ).toThrow(/credential and approval protocol/u);
+    expect(() =>
+      assertCredentialApprovalProtocolSources({
+        ...sources,
+        approval: sources.approval.replace(
+          'error_code,\n                "timed out waiting for the configuration lock"',
+          'KrxErrorCode::MigrationFailed,\n                "timed out waiting for the configuration lock"',
+        ),
+      }),
+    ).toThrow(/credential and approval protocol/u);
   });
 
   it("derives production wire tables into Cargo output from canonical artifacts", () => {
@@ -698,6 +955,19 @@ describe("production Rust SDK gate", () => {
     ).toThrow(/owner\/claim publication protocol/u);
     expect(() =>
       assertQuotaStateProtocolSource(
+        rustState.replace("committed = true;", "committed = false;"),
+      ),
+    ).toThrow(/owner\/claim publication protocol/u);
+    expect(() =>
+      assertQuotaStateProtocolSource(
+        rustState.replace(
+          "let mut committed = false;",
+          "let mut committed = true;",
+        ),
+      ),
+    ).toThrow(/owner\/claim publication protocol/u);
+    expect(() =>
+      assertQuotaStateProtocolSource(
         rustState.replace(
           'return Err(state_error(\n                error_code,\n                "local steal claim identity changed",\n            ));',
           'release_steal_claim(lock_directory, &claim);\n            return Err(state_error(\n                error_code,\n                "local steal claim identity changed",\n            ));',
@@ -717,6 +987,22 @@ describe("production Rust SDK gate", () => {
         windowsState.replace(
           ".custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT);",
           ".custom_flags(FILE_FLAG_BACKUP_SEMANTICS);",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "let mut renamed = false;",
+          "let mut renamed = true;",
+        ),
+      ),
+    ).toThrow(/Windows quota state/u);
+    expect(() =>
+      assertWindowsStateProtocolSource(
+        windowsState.replace(
+          "result.map_err(|error| (error, renamed))",
+          "result.map_err(|error| (error, false))",
         ),
       ),
     ).toThrow(/Windows quota state/u);

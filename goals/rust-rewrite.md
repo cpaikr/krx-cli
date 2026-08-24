@@ -52,12 +52,36 @@ Complete shared Rust SDK for all supported KRX behavior and local policy.
 ### Next in-scope action
 
 Complete the remaining frozen `crates/krx-sdk` surface in the same production
-SDK PR: add credential and approval resolution, transport, cache/offline
-policy, and legacy migration. Keep CLI and Node adapter implementation out of
-this slice.
+SDK PR: add the private retrying transport, cache/offline/singleflight policy,
+cache migration, range orchestration, and public client handles. Keep CLI and
+Node adapter implementation out of this slice.
 
 ### Evidence and blockers
 
+- The reviewed credential and approval checkpoint derives the native keyring
+  service/account, environment source, approval TTL, and fixed category probes
+  from the frozen product contracts. Resolution is strictly explicit,
+  environment, keychain, then missing; invalid present sources never fall
+  through. Keyring 4.1.6 uses only native platform stores, with the rejected
+  database fallback graph absent. Credential rotation acquires the
+  legacy-secret-sensitive config lock, atomically clears credential-bound
+  approvals before its sole keychain write, and requires zeroized exact
+  readback. A partial write with exact readback reconciles, while every failure
+  path is fail-closed and performs no restorative write that could resurrect a
+  concurrently removed credential. Removal is keychain-only and does not
+  create, inspect, or wait on local filesystem state. Approval persistence is
+  strict, fingerprint-bound, redacted, 900-second UTC-millisecond state in the
+  single config authority, with merge-on-write concurrency and exact legacy
+  classification. Explicit plaintext migration validates the complete secure
+  source before keychain access, preserves exact bytes, distinguishes
+  pre-/post-commit failures, and rolls back only a newly created still-matching
+  credential. Unix and Windows use non-repairing secret-sensitive lock paths
+  for migration. Independent contract and security rereviews are clean. The
+  exact checkpoint passes 87 Rust tests with one intentional interop worker
+  ignored, the real Node/Rust interoperability gate, host and Windows locked
+  all-feature checks and strict Clippy, the seven-test mutation/source gate,
+  and full `pnpm verify` with 49 files and 507 tests, production audit, 13
+  installed-package scenarios, and package smoke.
 - The reviewed Windows state substrate now matches the frozen shared quota
   protocol with handle-rooted no-follow traversal and exact-handle create,
   link, rename, deletion, and cleanup. Local state enforces current-user

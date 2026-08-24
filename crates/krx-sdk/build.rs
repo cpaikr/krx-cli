@@ -11,8 +11,16 @@ use serde_json::Value;
 struct ProductContract {
     operations: Vec<ProductOperation>,
     operation_sets: ProductOperationSets,
+    approval_probes: BTreeMap<String, String>,
     composites: ProductComposites,
+    defaults: ProductDefaults,
     errors: ProductErrors,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProductDefaults {
+    approval_ttl_seconds: u64,
 }
 
 #[derive(Deserialize)]
@@ -573,13 +581,58 @@ fn generate_operations(document: &Value, product: &ProductContract, output: &Pat
     fs::write(output.join("operation_contract.rs"), generated).expect("write generated operations");
 }
 
+fn generate_local_state(product: &ProductContract, migrations: &Value, output: &Path) {
+    let service = required_str(migrations, "/credential/keychain/service");
+    let account = required_str(migrations, "/credential/keychain/account");
+    let environment = required(migrations, "/credential/resolutionPrecedence")
+        .as_array()
+        .expect("credential precedence array")
+        .iter()
+        .find_map(|source| {
+            let source = source.as_str()?;
+            (source == "KRX_API_KEY").then_some(source)
+        })
+        .expect("credential environment source");
+    let mut generated = String::from("// Generated from checked product contracts.\n");
+    generated.push_str(&format!(
+        "pub(crate) const KEYRING_SERVICE: &str = {};\n",
+        literal(service)
+    ));
+    generated.push_str(&format!(
+        "pub(crate) const KEYRING_ACCOUNT: &str = {};\n",
+        literal(account)
+    ));
+    generated.push_str(&format!(
+        "pub(crate) const CREDENTIAL_ENVIRONMENT: &str = {};\n",
+        literal(environment)
+    ));
+    generated.push_str(&format!(
+        "pub(crate) const APPROVAL_TTL_SECONDS: u64 = {};\n",
+        product.defaults.approval_ttl_seconds
+    ));
+    generated
+        .push_str("pub(crate) static APPROVAL_PROBES: &[(ApprovalCategory, OperationId)] = &[\n");
+    for (category, operation) in &product.approval_probes {
+        generated.push_str(&format!(
+            "    (ApprovalCategory::{}, OperationId::{}),\n",
+            rust_variant(category),
+            rust_variant(operation)
+        ));
+    }
+    generated.push_str("];\n");
+    fs::write(output.join("local_state_contract.rs"), generated)
+        .expect("write generated local state contract");
+}
+
 fn main() {
     let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("manifest directory"));
     let repository = manifest.join("../..");
     let openapi_path = repository.join("contracts/krx/openapi.yaml");
     let product_path = repository.join("contracts/generated/product-v1.json");
+    let migrations_path = repository.join("contracts/product/v1/migrations.yaml");
     println!("cargo:rerun-if-changed={}", openapi_path.display());
     println!("cargo:rerun-if-changed={}", product_path.display());
+    println!("cargo:rerun-if-changed={}", migrations_path.display());
 
     let document: Value =
         serde_saphyr::from_str(&fs::read_to_string(openapi_path).expect("read canonical OpenAPI"))
@@ -587,6 +640,10 @@ fn main() {
     let product: ProductContract =
         serde_json::from_slice(&fs::read(product_path).expect("read generated product contract"))
             .expect("parse generated product contract");
+    let migrations: Value = serde_saphyr::from_str(
+        &fs::read_to_string(migrations_path).expect("read migration contract"),
+    )
+    .expect("parse migration contract");
     assert_eq!(
         product.operations.len(),
         31,
@@ -596,4 +653,5 @@ fn main() {
     let output = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo output directory"));
     generate_errors(&product, &output);
     generate_operations(&document, &product, &output);
+    generate_local_state(&product, &migrations, &output);
 }

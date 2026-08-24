@@ -40,6 +40,16 @@ impl KrxError {
         self
     }
 
+    pub(crate) fn redact_exact(mut self, secret: &str) -> Self {
+        if !secret.is_empty() {
+            self.message = self.message.replace(secret, "[REDACTED]");
+            self.provider_code = self
+                .provider_code
+                .map(|code| code.replace(secret, "[REDACTED]"));
+        }
+        self
+    }
+
     pub fn kind(&self) -> KrxErrorKind {
         self.code.kind()
     }

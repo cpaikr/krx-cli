@@ -1,12 +1,11 @@
 use std::collections::BTreeMap;
-use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime};
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
+use crate::credential::credential_fingerprint;
 use crate::state::{ReadSensitivity, StateRoot};
 use crate::{ApiKey, Cancellation, KrxError, KrxErrorCode, TradingDate};
 
@@ -218,15 +217,6 @@ fn validate_quota(data: &QuotaV1) -> Result<(), KrxError> {
         }
     }
     Ok(())
-}
-
-fn credential_fingerprint(api_key: &ApiKey) -> String {
-    let digest = Sha256::digest(api_key.expose().as_bytes());
-    let mut fingerprint = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        write!(&mut fingerprint, "{byte:02x}").expect("writing to a String cannot fail");
-    }
-    fingerprint
 }
 
 fn invalid_quota(message: &'static str) -> KrxError {

@@ -82,11 +82,31 @@ impl ObservedFile {
     pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
+
+    pub(crate) fn into_bytes(self) -> Vec<u8> {
+        self.bytes
+    }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct StateRoot {
     path: PathBuf,
+}
+
+#[derive(Debug)]
+pub(crate) struct AtomicWriteFailure {
+    error: KrxError,
+    committed: bool,
+}
+
+impl AtomicWriteFailure {
+    pub(crate) fn committed(&self) -> bool {
+        self.committed
+    }
+
+    pub(crate) fn into_error(self) -> KrxError {
+        self.error
+    }
 }
 
 #[derive(Debug)]
@@ -180,15 +200,40 @@ impl StateRoot {
         bytes: &[u8],
         error_code: KrxErrorCode,
     ) -> Result<(), KrxError> {
-        let components = relative_components(relative)?;
+        self.atomic_write_observed(relative, bytes, error_code)
+            .map_err(AtomicWriteFailure::into_error)
+    }
+
+    pub(crate) fn atomic_write_observed(
+        &self,
+        relative: &str,
+        bytes: &[u8],
+        error_code: KrxErrorCode,
+    ) -> Result<(), AtomicWriteFailure> {
+        self.atomic_write_observed_inner(relative, bytes, error_code, false, false)
+            .map_err(|(error, committed)| AtomicWriteFailure { error, committed })
+    }
+
+    fn atomic_write_observed_inner(
+        &self,
+        relative: &str,
+        bytes: &[u8],
+        error_code: KrxErrorCode,
+        fail_before_commit: bool,
+        fail_after_commit: bool,
+    ) -> Result<(), (KrxError, bool)> {
+        let before_commit = |error| (error, false);
+        let components = relative_components(relative).map_err(before_commit)?;
         let root = open_absolute_root(
             &self.path,
             true,
             true,
             ReadSensitivity::NonSecret,
             error_code,
-        )?
-        .ok_or_else(|| state_error(error_code, "local state root could not be created"))?;
+        )
+        .map_err(before_commit)?
+        .ok_or_else(|| state_error(error_code, "local state root could not be created"))
+        .map_err(before_commit)?;
         let (parents, leaf) = components.split_at(components.len() - 1);
         let parent = open_relative_directories(
             &root,
@@ -197,28 +242,65 @@ impl StateRoot {
             true,
             ReadSensitivity::NonSecret,
             error_code,
-        )?
-        .ok_or_else(|| state_error(error_code, "local state parent could not be created"))?;
-        validate_destination(&parent, &leaf[0], error_code)?;
+        )
+        .map_err(before_commit)?
+        .ok_or_else(|| state_error(error_code, "local state parent could not be created"))
+        .map_err(before_commit)?;
+        validate_destination(&parent, &leaf[0], error_code).map_err(before_commit)?;
 
-        let temporary = temporary_name(&leaf[0])?;
-        let mut file = create_secure_file(&parent, &temporary, error_code)?;
+        let temporary = temporary_name(&leaf[0]).map_err(before_commit)?;
+        let mut file =
+            create_secure_file(&parent, &temporary, error_code).map_err(before_commit)?;
         let mut renamed = false;
         let result = (|| {
             file.write_all(bytes)
                 .map_err(|_| state_error(error_code, "local state write failed"))?;
             file.sync_all()
                 .map_err(|_| state_error(error_code, "local state file sync failed"))?;
+            if fail_before_commit {
+                return Err(state_error(
+                    error_code,
+                    "injected local state pre-commit failure",
+                ));
+            }
             rename_open_handle(&file, &parent, &leaf[0], true)
                 .map_err(|_| state_error(error_code, "local state atomic replace failed"))?;
             renamed = true;
+            if fail_after_commit {
+                return Err(state_error(
+                    error_code,
+                    "injected local state directory sync failure",
+                ));
+            }
             flush_directory(&parent, error_code, "local state directory sync failed")
         })();
         if result.is_err() && !renamed {
             let _ = delete_open_handle(file.as_raw_handle());
         }
         drop(file);
-        result
+        result.map_err(|error| (error, renamed))
+    }
+
+    #[cfg(test)]
+    fn atomic_write_with_post_commit_failure(
+        &self,
+        relative: &str,
+        bytes: &[u8],
+        error_code: KrxErrorCode,
+    ) -> Result<(), AtomicWriteFailure> {
+        self.atomic_write_observed_inner(relative, bytes, error_code, false, true)
+            .map_err(|(error, committed)| AtomicWriteFailure { error, committed })
+    }
+
+    #[cfg(test)]
+    fn atomic_write_with_pre_commit_failure(
+        &self,
+        relative: &str,
+        bytes: &[u8],
+        error_code: KrxErrorCode,
+    ) -> Result<(), AtomicWriteFailure> {
+        self.atomic_write_observed_inner(relative, bytes, error_code, true, false)
+            .map_err(|(error, committed)| AtomicWriteFailure { error, committed })
     }
 
     pub(crate) fn try_acquire_plain_lock(
@@ -227,16 +309,42 @@ impl StateRoot {
         owner: String,
         error_code: KrxErrorCode,
     ) -> Result<Option<PlainDirectoryLock>, KrxError> {
-        validate_plain_lock_owner(&owner)?;
-        let components = relative_components(relative)?;
-        let root = open_absolute_root(
-            &self.path,
-            true,
+        self.try_acquire_plain_lock_with_sensitivity(
+            relative,
+            owner,
             true,
             ReadSensitivity::NonSecret,
             error_code,
-        )?
-        .ok_or_else(|| state_error(error_code, "local state root could not be created"))?;
+        )
+    }
+
+    pub(crate) fn try_acquire_legacy_secret_plain_lock(
+        &self,
+        relative: &str,
+        owner: String,
+        error_code: KrxErrorCode,
+    ) -> Result<Option<PlainDirectoryLock>, KrxError> {
+        self.try_acquire_plain_lock_with_sensitivity(
+            relative,
+            owner,
+            false,
+            ReadSensitivity::LegacySecret,
+            error_code,
+        )
+    }
+
+    fn try_acquire_plain_lock_with_sensitivity(
+        &self,
+        relative: &str,
+        owner: String,
+        repair_security: bool,
+        sensitivity: ReadSensitivity,
+        error_code: KrxErrorCode,
+    ) -> Result<Option<PlainDirectoryLock>, KrxError> {
+        validate_plain_lock_owner(&owner)?;
+        let components = relative_components(relative)?;
+        let root = open_absolute_root(&self.path, true, repair_security, sensitivity, error_code)?
+            .ok_or_else(|| state_error(error_code, "local state root could not be created"))?;
         let (parents, leaf) = components.split_at(components.len() - 1);
         let parent = open_relative_directories(
             &root,
@@ -316,14 +424,45 @@ impl StateRoot {
         now: SystemTime,
         error_code: KrxErrorCode,
     ) -> Result<bool, KrxError> {
-        let components = relative_components(relative)?;
-        let Some(root) = open_absolute_root(
-            &self.path,
-            false,
+        self.steal_plain_lock_if_stale_with_sensitivity(
+            relative,
+            stale_after,
+            now,
             true,
             ReadSensitivity::NonSecret,
             error_code,
-        )?
+        )
+    }
+
+    pub(crate) fn steal_legacy_secret_plain_lock_if_stale(
+        &self,
+        relative: &str,
+        stale_after: Duration,
+        now: SystemTime,
+        error_code: KrxErrorCode,
+    ) -> Result<bool, KrxError> {
+        self.steal_plain_lock_if_stale_with_sensitivity(
+            relative,
+            stale_after,
+            now,
+            false,
+            ReadSensitivity::LegacySecret,
+            error_code,
+        )
+    }
+
+    fn steal_plain_lock_if_stale_with_sensitivity(
+        &self,
+        relative: &str,
+        stale_after: Duration,
+        now: SystemTime,
+        repair_security: bool,
+        sensitivity: ReadSensitivity,
+        error_code: KrxErrorCode,
+    ) -> Result<bool, KrxError> {
+        let components = relative_components(relative)?;
+        let Some(root) =
+            open_absolute_root(&self.path, false, repair_security, sensitivity, error_code)?
         else {
             return Ok(false);
         };
@@ -1761,9 +1900,51 @@ fn same_object_identity(left: &FileIdentity, right: &FileIdentity) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::*;
 
     const VALID_OWNER: &str = "42-4c691fc0-09c4-4c83-904d-d10b1681ff73";
+
+    #[test]
+    fn post_commit_sync_failure_reports_committed_replacement() {
+        let parent = std::env::temp_dir().join(format!("krx-state-{}", Uuid::new_v4()));
+        let root_path = parent.join(".krx-cli");
+        let state = StateRoot::new(root_path.clone()).unwrap();
+        state
+            .atomic_write("config.json", b"before", KrxErrorCode::MigrationFailed)
+            .unwrap();
+        let failure = state
+            .atomic_write_with_post_commit_failure(
+                "config.json",
+                b"after",
+                KrxErrorCode::MigrationFailed,
+            )
+            .unwrap_err();
+        assert!(failure.committed());
+        assert_eq!(fs::read(root_path.join("config.json")).unwrap(), b"after");
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn pre_commit_failure_reports_uncommitted_and_preserves_destination() {
+        let parent = std::env::temp_dir().join(format!("krx-state-{}", Uuid::new_v4()));
+        let root_path = parent.join(".krx-cli");
+        let state = StateRoot::new(root_path.clone()).unwrap();
+        state
+            .atomic_write("config.json", b"before", KrxErrorCode::MigrationFailed)
+            .unwrap();
+        let failure = state
+            .atomic_write_with_pre_commit_failure(
+                "config.json",
+                b"after",
+                KrxErrorCode::MigrationFailed,
+            )
+            .unwrap_err();
+        assert!(!failure.committed());
+        assert_eq!(fs::read(root_path.join("config.json")).unwrap(), b"before");
+        fs::remove_dir_all(parent).unwrap();
+    }
 
     #[test]
     fn absolute_roots_require_safe_local_drive_components() {

@@ -3,7 +3,7 @@ include!(concat!(
     "/../../contracts/generated/operation-id.rs"
 ));
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ApprovalCategory {
     Index,
     Stock,
@@ -12,6 +12,36 @@ pub enum ApprovalCategory {
     Derivative,
     Commodity,
     Esg,
+}
+
+impl ApprovalCategory {
+    pub(crate) const ALL: [Self; 7] = [
+        Self::Index,
+        Self::Stock,
+        Self::Etp,
+        Self::Bond,
+        Self::Derivative,
+        Self::Commodity,
+        Self::Esg,
+    ];
+
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Index => "index",
+            Self::Stock => "stock",
+            Self::Etp => "etp",
+            Self::Bond => "bond",
+            Self::Derivative => "derivative",
+            Self::Commodity => "commodity",
+            Self::Esg => "esg",
+        }
+    }
+
+    pub(crate) fn parse(value: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|category| category.as_str() == value)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -25,6 +25,10 @@ impl ApiKey {
     pub(crate) fn expose(&self) -> &str {
         self.0.as_str()
     }
+
+    pub(crate) fn from_exact(value: String) -> Self {
+        Self(Zeroizing::new(value))
+    }
 }
 
 impl fmt::Debug for ApiKey {
