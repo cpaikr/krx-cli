@@ -19,11 +19,12 @@ use crate::state::StateRoot;
 use crate::transport::DirectTransport;
 use crate::watchlist::{WatchlistEntry, WatchlistStore};
 use crate::{
-    ApiKey, ApprovalCategory, ApprovalObservation, CachePolicy, CallOptions, Cancellation,
-    DirectRequest, Freshness, KrxError, KrxErrorCode, MarketComponent, MarketSummaryRequest,
-    MarketSummaryResult, OperationDescription, OperationId, QueryResult, RangeMode, RangeRequest,
-    RangeResult, ResultProvenance, ResultSource, Row, SearchMarket, StockSearchRequest,
-    StockSearchResult, WatchlistMarket, WatchlistPricesRequest, WatchlistPricesResult,
+    ApiKey, ApprovalCategory, ApprovalObservation, CacheObservation, CachePolicy, CallOptions,
+    Cancellation, DirectRequest, Freshness, KrxError, KrxErrorCode, MarketComponent,
+    MarketSummaryRequest, MarketSummaryResult, Observation, ObservationBuffer, ObservationPhase,
+    OperationDescription, OperationId, QueryResult, RangeMode, RangeRequest, RangeResult,
+    ResultProvenance, ResultSource, Row, SearchMarket, StockSearchRequest, StockSearchResult,
+    WatchlistMarket, WatchlistPricesRequest, WatchlistPricesResult,
 };
 
 type TransportFuture<'a> = Pin<Box<dyn Future<Output = Result<Vec<Row>, KrxError>> + Send + 'a>>;
@@ -45,6 +46,7 @@ struct ClientInner {
 
 pub struct ClientBuilder {
     api_key: Option<ApiKey>,
+    observations: ObservationBuffer,
 }
 
 impl ClientBuilder {
@@ -53,12 +55,19 @@ impl ClientBuilder {
         self
     }
 
+    /// Attach a sanitized observation buffer for frontend diagnostics.
+    pub fn observations(mut self, observations: ObservationBuffer) -> Self {
+        self.observations = observations;
+        self
+    }
+
     pub fn build(self) -> Result<Client, KrxError> {
         self.build_at(default_state_root()?)
     }
 
     fn build_at(self, state_root: PathBuf) -> Result<Client, KrxError> {
-        let direct = DirectQueryClient::native(state_root.clone(), self.api_key)?;
+        let direct =
+            DirectQueryClient::native(state_root.clone(), self.api_key, self.observations)?;
         let credentials = direct.credentials.clone();
         let cache = direct.cache.clone();
         Ok(Client {
@@ -75,7 +84,10 @@ impl ClientBuilder {
 
 impl Client {
     pub fn builder() -> ClientBuilder {
-        ClientBuilder { api_key: None }
+        ClientBuilder {
+            api_key: None,
+            observations: ObservationBuffer::default(),
+        }
     }
 
     /// Resolve the SDK-owned default trading date using the frozen KRX
@@ -470,6 +482,7 @@ pub(crate) struct DirectQueryClient<T = DirectTransport> {
     credentials: CredentialManager,
     cache: CacheStore,
     transport: Arc<T>,
+    observations: ObservationBuffer,
     #[cfg(test)]
     after_refresh_baseline: Option<RefreshBaselinePause>,
 }
@@ -482,11 +495,16 @@ struct RefreshBaselinePause {
 }
 
 impl DirectQueryClient<DirectTransport> {
-    pub(crate) fn native(state_root: PathBuf, explicit: Option<ApiKey>) -> Result<Self, KrxError> {
+    pub(crate) fn native(
+        state_root: PathBuf,
+        explicit: Option<ApiKey>,
+        observations: ObservationBuffer,
+    ) -> Result<Self, KrxError> {
         Ok(Self {
             credentials: CredentialManager::native(state_root.clone(), explicit),
             cache: CacheStore::new(StateRoot::new(state_root.clone())?),
-            transport: Arc::new(DirectTransport::new(state_root)?),
+            transport: Arc::new(DirectTransport::new(state_root, observations.clone())?),
+            observations,
             #[cfg(test)]
             after_refresh_baseline: None,
         })
@@ -503,6 +521,7 @@ where
             credentials: CredentialManager::native(state_root.clone(), explicit),
             cache: CacheStore::new(StateRoot::new(state_root).expect("test state root")),
             transport: Arc::new(transport),
+            observations: ObservationBuffer::default(),
             after_refresh_baseline: None,
         }
     }
@@ -528,40 +547,45 @@ where
         let key = self.cache.key(request.operation, request.date.clone())?;
 
         match request.options.cache.clone() {
-            CachePolicy::Offline => self.offline_query(&request, &key, deadline).await,
+            CachePolicy::Offline => {
+                let result = self.offline_query(&request, &key, deadline).await;
+                self.observe_offline_cache(&request, &result);
+                result
+            }
             CachePolicy::Bypass => self.network_query(&request, None, deadline).await,
             CachePolicy::Prefer { max_age } => {
                 let initial = self.probe_cache(&key, max_age, &request, deadline).await?;
+                self.observe_preferred_cache(&request, &initial);
                 if let CacheRead::Hit(hit) = &initial
                     && hit.freshness() == Freshness::Fresh
                     && (hit.version() == CacheVersion::V1
                         || self.legacy_entry_present(&key, &request, deadline).await?)
                 {
-                    return self
-                        .coordinated_query(
-                            &request,
-                            &key,
-                            Coordination::Prefer { max_age },
-                            Some(initial_hit(initial)),
-                            deadline,
-                        )
-                        .await;
-                }
-                if let CacheRead::Hit(hit) = initial
+                    self.coordinated_query(
+                        &request,
+                        &key,
+                        Coordination::Prefer { max_age },
+                        Some(initial_hit(initial)),
+                        deadline,
+                    )
+                    .await
+                } else if let CacheRead::Hit(hit) = initial
                     && hit.freshness() == Freshness::Fresh
                 {
-                    return Ok(hit.result);
+                    Ok(hit.result)
+                } else {
+                    self.coordinated_query(
+                        &request,
+                        &key,
+                        Coordination::Prefer { max_age },
+                        None,
+                        deadline,
+                    )
+                    .await
                 }
-                self.coordinated_query(
-                    &request,
-                    &key,
-                    Coordination::Prefer { max_age },
-                    None,
-                    deadline,
-                )
-                .await
             }
             CachePolicy::Refresh => {
+                self.record_cache_observation(&request, CacheObservation::Refresh, None);
                 let baseline = match self
                     .probe_cache(&key, default_cache_age(), &request, deadline)
                     .await?
@@ -614,6 +638,22 @@ where
         check_options_budget(&request.options, request.operation, deadline)?;
 
         let selection = crate::calendar::select_range(&request.range)?;
+        self.observations.record(Observation {
+            operation: request.operation,
+            date: request.range.from.clone(),
+            phase: ObservationPhase::Range {
+                to: request.range.to.clone(),
+                requestable_days: selection.trading_days.len().try_into().unwrap_or(u32::MAX),
+                known_non_trading_days: selection.skipped_days.len().try_into().unwrap_or(u32::MAX),
+                fallback_years: selection.calendar.fallback_years.clone(),
+                unverified_days: selection
+                    .calendar
+                    .unverified_dates
+                    .len()
+                    .try_into()
+                    .unwrap_or(u32::MAX),
+            },
+        });
         check_options_budget(&request.options, request.operation, deadline)?;
         let outcomes = stream::iter(selection.trading_days.iter().cloned())
             .map(|date| {
@@ -634,6 +674,53 @@ where
             .await;
         check_composite_cancellation(&request.options)?;
         crate::range::reduce(selection, outcomes, &request.mode)
+    }
+
+    fn observe_offline_cache(
+        &self,
+        request: &DirectRequest,
+        result: &Result<QueryResult, KrxError>,
+    ) {
+        let (action, freshness) = match result {
+            Ok(result) if result.provenance.source == ResultSource::Cache => {
+                (CacheObservation::Hit, Some(result.provenance.freshness))
+            }
+            Ok(_) => return,
+            Err(error) if error.code() == KrxErrorCode::CacheInvalid => {
+                (CacheObservation::Invalid, None)
+            }
+            Err(error) if error.code() == KrxErrorCode::CacheMiss => (CacheObservation::Miss, None),
+            Err(_) => return,
+        };
+        self.record_cache_observation(request, action, freshness);
+    }
+
+    fn observe_preferred_cache(&self, request: &DirectRequest, read: &CacheRead) {
+        match read {
+            CacheRead::Hit(hit) if hit.freshness() == Freshness::Fresh => {
+                self.record_cache_observation(request, CacheObservation::Hit, Some(hit.freshness()))
+            }
+            CacheRead::Hit(_) | CacheRead::Miss | CacheRead::Invalid => {
+                self.record_cache_observation(request, CacheObservation::Miss, None);
+            }
+        }
+    }
+
+    fn record_cache_observation(
+        &self,
+        request: &DirectRequest,
+        action: CacheObservation,
+        freshness: Option<Freshness>,
+    ) {
+        self.observations.record(Observation {
+            operation: request.operation,
+            date: request.date.clone(),
+            phase: ObservationPhase::Cache {
+                path: crate::operation::operation_spec(request.operation).path,
+                action,
+                freshness,
+            },
+        });
     }
 
     async fn offline_query(
@@ -1438,6 +1525,7 @@ mod tests {
         let fixture = Fixture::new();
         let client = ClientBuilder {
             api_key: Some(ApiKey::parse("test-placeholder").unwrap()),
+            observations: ObservationBuffer::default(),
         }
         .build_at(fixture.root.clone())
         .unwrap();
@@ -1883,8 +1971,45 @@ mod tests {
         DirectQueryClient::native(
             fixture.root.clone(),
             Some(ApiKey::parse("test-placeholder").unwrap()),
+            ObservationBuffer::default(),
         )
         .unwrap();
+    }
+
+    #[tokio::test]
+    async fn offline_miss_without_a_credential_is_observed_without_state_mutation() {
+        let fixture = Fixture::new();
+        let observations = ObservationBuffer::new();
+        let client = ClientBuilder {
+            api_key: None,
+            observations: observations.clone(),
+        }
+        .build_at(fixture.root.clone())
+        .unwrap();
+        let request = DirectRequest {
+            operation: OperationId::StockStkByddTrd,
+            date: TradingDate::parse("20260824").unwrap(),
+            options: CallOptions {
+                cache: CachePolicy::Offline,
+                ..CallOptions::default()
+            },
+        };
+
+        let error = client.query(request).await.unwrap_err();
+        assert_eq!(error.code(), KrxErrorCode::CacheMiss);
+        assert_eq!(
+            observations.take(),
+            [Observation {
+                operation: OperationId::StockStkByddTrd,
+                date: TradingDate::parse("20260824").unwrap(),
+                phase: ObservationPhase::Cache {
+                    path: crate::operation::operation_spec(OperationId::StockStkByddTrd).path,
+                    action: CacheObservation::Miss,
+                    freshness: None,
+                },
+            }]
+        );
+        assert!(!fixture.root.exists());
     }
 
     #[test]

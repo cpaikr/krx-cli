@@ -96,6 +96,26 @@
     "expect": { "code": 0, "jsonFixture": "kospiStocks", "stderr": "" }
   },
   {
+    "id": "cached-verbose-observations",
+    "args": [
+      "--verbose",
+      "--output",
+      "json",
+      "stock",
+      "list",
+      "--market",
+      "kospi",
+      "--date",
+      "20260102"
+    ],
+    "cache": "kospiStocks",
+    "expect": {
+      "code": 0,
+      "jsonFixture": "kospiStocks",
+      "stderr": "[verbose] endpoint: /svc/apis/sto/stk_bydd_trd\n[verbose] cache hit — /svc/apis/sto/stk_bydd_trd\n[verbose] pipeline: 2 → 2 rows\n"
+    }
+  },
+  {
     "id": "cached-row-pipeline",
     "args": [
       "--output",

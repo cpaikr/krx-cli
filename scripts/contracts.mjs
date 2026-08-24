@@ -26,7 +26,7 @@ const evidencePath = resolve(
 );
 const registryPath = resolve(
   root,
-  argument("--registry") ?? "src/contracts/generated/openapi-registry.ts",
+  argument("--registry") ?? "contracts/generated/openapi-registry.ts",
 );
 const capabilitiesPath = resolve(
   root,
@@ -601,7 +601,7 @@ equal(
 
 const allowedWireConsumers = new Set([
   registryPath,
-  resolve(root, "src/contracts/generated/openapi-registry.ts"),
+  resolve(root, "contracts/generated/openapi-registry.ts"),
   resolve(root, "scripts/contracts.mjs"),
   resolve(root, "scripts/product-contracts.mjs"),
   resolve(root, "scripts/compat-judge.mjs"),

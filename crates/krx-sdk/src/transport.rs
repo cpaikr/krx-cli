@@ -15,7 +15,10 @@ use crate::conformer::{PreparedRequest, decode_response, prepare_request};
 use crate::error::{http_error_code, retryable_http_status};
 use crate::operation::{ATTEMPT_TIMEOUT_MS, DEFAULT_RETRIES, OFFICIAL_SERVER, OVERALL_TIMEOUT_MS};
 use crate::quota::{QuotaReservation, QuotaStore};
-use crate::{ApiKey, Cancellation, DirectRequest, KrxError, KrxErrorCode, Row, TradingDate};
+use crate::{
+    ApiKey, Cancellation, DirectRequest, KrxError, KrxErrorCode, Observation, ObservationBuffer,
+    ObservationPhase, RetryReason, Row, TradingDate,
+};
 
 const BASE_DELAY: Duration = Duration::from_secs(1);
 const MAX_DELAY: Duration = Duration::from_secs(10);
@@ -241,6 +244,7 @@ struct RetryEngine<H, Q, R> {
     http: H,
     quota: Q,
     runtime: R,
+    observations: ObservationBuffer,
 }
 
 impl<H, Q, R> RetryEngine<H, Q, R>
@@ -278,6 +282,16 @@ where
         let auth_value =
             auth_header_value(api_key).map_err(|failure| attempt_error(failure, operation))?;
         let attempt_cancellation = request.options.cancellation.child();
+        let started_at = self.runtime.monotonic_now();
+        self.observations.record(Observation {
+            operation,
+            date: request.date.clone(),
+            phase: ObservationPhase::Request {
+                method: prepared.method,
+                url: format!("{OFFICIAL_SERVER}{}", prepared.path),
+                body: String::from_utf8_lossy(&prepared.body).into_owned(),
+            },
+        });
 
         for attempt in 0..=request.options.retries {
             if request.options.cancellation.is_cancelled() {
@@ -313,6 +327,17 @@ where
                 )
                 .for_operation(operation));
             }
+            let limit = reservation.count.saturating_add(reservation.remaining);
+            self.observations.record(Observation {
+                operation,
+                date: request.date.clone(),
+                phase: ObservationPhase::Quota {
+                    attempt: attempt.saturating_add(1),
+                    count: reservation.count,
+                    limit,
+                    warning: quota_warning(reservation.count, limit),
+                },
+            });
             if request.options.cancellation.is_cancelled() {
                 attempt_cancellation.cancel();
                 return Err(cancelled(operation));
@@ -336,7 +361,20 @@ where
 
             match outcome {
                 Ok(response) if response.status == 200 => {
-                    return decode_response(operation, &response.body, Some(api_key));
+                    let decoded = decode_response(operation, &response.body, Some(api_key));
+                    self.observations.record(Observation {
+                        operation,
+                        date: request.date.clone(),
+                        phase: ObservationPhase::Response {
+                            status: response.status,
+                            rows: decoded
+                                .as_ref()
+                                .ok()
+                                .and_then(|rows| rows.len().try_into().ok()),
+                            elapsed_ms: elapsed_millis(started_at, self.runtime.monotonic_now()),
+                        },
+                    });
+                    return decoded;
                 }
                 Ok(response)
                     if retryable_http_status(response.status)
@@ -347,10 +385,29 @@ where
                         .as_deref()
                         .and_then(|value| parse_retry_after(value, self.runtime.wall_now()))
                         .unwrap_or_else(|| retry_delay(attempt, self.runtime.jitter_unit()));
+                    self.observations.record(Observation {
+                        operation,
+                        date: request.date.clone(),
+                        phase: ObservationPhase::Retry {
+                            attempt: attempt.saturating_add(1),
+                            maximum_retries: request.options.retries,
+                            delay_ms: duration_millis(delay),
+                            reason: RetryReason::HttpStatus(response.status),
+                        },
+                    });
                     self.wait_to_retry(delay, deadline, request, &attempt_cancellation)
                         .await?;
                 }
                 Ok(response) => {
+                    self.observations.record(Observation {
+                        operation,
+                        date: request.date.clone(),
+                        phase: ObservationPhase::Response {
+                            status: response.status,
+                            rows: None,
+                            elapsed_ms: elapsed_millis(started_at, self.runtime.monotonic_now()),
+                        },
+                    });
                     return Err(KrxError::new(
                         http_error_code(response.status),
                         "provider returned an unsuccessful HTTP status",
@@ -358,10 +415,25 @@ where
                     .with_http_status(response.status)
                     .for_operation(operation));
                 }
-                Err(AttemptFailure::Network | AttemptFailure::Timeout)
+                Err(failure @ (AttemptFailure::Network | AttemptFailure::Timeout))
                     if attempt < request.options.retries =>
                 {
+                    let reason = match failure {
+                        AttemptFailure::Network => RetryReason::Network,
+                        AttemptFailure::Timeout => RetryReason::Timeout,
+                        _ => unreachable!("retry branch matched network or timeout"),
+                    };
                     let delay = retry_delay(attempt, self.runtime.jitter_unit());
+                    self.observations.record(Observation {
+                        operation,
+                        date: request.date.clone(),
+                        phase: ObservationPhase::Retry {
+                            attempt: attempt.saturating_add(1),
+                            maximum_retries: request.options.retries,
+                            delay_ms: duration_millis(delay),
+                            reason,
+                        },
+                    });
                     self.wait_to_retry(delay, deadline, request, &attempt_cancellation)
                         .await?;
                 }
@@ -422,12 +494,16 @@ pub(crate) struct DirectTransport {
 }
 
 impl DirectTransport {
-    pub(crate) fn new(state_root: PathBuf) -> Result<Self, KrxError> {
+    pub(crate) fn new(
+        state_root: PathBuf,
+        observations: ObservationBuffer,
+    ) -> Result<Self, KrxError> {
         Ok(Self {
             engine: RetryEngine {
                 http: ReqwestAdapter::official()?,
                 quota: QuotaStore::new(state_root)?,
                 runtime: TokioRuntime,
+                observations,
             },
         })
     }
@@ -448,6 +524,18 @@ impl DirectTransport {
     ) -> Result<Vec<Row>, KrxError> {
         self.engine.execute_until(request, api_key, deadline).await
     }
+}
+
+fn duration_millis(duration: Duration) -> u64 {
+    duration.as_millis().try_into().unwrap_or(u64::MAX)
+}
+
+fn elapsed_millis(started_at: Instant, finished_at: Instant) -> u64 {
+    duration_millis(finished_at.saturating_duration_since(started_at))
+}
+
+fn quota_warning(count: u32, limit: u32) -> bool {
+    limit > 0 && u64::from(count) * 5 >= u64::from(limit) * 4
 }
 
 fn retry_delay(attempt: u8, jitter_unit: f64) -> Duration {
@@ -788,6 +876,7 @@ mod tests {
                 http: Arc::clone(&http),
                 quota: Arc::clone(&quota),
                 runtime: Arc::clone(&runtime),
+                observations: ObservationBuffer::new(),
             },
             http,
             quota,
@@ -819,6 +908,44 @@ mod tests {
             assert_eq!(http.sends(), 1);
             assert_eq!(quota.dates.lock().expect("dates").len(), 1);
         }
+    }
+
+    #[tokio::test]
+    async fn observations_cover_request_quota_retry_and_response_without_secrets() {
+        let key = ApiKey::parse("fixture-key-must-not-appear").expect("key");
+        let (engine, _, _, _) = build_engine(vec![response(503), response(200)], 2);
+        let observations = engine.observations.clone();
+
+        let rows = engine.execute(&direct(1), &key).await.expect("response");
+        assert_eq!(rows.len(), 1);
+        let values = observations.take();
+        assert!(matches!(
+            values.first().map(|value| &value.phase),
+            Some(ObservationPhase::Request { .. })
+        ));
+        assert_eq!(
+            values
+                .iter()
+                .filter(|value| matches!(value.phase, ObservationPhase::Quota { .. }))
+                .count(),
+            2
+        );
+        assert!(values.iter().any(|value| matches!(
+            value.phase,
+            ObservationPhase::Retry {
+                reason: RetryReason::HttpStatus(503),
+                ..
+            }
+        )));
+        assert!(values.iter().any(|value| matches!(
+            value.phase,
+            ObservationPhase::Response {
+                status: 200,
+                rows: Some(1),
+                ..
+            }
+        )));
+        assert!(!format!("{values:?}").contains(key.expose()));
     }
 
     #[tokio::test]
@@ -950,10 +1077,12 @@ mod tests {
             })])),
             dates: Mutex::new(Vec::new()),
         });
+        let observations = ObservationBuffer::new();
         let quota_engine = RetryEngine {
             http: Arc::clone(&http),
             quota,
             runtime: Arc::new(TestRuntime::new()),
+            observations: observations.clone(),
         };
         let error = quota_engine
             .execute(&direct(0), &key)
@@ -961,6 +1090,12 @@ mod tests {
             .expect_err("quota");
         assert_eq!(error.code(), KrxErrorCode::LocalQuotaExhausted);
         assert_eq!(http.sends(), 0);
+        assert!(
+            !observations
+                .take()
+                .iter()
+                .any(|value| matches!(value.phase, ObservationPhase::Quota { .. }))
+        );
 
         let request = direct(0);
         request.options.cancellation.cancel();
@@ -987,6 +1122,7 @@ mod tests {
             http,
             quota,
             runtime: Arc::clone(&runtime),
+            observations: ObservationBuffer::default(),
         };
         let pending = async move { engine.execute(&request, &key).await };
         let cancel = async move {
@@ -1009,6 +1145,7 @@ mod tests {
             http: Arc::clone(&http),
             quota: PendingQuota,
             runtime: Arc::clone(&runtime),
+            observations: ObservationBuffer::default(),
         };
         let deadline = runtime.monotonic_now() + Duration::from_millis(20);
         let error = engine
@@ -1017,6 +1154,14 @@ mod tests {
             .expect_err("quota deadline");
         assert_eq!(error.code(), KrxErrorCode::DeadlineExceeded);
         assert_eq!(http.sends(), 0);
+    }
+
+    #[test]
+    fn advisory_quota_warning_starts_at_eighty_percent() {
+        assert!(!quota_warning(7_999, 10_000));
+        assert!(quota_warning(8_000, 10_000));
+        assert!(quota_warning(10_000, 10_000));
+        assert!(!quota_warning(0, 0));
     }
 
     #[test]

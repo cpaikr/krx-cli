@@ -3,7 +3,7 @@ mod output;
 
 use std::ffi::OsString;
 
-use clap::Parser;
+use clap::{Parser, error::ErrorKind};
 
 pub use args::Cli;
 
@@ -11,6 +11,10 @@ pub fn run_from(args: impl IntoIterator<Item = OsString>) -> i32 {
     let cli = match Cli::try_parse_from(args) {
         Ok(cli) => cli,
         Err(error) => {
+            if error.kind() == ErrorKind::DisplayVersion {
+                println!("{}", env!("CARGO_PKG_VERSION"));
+                return 0;
+            }
             if error.use_stderr() {
                 let rendered = error.to_string();
                 let mut meaningful = rendered

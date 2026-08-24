@@ -209,6 +209,34 @@
       }
     },
     {
+      "id": "canonical-legacy-cache-row-migrates",
+      "coversBehavior": "strict-canonical-cache-row-migration",
+      "polarity": "positive",
+      "args": ["stock", "list", "--date", "20260102"],
+      "setup": "cache-v1-canonical-openapi-row",
+      "expect": {
+        "code": 0,
+        "networkCalls": 0,
+        "cacheV2Created": true,
+        "rowExactlyMatchesCanonicalSchema": true
+      }
+    },
+    {
+      "id": "noncanonical-legacy-cache-row-rejected",
+      "coversBehavior": "strict-canonical-cache-row-migration",
+      "polarity": "rejection",
+      "args": ["--offline", "stock", "list", "--date", "20260102"],
+      "setup": "cache-v1-row-with-unknown-field",
+      "expect": {
+        "code": 1,
+        "stderrCode": "cache_invalid",
+        "stdout": "",
+        "networkCalls": 0,
+        "credentialReads": 0,
+        "unknownFieldNotEmitted": true
+      }
+    },
+    {
       "id": "removed-serve-help-exclusion",
       "coversInventory": "remove-command:[]:serve",
       "polarity": "positive",

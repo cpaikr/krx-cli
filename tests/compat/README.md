@@ -2,9 +2,18 @@
 
 The judge installs a tarball into an isolated prefix and invokes only its
 installed `krx` executable. Every scenario gets a fresh home, working
-directory, dummy credential, saturated quota state, and reviewed legacy v1
-cache fixtures. A cache-key mistake therefore fails locally instead of reaching
-KRX.
+directory, dummy credential, saturated quota state, and reviewed cache
+fixtures. A cache-key mistake therefore fails locally instead of reaching KRX.
+
+The frozen legacy run used the original compact v1 fixture rows. The native
+profile projects those same reviewed values into the exact canonical OpenAPI
+row shape before writing v1 cache entries, then requires exact output with no
+additional fields. This is the classified
+`strict-canonical-cache-row-migration` security fix: production legacy cache
+rows came from complete provider responses, while partial test-only rows are
+not a supported persisted state and unknown fields must not survive the strict
+Rust decoder. The one pipeline scenario therefore drops the fixture-only
+`ISU_SRT_CD` alias in favor of canonical `ISU_CD`.
 
 The scenario set freezes package launch, the recursive command and option
 inventory, the complete 31-endpoint schema document, argument and credential
@@ -16,11 +25,12 @@ persisted empty cache entries. Transport-only 401/403/retry behavior remains in
 conformer tests because the legacy and native executables have no safe shared
 transport-injection surface.
 
-`pnpm test:compat` first requires the legacy package to pass every scenario.
-It then installs independent copies, changes the bundled no-data exit code from
-`3` to `2`, changes one endpoint description, and changes the adjusted-price
-rounding policy. The unchanged judge must fail only `empty-result-exit`,
-`schema-inventory`, and `adjusted-stock-range`, respectively. These deliberate
-behavioral mutations certify that the judge detects process semantics, complete
-schema drift, and the complete adjusted-result envelope rather than package
-presence alone.
+The merged legacy baseline remains the authoritative black-box mutation proof:
+independent installed copies changed the bundled no-data exit, schema
+description, and adjustment rounding behavior, and the unchanged judge rejected
+only their named scenarios. Final native certification first requires the real
+installed artifact to pass every candidate scenario. It then injects the same
+three changes into captured process observations as oracle self-tests; these
+prove the candidate assertions still reject changed exit, schema, and complete
+adjustment results, without claiming that the immutable native executable was
+rewritten in place.

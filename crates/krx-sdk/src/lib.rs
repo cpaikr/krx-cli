@@ -43,6 +43,7 @@ mod conformer;
 )]
 mod credential;
 mod error;
+mod observation;
 #[cfg_attr(
     not(test),
     expect(
@@ -87,6 +88,9 @@ pub use cache::{
 pub use client::{CacheHandle, Client, ClientBuilder, CredentialHandle, WatchlistHandle};
 pub use credential::{CredentialMigrationResult, CredentialSource, CredentialStatus};
 pub use error::{KrxError, KrxErrorCode, KrxErrorKind};
+pub use observation::{
+    CacheObservation, Observation, ObservationBuffer, ObservationPhase, RetryReason,
+};
 pub use operation::{
     ApprovalCategory, DerivedOutputDescription, DerivedOutputFieldDescription,
     OperationDescription, OperationFieldDescription, OperationId,

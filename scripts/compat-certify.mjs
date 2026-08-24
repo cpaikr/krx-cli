@@ -1,40 +1,26 @@
 import { spawn } from "node:child_process";
-import {
-  access,
-  mkdtemp,
-  mkdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import process from "node:process";
 import { clearTimeout, setTimeout } from "node:timers";
 import { fileURLToPath } from "node:url";
+
 import { runCompatibilityJudge } from "./compat-judge.mjs";
-import { parseNpmPackReport } from "./package-smoke-command.mjs";
+import { resolveNpmCommand } from "./native-package/npm-command.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const packageManifest = JSON.parse(
-  await readFile(resolve(repositoryRoot, "package.json"), "utf8"),
-);
-const isWindows = process.platform === "win32";
-let npm;
-let temporaryRoot;
-
-async function resolveNpmCommand() {
-  if (!isWindows) return { args: [], command: "npm" };
-  const npmCli = join(
-    dirname(process.execPath),
-    "node_modules",
-    "npm",
-    "bin",
-    "npm-cli.js",
-  );
-  await access(npmCli);
-  return { args: [npmCli], command: process.execPath };
+const argumentsByName = new Map();
+for (let index = 2; index < process.argv.length; index += 2) {
+  argumentsByName.set(process.argv[index], process.argv[index + 1]);
 }
+const candidateArgument = argumentsByName.get("--candidate-tarball");
+if (!candidateArgument) {
+  throw new Error(
+    "usage: compat-certify.mjs --candidate-tarball <native-package.tgz>",
+  );
+}
+const candidateTarball = resolve(candidateArgument);
 
 function run(
   command,
@@ -59,141 +45,117 @@ function run(
     });
     child.on("close", (code) => {
       clearTimeout(timer);
-      if (code !== 0) {
-        reject(new Error(`${command} failed with exit ${code}\n${stderr}`));
-      } else {
+      if (code === 0) {
         resolveRun({ stderr, stdout });
+      } else {
+        reject(
+          new Error(
+            `${command} failed with exit ${code}\n${stderr || stdout}`,
+          ),
+        );
       }
     });
   });
 }
 
-async function pack() {
-  const destination = join(temporaryRoot, "pack");
-  await mkdir(destination, { recursive: true });
-  const result = await run(
-    npm.command,
-    [
-      ...npm.args,
-      "pack",
-      "--json",
-      "--ignore-scripts",
-      "--silent",
-      "--pack-destination",
-      destination,
-    ],
-    { cwd: repositoryRoot },
-  );
-  const report = parseNpmPackReport(result.stdout);
-  if (!Array.isArray(report) || report.length !== 1 || !report[0].filename) {
-    throw new Error("npm pack did not report exactly one artifact");
-  }
-  return resolve(destination, report[0].filename);
-}
-
-async function install(tarball, name) {
-  const root = join(temporaryRoot, name);
-  await mkdir(root, { recursive: true });
-  await run(
-    npm.command,
-    [
-      ...npm.args,
-      "install",
-      "--ignore-scripts",
-      "--no-audit",
-      "--no-fund",
-      "--prefix",
-      root,
-      tarball,
-    ],
-    { cwd: temporaryRoot },
-  );
-  return root;
-}
-
-function failures(report) {
+function failedScenarios(report) {
   return report.filter(({ status }) => status === "failed");
 }
 
-async function mutateInstalledCli(root, source, target) {
-  const cliPath = join(
-    root,
-    "node_modules",
-    ...packageManifest.name.split("/"),
-    "dist",
-    "cli.js",
-  );
-  const original = await readFile(cliPath, "utf8");
-  const occurrences = original.split(source).length - 1;
-  if (occurrences !== 1) {
-    throw new Error(`Expected one mutation site, found ${occurrences}`);
+function requirePassing(report, label) {
+  const failures = failedScenarios(report);
+  if (failures.length > 0) {
+    throw new Error(`${label} failed:\n${JSON.stringify(failures, null, 2)}`);
   }
-  await writeFile(cliPath, original.replace(source, target));
 }
 
-function requireSingleFailure(report, scenarioId, mutantName) {
-  const mutantFailures = failures(report);
-  if (mutantFailures.length !== 1 || mutantFailures[0].id !== scenarioId) {
+async function requireSingleMutantFailure({
+  installRoot,
+  mutantName,
+  scenarioId,
+  mutateResult,
+}) {
+  const report = await runCompatibilityJudge(installRoot, {
+    profile: "candidate",
+    mutateResult,
+  });
+  const failures = failedScenarios(report);
+  if (failures.length !== 1 || failures[0].id !== scenarioId) {
     throw new Error(
       `${mutantName} mutant did not fail only ${scenarioId}:\n${JSON.stringify(report, null, 2)}`,
     );
   }
 }
 
+const temporaryRoot = await mkdtemp(
+  resolve(tmpdir(), "krx-native-compat-certify-"),
+);
 try {
-  npm = await resolveNpmCommand();
-  await access(resolve(repositoryRoot, "dist/cli.js"));
-  temporaryRoot = await mkdtemp(join(tmpdir(), "krx-compat-certify-"));
-  const tarball = await pack();
-  const baselineRoot = await install(tarball, "baseline");
-  const baseline = await runCompatibilityJudge(baselineRoot);
-  if (failures(baseline).length > 0) {
-    throw new Error(
-      `Legacy baseline failed:\n${JSON.stringify(baseline, null, 2)}`,
-    );
-  }
-
-  const mutantRoot = await install(tarball, "mutant");
-  await mutateInstalledCli(
-    mutantRoot,
-    "NO_DATA: {\n    code: 3,",
-    "NO_DATA: {\n    code: 2,",
-  );
-  requireSingleFailure(
-    await runCompatibilityJudge(mutantRoot),
-    "empty-result-exit",
-    "no-data exit",
+  const installRoot = resolve(temporaryRoot, "candidate");
+  await mkdir(installRoot, { recursive: true });
+  const { command: npm, argumentPrefix } = resolveNpmCommand();
+  await run(
+    npm,
+    [
+      ...argumentPrefix,
+      "install",
+      "--ignore-scripts",
+      "--no-audit",
+      "--no-fund",
+      "--prefix",
+      installRoot,
+      candidateTarball,
+    ],
+    { cwd: temporaryRoot },
   );
 
-  const schemaMutantRoot = await install(tarball, "schema-mutant");
-  await mutateInstalledCli(
-    schemaMutantRoot,
-    "ESG index info",
-    "Changed ESG index info",
-  );
-  requireSingleFailure(
-    await runCompatibilityJudge(schemaMutantRoot),
-    "schema-inventory",
-    "schema description",
-  );
+  const baseline = await runCompatibilityJudge(installRoot, {
+    profile: "candidate",
+  });
+  requirePassing(baseline, "native candidate");
 
-  const adjustmentMutantRoot = await install(tarball, "adjustment-mutant");
-  await mutateInstalledCli(
-    adjustmentMutantRoot,
-    "nearest-integer-half-up",
-    "changed-rounding-policy",
-  );
-  requireSingleFailure(
-    await runCompatibilityJudge(adjustmentMutantRoot),
-    "adjusted-stock-range",
-    "adjustment metadata",
-  );
+  await requireSingleMutantFailure({
+    installRoot,
+    mutantName: "no-data exit",
+    scenarioId: "empty-result-exit",
+    mutateResult: (scenario, result) =>
+      scenario.id === "empty-result-exit" ? { ...result, code: 2 } : result,
+  });
+  await requireSingleMutantFailure({
+    installRoot,
+    mutantName: "schema description",
+    scenarioId: "schema-inventory",
+    mutateResult: (scenario, result) =>
+      scenario.id === "schema-inventory"
+        ? {
+            ...result,
+            stdout: result.stdout.replace(
+              "ESG index info",
+              "Changed ESG index info",
+            ),
+          }
+        : result,
+  });
+  await requireSingleMutantFailure({
+    installRoot,
+    mutantName: "adjustment metadata",
+    scenarioId: "adjusted-stock-range",
+    mutateResult: (scenario, result) =>
+      scenario.id === "adjusted-stock-range"
+        ? {
+            ...result,
+            stdout: result.stdout.replace(
+              "nearest-integer-half-up",
+              "changed-rounding-policy",
+            ),
+          }
+        : result,
+  });
 
   process.stdout.write(
-    `Compatibility judge passed ${baseline.length} installed-package scenarios; ` +
+    `Native compatibility judge passed ${baseline.length} frozen installed-product scenarios; ` +
       "the no-data exit, schema, and adjustment mutants were rejected by their named scenarios\n",
   );
 } finally {
-  if (temporaryRoot !== undefined)
-    await rm(temporaryRoot, { recursive: true, force: true });
+  await rm(temporaryRoot, { recursive: true, force: true });
 }

@@ -6,11 +6,12 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use icu_collator::{Collator, CollatorBorrowed, options::CollatorOptions};
 use icu_locale::locale;
 use krx_sdk::{
-    ApiKey, CacheInspectOptions, CachePolicy, CachePruneOptions, CallOptions, Cancellation, Client,
-    Completeness, CompletenessState, CredentialSource, DirectRequest, Freshness, KrxError,
-    KrxErrorKind, MarketComponent, MarketSummaryRequest, OperationDescription, OperationId,
-    RangeMode, RangeRequest, ResultProvenance, ResultSource, Row, SearchMarket, SecurityCode,
-    StockSearchRequest, TradingDate, WatchlistEntry, WatchlistMarket, WatchlistPricesRequest,
+    ApiKey, CacheInspectOptions, CacheObservation, CachePolicy, CachePruneOptions, CallOptions,
+    Cancellation, Client, Completeness, CompletenessState, CredentialSource, DirectRequest,
+    Freshness, KrxError, KrxErrorKind, MarketComponent, MarketSummaryRequest, ObservationBuffer,
+    ObservationPhase, OperationDescription, OperationId, RangeMode, RangeRequest, ResultProvenance,
+    ResultSource, Row, SearchMarket, SecurityCode, StockSearchRequest, TradingDate, WatchlistEntry,
+    WatchlistMarket, WatchlistPricesRequest,
 };
 use serde_json::{Map, Value, json};
 use zeroize::Zeroizing;
@@ -87,7 +88,10 @@ async fn execute_inner(cli: &Cli) -> Result<i32, Failure> {
         return Ok(0);
     }
 
-    let client = Client::builder().build()?;
+    let observations = ObservationBuffer::new();
+    let client = Client::builder()
+        .observations(observations.clone())
+        .build()?;
     let cancellation = Cancellation::new();
     let signal_cancellation = cancellation.clone();
     tokio::spawn(async move {
@@ -97,10 +101,20 @@ async fn execute_inner(cli: &Cli) -> Result<i32, Failure> {
     });
 
     if let Some((operation, leaf_date, adjusted)) = cli.endpoint() {
-        return execute_endpoint(cli, &client, operation, leaf_date, adjusted, cancellation).await;
+        return execute_endpoint(
+            cli,
+            &client,
+            operation,
+            leaf_date,
+            adjusted,
+            cancellation,
+            &observations,
+        )
+        .await;
     }
 
-    match &cli.command {
+    let result = async {
+        match &cli.command {
         TopCommand::Auth(args) => execute_auth(args, cli, &client, cancellation).await,
         TopCommand::Stock(StockArgs {
             command: StockCommand::Search { query },
@@ -183,8 +197,12 @@ async fn execute_inner(cli: &Cli) -> Result<i32, Failure> {
         | TopCommand::Commodity(_)
         | TopCommand::Esg(_)
         | TopCommand::Version => unreachable!(),
-        TopCommand::Stock(_) => unreachable!(),
+            TopCommand::Stock(_) => unreachable!(),
+        }
     }
+    .await;
+    render_sdk_observations(cli, &observations);
+    result
 }
 
 fn call_options(cli: &Cli, cancellation: Cancellation) -> Result<CallOptions, Failure> {
@@ -228,6 +246,7 @@ async fn execute_endpoint(
     leaf_date: Option<&str>,
     adjusted: bool,
     cancellation: Cancellation,
+    observations: &ObservationBuffer,
 ) -> Result<i32, Failure> {
     let description = client
         .capabilities()
@@ -291,7 +310,9 @@ async fn execute_endpoint(
                 mode,
                 options,
             })
-            .await?;
+            .await;
+        render_sdk_observations(cli, observations);
+        let result = result?;
         let rows = result.result.data.clone();
         if result.failed_days > 0 {
             verbose(
@@ -307,7 +328,9 @@ async fn execute_endpoint(
                 date: date.clone(),
                 options,
             })
-            .await?;
+            .await;
+        render_sdk_observations(cli, observations);
+        let result = result?;
         let provenance = result.provenance.clone();
         (result.rows, None, Some(provenance))
     };
@@ -1173,6 +1196,81 @@ fn freshness_name(freshness: Freshness) -> &'static str {
 fn verbose(cli: &Cli, message: impl std::fmt::Display) {
     if cli.verbose {
         eprintln!("[verbose] {message}");
+    }
+}
+
+fn render_sdk_observations(cli: &Cli, observations: &ObservationBuffer) {
+    for observation in observations.take() {
+        if let ObservationPhase::Quota {
+            count,
+            limit,
+            warning: true,
+            ..
+        } = &observation.phase
+        {
+            eprintln!("Warning: {count}/{limit} advisory KRX API calls reserved today (KST)");
+        }
+        if !cli.verbose {
+            continue;
+        }
+        match observation.phase {
+            ObservationPhase::Cache { path, action, .. } => {
+                let label = match action {
+                    CacheObservation::Hit => "cache hit",
+                    CacheObservation::Miss => "cache miss",
+                    CacheObservation::Refresh => "cache refresh",
+                    CacheObservation::Bypass => "cache bypass",
+                    CacheObservation::Invalid => "cache invalid",
+                };
+                verbose(cli, format!("{label} — {path}"));
+            }
+            ObservationPhase::Range {
+                to,
+                requestable_days,
+                known_non_trading_days,
+                fallback_years,
+                unverified_days,
+            } => {
+                verbose(
+                    cli,
+                    format!(
+                        "date range: {}~{} → {requestable_days} requestable, {known_non_trading_days} known non-trading",
+                        observation.date.as_str(),
+                        to.as_str()
+                    ),
+                );
+                if !fallback_years.is_empty() {
+                    verbose(
+                        cli,
+                        format!(
+                            "KRX calendar fallback: {unverified_days} uncovered weekday(s) will be probed"
+                        ),
+                    );
+                }
+            }
+            ObservationPhase::Request { method, url, body } => {
+                verbose(cli, format!("{method} {url} {body}"));
+            }
+            ObservationPhase::Quota { count, limit, .. } => verbose(
+                cli,
+                format!("advisory rate limit: {count}/{limit} calls reserved today (KST)"),
+            ),
+            ObservationPhase::Retry {
+                attempt,
+                maximum_retries,
+                delay_ms,
+                ..
+            } => verbose(
+                cli,
+                format!("retry {attempt}/{maximum_retries} after {delay_ms}ms"),
+            ),
+            ObservationPhase::Response {
+                rows: Some(rows),
+                elapsed_ms,
+                ..
+            } => verbose(cli, format!("response: {rows} rows in {elapsed_ms}ms")),
+            ObservationPhase::Response { rows: None, .. } => {}
+        }
     }
 }
 fn composite_exit<Id>(

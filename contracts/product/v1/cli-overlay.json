@@ -69,6 +69,10 @@
     {
       "id": "bounded-cache-clear-targets",
       "classification": "security-fix"
+    },
+    {
+      "id": "strict-canonical-cache-row-migration",
+      "classification": "security-fix"
     }
   ],
   "optionPolicy": {

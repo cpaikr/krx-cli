@@ -174,7 +174,7 @@ try {
   assert.match(help.stdout, /Usage:/i);
   const versionBin = installedBinCommand(temporary, "krx", ["--version"]);
   const version = run(versionBin.command, versionBin.args, temporary);
-  assert.equal(version.stdout.trim(), `krx ${packageJson.version}`);
+  assert.equal(version.stdout.trim(), packageJson.version);
   const schemaBin = installedBinCommand(temporary, "krx", [
     "schema",
     "stock_stk_bydd_trd",
