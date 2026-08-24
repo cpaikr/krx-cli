@@ -211,14 +211,37 @@ transitions:
     lockProtocol:
       acquisition: mkdir
       directoryMode: "0700"
+      directoryOwnership: current-user
       ownerFile: owner
       ownerMode: "0600"
+      ownerOwnership: current-user
+      ownerMaximumBytes: 128
       ownerGrammar: "^[1-9][0-9]*-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      ownerCandidate: "rate-limit.json.lock/.owner.<owner>.tmp"
+      ownerPublication: in-created-directory-prepared-file-hard-link-no-replace
+      creatorReturnRevalidation: same-created-directory-identity
+      failedAcquisitionCleanup: descriptor-relative-owner-removal-no-pathname-directory-delete
       pollMs: 25
       timeoutMs: 5000
       staleAfterMs: 30000
       stealRequiresOwnerDead: true
-      steal: rename-stale-directory-then-remove
+      stealClaimFile: steal
+      stealClaimMode: "0600"
+      stealClaimOwnership: current-user
+      stealClaimMaximumBytes: 128
+      stealClaimOwnerGrammar: "^[1-9][0-9]*-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      stealClaimCandidate: "rate-limit.json.lock/.steal.<owner>.tmp"
+      stealClaimPublication: in-observed-directory-prepared-file-hard-link-no-replace
+      stealClaimRecovery: dead-published-claim-races-one-deterministic-retained-tombstone
+      stealTombstone: ".rate-limit.json.lock.stale-<steal-owner>"
+      stealTombstoneRetention: permanent-nonempty-fence
+      ownerPublicationRevalidation: no-steal-claim-after-owner-durable
+      stealRevalidation:
+        - same-lock-directory-identity
+        - same-regular-owner-only-owner-identity-and-bytes
+        - unchanged-dead-lock-owner
+        - same-regular-owner-only-claim-identity-and-bytes
+      steal: rename-to-claim-derived-nonempty-tombstone-and-retain
       symlinkPolicy: reject
     failurePolicy:
       corrupt-unknown-impossible-date-or-over-limit: fail-closed-preserve-bytes

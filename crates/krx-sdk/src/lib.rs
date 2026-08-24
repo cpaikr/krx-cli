@@ -51,6 +51,15 @@ mod operation;
     not(test),
     expect(
         dead_code,
+        reason = "quota reservation is consumed by the private transport in this SDK PR"
+    )
+)]
+#[cfg(unix)]
+mod quota;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
         reason = "range reduction is consumed by the private client engine"
     )
 )]
@@ -64,6 +73,8 @@ mod range;
 )]
 mod request;
 mod result;
+#[cfg(unix)]
+mod state;
 
 pub use error::{KrxError, KrxErrorCode, KrxErrorKind};
 pub use operation::{

@@ -171,11 +171,13 @@ crates/krx-cli   crates/krx-node
   napi-derive 3.6.3, napi-build 2.4.1, keyring-rs 4.1.6, serde 1.0.229,
   serde_json 1.0.151, serde-saphyr 1.1.0, thiserror 2.0.20, url 2.5.8,
   zeroize 1.9.0, futures-util 0.3.34, sha2 0.11.0, uuid 1.25.0, jiff 0.2.35,
-  and num-bigint 0.5.1. SHA-256 identity, OS-random UUID-v4 lock identities,
-  canonical UTC/KST time handling, and unbounded exact adjustment factors use
+  num-bigint 0.5.1, and Unix-only rustix 1.1.4. SHA-256 identity, OS-random
+  UUID-v4 lock identities, canonical UTC/KST time handling, unbounded exact
+  adjustment factors, and descriptor-relative no-follow state traversal use
   those maintained crates rather than project-owned cryptography, randomness,
-  timestamp parsing, or big-integer arithmetic. The contract gate rejects
-  drift and the heavyweight fallback credential-database feature graph.
+  timestamp parsing, big-integer arithmetic, or unsafe syscall bindings. The
+  contract gate rejects drift and the heavyweight fallback credential-database
+  feature graph.
 
 ### Rust SDK and native CLI
 
@@ -281,6 +283,29 @@ crates/krx-cli   crates/krx-node
   same entry. Retain one shared per-credential KST-day quota counter across any
   temporary legacy/candidate coexistence; never let two engines admit separate
   10,000-call budgets.
+- Fence stale shared-quota lock replacement with a prepared owner-only file
+  created inside the observed lock directory and published as
+  `rate-limit.json.lock/steal` by an atomic no-replace hard link. Keeping the
+  prepared source inside the observed directory makes a pathname replacement
+  lose the source instead of attaching the claim to a new lock. Revalidate the
+  owner-only directory plus bounded no-follow owner file, their identities and
+  bytes, the dead owner process, and the claim identity before rename. Move the
+  stale directory to the deterministic claim-derived path
+  `rate-limit.json.lock.stale-<steal-owner>` and retain its owner and claim as a
+  permanent nonempty tombstone. Multiple processes may recover the same dead
+  published claimant; the retained destination ensures a paused loser cannot
+  later rename a newly acquired live lock after the winner has moved the stale
+  one.
+- Publish each new shared-quota lock owner from an owner-only prepared file
+  inside the created lock directory, using a no-replace hard link only after
+  the complete owner bytes and file metadata are durable. Readers therefore
+  observe either no owner during ordinary acquisition/teardown turnover or one
+  complete canonical owner, never a partial direct write.
+- Before returning a newly created quota lock, revalidate that its pathname
+  still names the created directory. Failed acquisition abandons only its own
+  owner through the open directory descriptor and never removes the directory
+  pathname, because that pathname may already name a replacement contender;
+  bounded stale recovery later fences the ownerless original.
 - Add explicit `--offline`. Offline operations never resolve a credential or
   perform network access and may return a validated stale entry. They identify
   cache source, fetch time, and freshness; a miss or invalid entry is a typed

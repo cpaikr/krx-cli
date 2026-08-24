@@ -51,13 +51,28 @@ Complete shared Rust SDK for all supported KRX behavior and local policy.
 
 ### Next in-scope action
 
-Deliver the complete frozen `crates/krx-sdk` surface in one production SDK PR,
-organized as reviewable commits for strict all-operation conforming, transport
-and domain policy, then secure local state and migration. Keep CLI and Node
-adapter implementation out of this slice.
+Complete the remaining frozen `crates/krx-sdk` surface in the same production
+SDK PR: add the Windows secure-state implementation, then credential and
+approval resolution, transport, cache/offline policy, and legacy migration.
+Keep CLI and Node adapter implementation out of this slice.
 
 ### Evidence and blockers
 
+- The reviewed shared quota checkpoint implements byte-compatible Node/Rust
+  KST-day reservation with exact SHA-256 credential identities, strict bounded
+  v0/v1 decoding, fail-closed byte preservation, 10,000-entry/count caps, and
+  successful-write-only pruning. On Unix, the Rust state substrate uses
+  descriptor-relative no-follow traversal, current-user ownership, strict
+  `0700`/`0600` modes, durable atomic writes, and crash-recoverable plain-mkdir
+  locks. Prepared hard-link owner/claim publication, identity-and-byte
+  revalidation, retained deterministic tombstones, and identity-safe failed
+  acquisition cleanup close replacement and paused-stealer races across both
+  runtimes. Independent security/concurrency review is clean. `pnpm verify`
+  passes 49 files and 506 tests, production audit, 13 installed-package
+  scenarios, and package smoke; all-feature workspace format/check/strict
+  Clippy pass, with 55 Rust tests passing and the intentional Node interop
+  worker ignored because its mixed-runtime execution passed in the product
+  gate. Windows secure state remains the next platform implementation.
 - The repository transfer to private `cpaikr/krx-cli` preserved PR #8 and its
   branch topology. The checked amendment routes every Actions job to
   Blacksmith, removes the duplicate native branch-push matrix, retains all four
