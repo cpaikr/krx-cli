@@ -11,6 +11,7 @@ on:
       - "crates/krx-cli/**"
       - "crates/krx-node/**"
       - "crates/krx-sdk/**"
+      - "deny.toml"
       - "package.json"
       - "packages/node/**"
       - "pnpm-lock.yaml"
@@ -23,6 +24,7 @@ on:
       - "skills/krx-cli/**"
       - "src/calendar/krx-closures.json"
       - "tests/compat/**"
+      - "tests/fixtures/adjusted-stock-prices/oracles.json"
       - "tests/scripts/release-policy.test.ts"
       - "tests/scripts/rust-vertical-slice.test.ts"
   workflow_dispatch:
@@ -74,6 +76,13 @@ jobs:
           --profile minimal
           --component rustfmt,clippy
           --target ${{ matrix.rust-target }}
+
+      - name: Enforce Rust advisory, license, ban, and source policy
+        if: matrix.id == 'linux-x64-gnu'
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check
+          command-arguments: advisories bans licenses sources
 
       - name: Check formatting
         run: cargo fmt --all --check

@@ -83,7 +83,6 @@ pub struct DerivedOutputDescription {
     pub eligible_endpoints: &'static [&'static str],
     pub default_for_eligible_single_security_ranges: bool,
     pub cli_opt_out: &'static str,
-    pub legacy_mcp_opt_out: &'static str,
     pub fields: &'static [DerivedOutputFieldDescription],
     pub envelope_field: &'static str,
 }
@@ -142,7 +141,6 @@ static ADJUSTED_DAILY_STOCK_OUTPUT: DerivedOutputDescription = DerivedOutputDesc
     eligible_endpoints: ADJUSTED_DAILY_STOCK_PATHS,
     default_for_eligible_single_security_ranges: true,
     cli_opt_out: "--no-adjusted",
-    legacy_mcp_opt_out: "adjusted: false",
     fields: ADJUSTED_DAILY_STOCK_FIELDS,
     envelope_field: "adjustment",
 };

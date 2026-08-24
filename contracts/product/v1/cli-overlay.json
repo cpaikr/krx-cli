@@ -73,6 +73,14 @@
     {
       "id": "strict-canonical-cache-row-migration",
       "classification": "security-fix"
+    },
+    {
+      "id": "mcp-schema-metadata-removed",
+      "classification": "new-contract"
+    },
+    {
+      "id": "headless-credential-store-fails-closed",
+      "classification": "security-fix"
     }
   ],
   "optionPolicy": {

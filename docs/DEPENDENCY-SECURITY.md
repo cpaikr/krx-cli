@@ -11,6 +11,13 @@ maintainer-only Node toolchain is locked by `pnpm-lock.yaml` and never enters
 the release archive. `pnpm audit:prod` therefore verifies that the root has no
 production dependency graph.
 
+`pnpm rust:security` applies `deny.toml` to the complete all-feature Rust graph.
+It rejects advisories, unapproved licenses, banned dependency forms, unknown
+registries, and Git dependencies. Duplicate transitive versions remain visible
+warnings because platform credential and TLS stacks currently require them.
+Monthly Cargo Dependabot updates and GitHub vulnerability alerts provide the
+repository-side update and notification path.
+
 `scripts/native-package/assemble.mjs`, `pack.mjs`, and `certify.mjs` reject
 path traversal, symbolic links, missing or mismatched native files, incorrect
 platform/architecture/libc, and non-executable Unix binaries. Package exports

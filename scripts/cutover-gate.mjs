@@ -130,6 +130,7 @@ const forbiddenActiveFragments = [
   "src/cli/",
   "src/mcp/",
   "src/watchlist/",
+  "legacy_mcp_opt_out",
   "allow-build=krx-cli",
   "esbuild.config.js",
 ];

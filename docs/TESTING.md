@@ -8,16 +8,18 @@ pnpm verify
 ```
 
 It runs the atomic-cutover absence/mutation gate, OpenAPI and product contracts,
-lint and public Node type checks, maintainer tests, Node facade tests, the full
-Rust workspace check/Clippy/test suite, calendar freshness, and the production
-dependency audit.
+the deterministic exchange-calendar-aware contract-drift dry run, lint and
+public Node type checks, maintainer tests, Node facade tests, the full Rust
+workspace check/Clippy/test suite, Rust advisory/license/source enforcement,
+calendar freshness, and the production dependency audit.
 
 Native archive certification builds `krx-cli` and `krx-node` once, assembles a
 manifest target, packs it, and installs that exact archive with scripts
 disabled. `scripts/native-package/certify.mjs` checks package layout, target
 identity, executable behavior, public JavaScript/TypeScript consumers,
 cancellation, binding privacy, and the packaged skill. The compatibility gate
-then runs 14 frozen installed-product scenarios against the same archive.
+then runs 14 frozen compatibility scenarios plus two exact cache-migration
+postconditions against the same archive.
 
 Blacksmith continuous CI covers Linux GNU x64 and ARM64 under Node 22 and 24.
 macOS ARM64 and Windows x64 remain supported artifact targets but are omitted

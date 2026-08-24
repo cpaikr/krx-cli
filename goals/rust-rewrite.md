@@ -61,26 +61,28 @@ reconciliation.
 
 ### Next in-scope action
 
-Run clean-checkout validation and required code review, create the final
-atomic-cutover PR, pass exact-head Blacksmith Linux GNU x64/ARM64 gates, address
-all feedback, merge while preserving commits, and reconcile the durable goal
-and roadmap on the merged repository.
+Complete required code review, create the final atomic-cutover PR, pass
+exact-head Blacksmith Linux GNU x64/ARM64 gates, address all feedback, merge
+while preserving commits, and reconcile the durable goal and roadmap on the
+merged repository. Clean-checkout validation is already complete.
 
 ### Evidence and blockers
 
 - The locally complete atomic-cutover branch passes the one-conformer legacy
-  absence gate, canonical OpenAPI and product-contract validation, 130
+  absence gate, canonical OpenAPI and product-contract validation, 135
   maintainer tests, 14 public Node facade tests, 155 Rust tests with one
   intentional interoperability worker ignored, strict Clippy, current calendar
-  validation, and a clean production dependency audit. A fresh host
+  validation, Cargo advisory/license/source enforcement, and a clean production
+  dependency audit. A fresh host
   `darwin-arm64` archive contains the native CLI, private binding, public Node
   declarations/facade, and portable skill; it passes clean-install
   certification under Node 24 with portable SHA-256
   `3c84bab73759ca8b4fed59da39da01b19efe2e4562a7f8d272d97b16f69a8789`.
-  The exact same archive passes all 14 frozen installed-product scenarios, and
-  the no-data, schema, and adjustment mutants are rejected by their named
-  scenarios. Final PR review, hosted exact-head validation, feedback closure,
-  and merge remain.
+  The exact same archive passes all 14 frozen compatibility scenarios and both
+  frozen cache-migration postconditions; the no-data, schema, and adjustment
+  mutants are rejected by their named scenarios. Monthly Cargo Dependabot and
+  GitHub vulnerability alerts are enabled. Final PR review, hosted exact-head
+  validation, feedback closure, and merge remain.
 - Adapter PR [#10](https://github.com/cpaikr/krx-cli/pull/10) merged as
   `9bd9bb5` with all seven reviewed commits preserved. Its final feedback
   collection covered exact head `9d28167`, found all 18 threads resolved with
@@ -104,9 +106,9 @@ and roadmap on the merged repository.
   `blacksmith-2vcpu-ubuntu-2404-arm`; comments record that macOS ARM64 and
   Windows x64 remain supported but are omitted from continuous CI to reduce
   compute cost. Full dynamic verbose observations for cache, quota, retry,
-  request timing, and range/calendar decisions require a shared SDK observation
-  seam and remain explicitly assigned to the final black-box parity result;
-  cutover remains blocked until those differences are fixed or classified.
+  request timing, and range/calendar decisions were assigned to the final
+  black-box parity result. The final branch now provides the sanitized shared
+  SDK observation seam and certifies its installed CLI rendering.
 - The final local adapter-remediation checkpoint passes workspace formatting,
   locked all-target/all-feature check, strict Clippy, 20 native CLI tests,
   eight native Node-boundary tests, and 150 SDK tests with the one intentional
@@ -538,5 +540,6 @@ and roadmap on the merged repository.
   Rust SDK, native CLI, Node binding/facade, and production packaging are
   merged on `codex/rust-rewrite-integration`. Installed-product parity,
   migration promotion, atomic package/export cutover, legacy TypeScript and
-  JavaScript removal, MCP removal, and final PR delivery remain the final
-  semantic result.
+  JavaScript removal, and MCP removal are complete on the final branch. Review,
+  exact-head hosted certification, feedback closure, merge, and post-merge
+  planning reconciliation remain.

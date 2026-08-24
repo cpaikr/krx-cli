@@ -130,6 +130,7 @@ const actionRefs = {
   "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02",
   "actions/download-artifact": "634f93cb2916e3fdff6788551b99b062d0335ce0",
   "pnpm/action-setup": "b906affcce14559ad1aafd4ab0e942779e9f58b1",
+  "EmbarkStudios/cargo-deny-action": "3c6349835b2b7b196a839186cb8b78e02f7b5f25",
 };
 for (const job of Object.values(workflow.jobs ?? {})) {
   for (const step of job.steps ?? []) {
@@ -151,6 +152,7 @@ const requiredWorkflowPaths = [
   "crates/krx-cli/**",
   "crates/krx-node/**",
   "crates/krx-sdk/**",
+  "deny.toml",
   "package.json",
   "packages/node/**",
   "pnpm-lock.yaml",
@@ -163,6 +165,7 @@ const requiredWorkflowPaths = [
   "skills/krx-cli/**",
   "src/calendar/krx-closures.json",
   "tests/compat/**",
+  "tests/fixtures/adjusted-stock-prices/oracles.json",
   "tests/scripts/release-policy.test.ts",
   "tests/scripts/rust-vertical-slice.test.ts",
 ];

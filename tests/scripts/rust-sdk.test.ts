@@ -1102,34 +1102,63 @@ describe("production Rust SDK gate", () => {
   });
 
   it("runs locked strict validation on both Blacksmith Linux architectures", () => {
-    const workflow = YAML.parse(read(".github/workflows/rust-sdk.yml"));
+    const workflow = YAML.parse(
+      read(".github/workflows/rust-vertical-slice.yml"),
+    );
     const paths = workflow.on.pull_request.paths as string[];
-    const job = workflow.jobs.sdk;
+    const job = workflow.jobs.build;
 
     expect(workflow.on.push).toBeUndefined();
     expect(Object.hasOwn(workflow.on, "workflow_dispatch")).toBe(true);
     expect(paths).toEqual([
-      ".github/workflows/rust-sdk.yml",
+      ".gitattributes",
+      ".github/workflows/rust-vertical-slice.yml",
       "Cargo.lock",
       "Cargo.toml",
-      "package.json",
-      "contracts/generated/**",
-      "contracts/krx/**",
-      "contracts/product/**",
+      "contracts/**",
+      "crates/krx-cli/**",
+      "crates/krx-node/**",
       "crates/krx-sdk/**",
+      "deny.toml",
+      "package.json",
+      "packages/node/**",
+      "pnpm-lock.yaml",
       "rust-toolchain.toml",
+      "scripts/native-package/**",
+      "scripts/compat-certify.mjs",
+      "scripts/compat-judge.mjs",
+      "scripts/package-smoke-command.mjs",
+      "scripts/rust-vertical-slice.mjs",
+      "skills/krx-cli/**",
       "src/calendar/krx-closures.json",
+      "tests/compat/**",
       "tests/fixtures/adjusted-stock-prices/oracles.json",
       "tests/scripts/release-policy.test.ts",
-      "tests/scripts/rust-sdk.test.ts",
+      "tests/scripts/rust-vertical-slice.test.ts",
     ]);
-    expect(job.strategy.matrix.include).toEqual([
-      { arch: "x64", runner: "blacksmith-2vcpu-ubuntu-2404" },
-      { arch: "arm64", runner: "blacksmith-2vcpu-ubuntu-2404-arm" },
+    expect(
+      job.strategy.matrix.include.map(
+        ({ id, runner }: { id: string; runner: string }) => ({ id, runner }),
+      ),
+    ).toEqual([
+      { id: "linux-x64-gnu", runner: "blacksmith-2vcpu-ubuntu-2404" },
+      {
+        id: "linux-arm64-gnu",
+        runner: "blacksmith-2vcpu-ubuntu-2404-arm",
+      },
     ]);
     expect(job.steps).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ run: "npm run rust:sdk" }),
+        expect.objectContaining({ run: "cargo fmt --all --check" }),
+        expect.objectContaining({
+          run: "cargo check --locked --workspace --all-targets --all-features",
+        }),
+        expect.objectContaining({
+          run: "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings",
+        }),
+        expect.objectContaining({
+          run: "cargo test --locked --workspace --all-features",
+        }),
       ]),
     );
     expect(JSON.parse(read("package.json")).scripts["rust:sdk"]).toBe(

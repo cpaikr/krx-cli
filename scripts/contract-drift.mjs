@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import process from "node:process";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import YAML from "yaml";
 
@@ -12,111 +12,171 @@ const OFFICIAL_ORIGIN = "https://openapi.krx.co.kr";
 const MAX_OFFICIAL_DETAILS = 64;
 const REQUEST_TIMEOUT_MS = 15_000;
 
-const argumentsByName = new Map();
-for (let index = 2; index < process.argv.length; index += 1) {
-  const argument = process.argv[index];
-  if (!argument?.startsWith("--")) continue;
-  const next = process.argv[index + 1];
-  if (next && !next.startsWith("--")) {
-    argumentsByName.set(argument, next);
-    index += 1;
-  } else {
-    argumentsByName.set(argument, true);
+async function main() {
+  const argumentsByName = new Map();
+  for (let index = 2; index < process.argv.length; index += 1) {
+    const argument = process.argv[index];
+    if (!argument?.startsWith("--")) continue;
+    const next = process.argv[index + 1];
+    if (next && !next.startsWith("--")) {
+      argumentsByName.set(argument, next);
+      index += 1;
+    } else {
+      argumentsByName.set(argument, true);
+    }
   }
-}
 
-const dryRun = argumentsByName.has("--dry-run");
-const reportPath = argumentsByName.get("--report");
-const packageRoot = resolve(
-  repository,
-  argumentsByName.get("--package") ?? "target/native-package/package",
-);
-const date =
-  argumentsByName.get("--date") ||
-  process.env.KRX_CONTRACT_DATE ||
-  recentTradingDate();
-
-if (!/^\d{8}$/u.test(date)) {
-  throw new Error("contract date must use YYYYMMDD");
-}
-
-const openapi = YAML.parse(
-  await readFile(resolve(repository, "contracts/krx/openapi.yaml"), "utf8"),
-);
-const operations = canonicalOperations(openapi);
-const plan = {
-  date,
-  registeredEndpoints: operations.length,
-  credentialedProbeCalls: operations.length,
-  maximumDailyKrxCalls: operations.length,
-  expectedOfficialSpecRequests: operations.length + 1,
-  maximumOfficialSpecRequests: MAX_OFFICIAL_DETAILS + 1,
-  probeOperations: operations.map(({ operationId }) => operationId),
-  exclusions: [],
-};
-
-let report;
-if (dryRun) {
-  report = {
-    version: 2,
-    mode: "dry-run",
-    generatedAt: new Date().toISOString(),
-    passed: true,
-    plan,
-  };
-} else {
-  if (!process.env.KRX_API_KEY) {
-    throw new Error("KRX_API_KEY is required for a live contract check");
-  }
-  const officialSpecs = await fetchOfficialRegistry();
-  const official = compareOfficialRegistry(operations, officialSpecs);
-  const { KrxClient } = await import(
-    pathToFileURL(resolve(packageRoot, "dist/index.js")).href
+  const dryRun = argumentsByName.has("--dry-run");
+  const reportPath = argumentsByName.get("--report");
+  const packageRoot = resolve(
+    repository,
+    argumentsByName.get("--package") ?? "target/native-package/package",
   );
-  const client = new KrxClient({ apiKey: process.env.KRX_API_KEY });
-  const probes = [];
-  for (const operation of operations) {
-    probes.push(await probeOperation(client, operation, date));
-  }
-  const passedProbes = probes.filter(
-    ({ status }) => status === "passed",
-  ).length;
-  report = {
-    version: 2,
-    mode: "live-native-sdk",
-    generatedAt: new Date().toISOString(),
-    passed: !official.hasDrift && passedProbes === probes.length,
-    plan,
-    official,
-    probes,
-    summary: {
-      passedProbes,
-      failedProbes: probes.length - passedProbes,
-      nativeSdkCalls: probes.length,
-    },
+  const calendar = JSON.parse(
+    await readFile(
+      resolve(repository, "src/calendar/krx-closures.json"),
+      "utf8",
+    ),
+  );
+  const requestedDate =
+    argumentsByName.get("--date") || process.env.KRX_CONTRACT_DATE;
+  const date = requestedDate
+    ? validateTradingDate(requestedDate, calendar)
+    : recentTradingDate(new Date(), calendar);
+
+  const openapi = YAML.parse(
+    await readFile(resolve(repository, "contracts/krx/openapi.yaml"), "utf8"),
+  );
+  const operations = canonicalOperations(openapi);
+  const plan = {
+    date,
+    registeredEndpoints: operations.length,
+    credentialedProbeCalls: operations.length,
+    maximumDailyKrxCalls: operations.length,
+    expectedOfficialSpecRequests: operations.length + 1,
+    maximumOfficialSpecRequests: MAX_OFFICIAL_DETAILS + 1,
+    probeOperations: operations.map(({ operationId }) => operationId),
+    exclusions: [],
   };
+
+  let report;
+  if (dryRun) {
+    report = {
+      version: 2,
+      mode: "dry-run",
+      generatedAt: new Date().toISOString(),
+      passed: true,
+      plan,
+    };
+  } else {
+    if (!process.env.KRX_API_KEY) {
+      throw new Error("KRX_API_KEY is required for a live contract check");
+    }
+    const officialSpecs = await fetchOfficialRegistry();
+    const official = compareOfficialRegistry(operations, officialSpecs);
+    const { KrxClient } = await import(
+      pathToFileURL(resolve(packageRoot, "dist/index.js")).href
+    );
+    const client = new KrxClient({ apiKey: process.env.KRX_API_KEY });
+    const probes = [];
+    for (const operation of operations) {
+      probes.push(await probeOperation(client, operation, date));
+    }
+    const passedProbes = probes.filter(
+      ({ status }) => status === "passed",
+    ).length;
+    report = {
+      version: 2,
+      mode: "live-native-sdk",
+      generatedAt: new Date().toISOString(),
+      passed: !official.hasDrift && passedProbes === probes.length,
+      plan,
+      official,
+      probes,
+      summary: {
+        passedProbes,
+        failedProbes: probes.length - passedProbes,
+        nativeSdkCalls: probes.length,
+      },
+    };
+  }
+
+  const rendered = `${JSON.stringify(report, null, 2)}\n`;
+  if (typeof reportPath === "string") {
+    const destination = resolve(repository, reportPath);
+    await mkdir(dirname(destination), { recursive: true });
+    await writeFile(destination, rendered);
+  }
+  process.stdout.write(rendered);
+  if (!report.passed) process.exitCode = 1;
 }
 
-const rendered = `${JSON.stringify(report, null, 2)}\n`;
-if (typeof reportPath === "string") {
-  const destination = resolve(repository, reportPath);
-  await mkdir(dirname(destination), { recursive: true });
-  await writeFile(destination, rendered);
+if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
+  await main();
 }
-process.stdout.write(rendered);
-if (!report.passed) process.exitCode = 1;
 
-function recentTradingDate() {
-  const kst = new Date(Date.now() + 9 * 60 * 60 * 1_000);
+export function recentTradingDate(now, calendar) {
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1_000);
   kst.setUTCHours(0, 0, 0, 0);
   kst.setUTCDate(kst.getUTCDate() - 1);
-  while (kst.getUTCDay() === 0 || kst.getUTCDay() === 6) {
+  for (let attempts = 0; attempts < 370; attempts += 1) {
+    const candidate = kst.toISOString().slice(0, 10).replaceAll("-", "");
+    if (isTradingDate(candidate, calendar)) return candidate;
     kst.setUTCDate(kst.getUTCDate() - 1);
   }
-  return kst.toISOString().slice(0, 10).replaceAll("-", "");
+  throw new Error("no verified KRX session exists in the covered calendar");
 }
 
-function canonicalOperations(document) {
+export function validateTradingDate(value, calendar, now = new Date()) {
+  if (!/^\d{8}$/u.test(value)) {
+    throw new Error("contract date must use YYYYMMDD");
+  }
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(4, 6));
+  const day = Number(value.slice(6, 8));
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    throw new Error(`contract date is not a real calendar date: ${value}`);
+  }
+  if (!Object.hasOwn(calendar.years ?? {}, String(year))) {
+    throw new Error(
+      `contract date is outside the verified KRX calendar: ${value}`,
+    );
+  }
+  const latestCompletedSession = recentTradingDate(now, calendar);
+  if (value > latestCompletedSession) {
+    throw new Error(
+      `contract date is later than the most recent completed verified KRX session (${latestCompletedSession}): ${value}`,
+    );
+  }
+  if (!isTradingDate(value, calendar)) {
+    throw new Error(`contract date is not a verified KRX session: ${value}`);
+  }
+  return value;
+}
+
+function isTradingDate(value, calendar) {
+  const year = value.slice(0, 4);
+  if (!Object.hasOwn(calendar.years ?? {}, year)) return false;
+  const parsed = new Date(
+    Date.UTC(
+      Number(year),
+      Number(value.slice(4, 6)) - 1,
+      Number(value.slice(6, 8)),
+    ),
+  );
+  return (
+    parsed.getUTCDay() !== 0 &&
+    parsed.getUTCDay() !== 6 &&
+    !Object.hasOwn(calendar.years[year], value)
+  );
+}
+
+export function canonicalOperations(document) {
   const operations = [];
   for (const [path, pathItem] of Object.entries(document.paths ?? {})) {
     const operation = pathItem.post;
@@ -248,7 +308,7 @@ async function fetchText(url) {
   return response.text();
 }
 
-function parseCatalog(html) {
+export function parseCatalog(html) {
   const entries = [];
   const pattern =
     /href="([^"]*\/OPPUSES\d+_S2\.cmd\?BO_ID=[^"]+)"\s+class="link">([^<]+)<\/a>/gu;
@@ -266,7 +326,7 @@ function parseCatalog(html) {
   return entries;
 }
 
-function parseOfficialDetail(html, entry) {
+export function parseOfficialDetail(html, entry) {
   const samplePath = html.match(/name="apiTestUrl"\s+value="([^"]+)"/u)?.[1];
   const modifiedDate = html.match(
     /<dt>최근 수정일<\/dt>\s*<dd>([^<]+)<\/dd>/u,
@@ -306,7 +366,7 @@ function parseFields(xml, section) {
   });
 }
 
-function compareOfficialRegistry(maintained, official) {
+export function compareOfficialRegistry(maintained, official) {
   const officialByPath = new Map(official.map((entry) => [entry.path, entry]));
   const maintainedPaths = new Set(maintained.map(({ path }) => path));
   const counts = new Map();

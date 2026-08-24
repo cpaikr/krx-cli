@@ -21,10 +21,11 @@
     "contract:check": "node scripts/contract-drift.mjs",
     "contract:dry-run": "node scripts/contract-drift.mjs --dry-run",
     "rust:sdk": "cargo fmt --all --check && cargo check --locked --workspace --all-targets --all-features && cargo clippy --locked --workspace --all-targets --all-features -- -D warnings && cargo test --locked --workspace --all-features",
+    "rust:security": "cargo deny check advisories bans licenses sources",
     "calendar:check": "node scripts/krx-calendar.mjs --check",
     "calendar:update": "node scripts/krx-calendar.mjs --write",
-    "check": "pnpm cutover:check && pnpm contract:validate && pnpm lint && pnpm typecheck && pnpm test:node-sdk && pnpm test",
-    "verify": "pnpm check && pnpm rust:sdk && pnpm calendar:check && pnpm audit:prod",
+    "check": "pnpm cutover:check && pnpm contract:validate && pnpm contract:dry-run && pnpm lint && pnpm typecheck && pnpm test:node-sdk && pnpm test",
+    "verify": "pnpm check && pnpm rust:sdk && pnpm rust:security && pnpm calendar:check && pnpm audit:prod",
     "release": "release-it"
   },
   "keywords": [

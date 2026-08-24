@@ -1,6 +1,13 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { clearTimeout, setTimeout } from "node:timers";
@@ -36,12 +43,34 @@ const cliOverlay = JSON.parse(
     "utf8",
   ),
 );
+const candidateCliCases = JSON.parse(
+  await readFile(resolve(repositoryRoot, cliOverlay.candidateCases), "utf8"),
+).cases;
+const candidateBehaviorIds = new Set(
+  cliOverlay.behaviorChanges.map(({ id }) => id),
+);
+for (const requiredBehavior of [
+  "headless-credential-store-fails-closed",
+  "mcp-schema-metadata-removed",
+]) {
+  assertion(
+    candidateBehaviorIds.has(requiredBehavior),
+    `candidate compatibility waiver is absent from the CLI overlay: ${requiredBehavior}`,
+  );
+}
 const schemaOracle = JSON.parse(
   await readFile(
     resolve(repositoryRoot, "tests/compat/oracles/schema-all.json"),
     "utf8",
   ),
 );
+const nativeSchemaOracle = schemaOracle.map((schema) => {
+  const projected = structuredClone(schema);
+  if (projected.derivedOutput?.optOut !== undefined) {
+    delete projected.derivedOutput.optOut.mcp;
+  }
+  return projected;
+});
 const adjustedRangeOracle = JSON.parse(
   await readFile(
     resolve(repositoryRoot, "tests/compat/oracles/adjusted-stock-range.json"),
@@ -155,8 +184,9 @@ async function writeCacheEntry(home, { data, date, endpoint }) {
   const params = { basDd: date };
   const directory = join(home, ".krx-cli", "cache", date);
   await mkdir(directory, { recursive: true, mode: 0o700 });
+  const destination = join(directory, `${cacheKey(endpoint, params)}.json`);
   await writeFile(
-    join(directory, `${cacheKey(endpoint, params)}.json`),
+    destination,
     `${JSON.stringify({
       version: 1,
       fetchedAt: new Date().toISOString(),
@@ -166,6 +196,15 @@ async function writeCacheEntry(home, { data, date, endpoint }) {
     })}\n`,
     { mode: 0o600 },
   );
+  return destination;
+}
+
+function v2CachePath(home, operationId, date) {
+  const parameters = JSON.stringify([["basDd", date]]);
+  const digest = createHash("sha256")
+    .update(`krx-cache-v2\n${operationId}\n${parameters}`)
+    .digest("hex");
+  return join(home, ".krx-cli", "cache", "v2", date, `${digest}.json`);
 }
 
 async function seedQuota(home) {
@@ -489,7 +528,10 @@ function assessScenario(scenario, result, installedVersion, profile) {
     }
     if (expected.schemaOracle === true)
       assertion(
-        sameJsonValue(parsed, schemaOracle),
+        sameJsonValue(
+          parsed,
+          profile === "candidate" ? nativeSchemaOracle : schemaOracle,
+        ),
         "complete schema oracle did not match",
       );
     if (expected.adjustmentOracle === true)
@@ -535,6 +577,142 @@ function candidateAdjustmentOracle(oracle) {
       ...Object.fromEntries(derivedFields.map((name) => [name, row[name]])),
     })),
   };
+}
+
+async function runCandidateMigrationCases(installRoot, report) {
+  const endpoint = endpointFixtures.kospiStocks.endpoint;
+  const operationId = "stock_stk_bydd_trd";
+  const canonicalRows = fixtures.kospiStocks.map((row) =>
+    candidateRow(endpoint, row),
+  );
+  const contractCase = (id, polarity, setup) => {
+    const candidate = candidateCliCases.find((entry) => entry.id === id);
+    assertion(candidate !== undefined, `candidate CLI case is absent: ${id}`);
+    assertion(
+      candidate.coversBehavior === "strict-canonical-cache-row-migration" &&
+        candidate.polarity === polarity &&
+        candidate.setup === setup,
+      `candidate CLI migration case drifted: ${id}`,
+    );
+    return candidate;
+  };
+  const canonicalCase = contractCase(
+    "canonical-legacy-cache-row-migrates",
+    "positive",
+    "cache-v1-canonical-openapi-row",
+  );
+  const invalidCase = contractCase(
+    "noncanonical-legacy-cache-row-rejected",
+    "rejection",
+    "cache-v1-row-with-unknown-field",
+  );
+  const definitions = [
+    {
+      id: canonicalCase.id,
+      args: canonicalCase.args,
+      rows: canonicalRows,
+      assess: async ({ home, legacyPath, result }) => {
+        assertion(
+          result.code === canonicalCase.expect.code,
+          `migration exited ${result.code}`,
+        );
+        const current = JSON.parse(
+          await readFile(v2CachePath(home, operationId, fixtureDate), "utf8"),
+        );
+        assertion(current.version === 2, "migration did not create cache v2");
+        assertion(
+          current.operationId === operationId,
+          "migrated operation ID did not match",
+        );
+        assertion(
+          /^[0-9a-f]{64}$/u.test(current.schemaSha256),
+          "migrated schema digest was not canonical",
+        );
+        assertion(
+          sameJsonValue(current.params, [["basDd", fixtureDate]]),
+          "migrated parameters did not match",
+        );
+        assertion(
+          sameJsonValue(current.rows, canonicalRows),
+          "migrated rows did not match the canonical OpenAPI schema",
+        );
+        await access(legacyPath).then(
+          () => {
+            throw new Error("legacy cache remained after v2 promotion");
+          },
+          () => undefined,
+        );
+      },
+    },
+    {
+      id: invalidCase.id,
+      args: invalidCase.args,
+      rows: [{ ...canonicalRows[0], UNKNOWN_PROVIDER_FIELD: "rejected" }],
+      withoutApiKey: true,
+      assess: async ({ home, result }) => {
+        assertion(
+          result.code === invalidCase.expect.code,
+          `invalid legacy row exited ${result.code}`,
+        );
+        assertion(result.stdout === "", "invalid legacy row wrote stdout");
+        assertion(
+          result.stderr.includes("/cache_invalid]"),
+          "invalid legacy row did not report cache_invalid",
+        );
+        await access(v2CachePath(home, operationId, fixtureDate)).then(
+          () => {
+            throw new Error("invalid legacy row created cache v2");
+          },
+          () => undefined,
+        );
+      },
+    },
+  ];
+
+  for (const definition of definitions) {
+    const scenarioRoot = await mkdtemp(
+      join(
+        resolve(repositoryRoot, "target/compat-scenarios"),
+        "krx-migration-",
+      ),
+    );
+    try {
+      const home = join(scenarioRoot, "home");
+      const cwd = join(scenarioRoot, "cwd");
+      await Promise.all([
+        mkdir(home, { recursive: true, mode: 0o700 }),
+        mkdir(cwd, { recursive: true, mode: 0o700 }),
+      ]);
+      const legacyPath = await writeCacheEntry(home, {
+        data: definition.rows,
+        date: fixtureDate,
+        endpoint,
+      });
+      await seedQuota(home);
+      const command = installedBinCommand(installRoot, "krx", definition.args);
+      const result = await run(command.command, command.args, {
+        cwd,
+        env: processEnvironment(home, definition.withoutApiKey),
+      });
+      try {
+        await definition.assess({ home, legacyPath, result });
+        report.push({ id: definition.id, status: "passed" });
+      } catch (error) {
+        report.push({
+          id: definition.id,
+          status: "failed",
+          reason: error instanceof Error ? error.message : String(error),
+          observation: {
+            code: result.code,
+            stderr: result.stderr,
+            stdout: result.stdout,
+          },
+        });
+      }
+    } finally {
+      await rm(scenarioRoot, { recursive: true, force: true });
+    }
+  }
 }
 
 export async function runCompatibilityJudge(
@@ -614,8 +792,7 @@ export async function runCompatibilityJudge(
           report.push({
             id: scenario.id,
             status: "passed",
-            classification:
-              "headless OS keychain unavailable; missing-entry behavior is covered by isolated Rust credential tests",
+            classification: "headless-credential-store-fails-closed",
           });
           continue;
         }
@@ -637,6 +814,9 @@ export async function runCompatibilityJudge(
     } finally {
       await rm(scenarioRoot, { recursive: true, force: true });
     }
+  }
+  if (profile === "candidate") {
+    await runCandidateMigrationCases(installRoot, report);
   }
   return report;
 }

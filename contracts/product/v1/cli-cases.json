@@ -237,6 +237,44 @@
       }
     },
     {
+      "id": "schema-native-cli-opt-out",
+      "coversBehavior": "mcp-schema-metadata-removed",
+      "polarity": "positive",
+      "args": ["schema", "--all"],
+      "expect": {
+        "code": 0,
+        "derivedOutputCliOptOut": "--no-adjusted"
+      }
+    },
+    {
+      "id": "schema-mcp-opt-out-absent",
+      "coversBehavior": "mcp-schema-metadata-removed",
+      "polarity": "rejection",
+      "args": ["schema", "--all"],
+      "expect": { "code": 0, "derivedOutputMcpOptOutAbsent": true }
+    },
+    {
+      "id": "environment-credential-avoids-headless-store",
+      "coversBehavior": "headless-credential-store-fails-closed",
+      "polarity": "positive",
+      "args": ["--dry-run", "stock", "list", "--date", "20260102"],
+      "setup": "environment-credential-headless-store-unavailable",
+      "expect": { "code": 0, "credentialStoreReads": 0, "networkCalls": 0 }
+    },
+    {
+      "id": "headless-credential-store-fails-closed",
+      "coversBehavior": "headless-credential-store-fails-closed",
+      "polarity": "rejection",
+      "args": ["--dry-run", "stock", "list", "--date", "20260102"],
+      "setup": "no-environment-credential-headless-store-unavailable",
+      "expect": {
+        "code": 1,
+        "stderrCode": "credential_read_failed",
+        "stdout": "",
+        "networkCalls": 0
+      }
+    },
+    {
       "id": "removed-serve-help-exclusion",
       "coversInventory": "remove-command:[]:serve",
       "polarity": "positive",

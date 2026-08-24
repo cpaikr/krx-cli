@@ -38,9 +38,10 @@ publication decision.
   lifecycle, and disposable probe. The root package has no runtime dependency,
   bin, export, shipped-file, or install-hook surface. Release and contract-drift
   workflows consume assembled native artifacts.
-- Installed-product parity passes 14 frozen scenarios against the exact native
+- Installed-product parity passes 14 frozen compatibility scenarios plus the
+  two frozen v1-to-v2 cache migration postconditions against the exact native
   archive, including deterministic diagnostic observations and strict legacy
-  cache migration. The no-data, schema, and adjustment mutants are rejected by
+  cache rejection. The no-data, schema, and adjustment mutants are rejected by
   their named scenarios. Secure credential, approval, cache, quota, offline,
   watchlist, and local-state migrations are exercised through the shared Rust
   implementation.
@@ -48,9 +49,10 @@ publication decision.
   canonical contract guides, and packaged skill now describe only the native
   product. The cutover scanner finds one HTTP conformer and no dormant legacy
   or MCP runtime path.
-- Local `pnpm verify` passes 130 maintainer tests, 14 public Node facade tests,
+- Local validation passes 135 maintainer tests, 14 public Node facade tests,
   155 Rust tests with one intentional interop worker ignored, strict Clippy,
-  calendar freshness, and the production dependency audit. A fresh host
+  calendar freshness, Rust advisory/license/source policy, and the production
+  dependency audit. A fresh host
   `darwin-arm64` archive passes clean-install certification under Node 24 with
   portable SHA-256
   `3c84bab73759ca8b4fed59da39da01b19efe2e4562a7f8d272d97b16f69a8789`.
@@ -149,7 +151,7 @@ crates/krx-cli   crates/krx-node
   Clap CLI       Node-API boundary
        |             |
        |             v
-       |       packages/node/src
+       |       packages/node/dist
        |         public Node SDK
         \           /
          v         v
@@ -549,7 +551,8 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Run clean-checkout validation and required code review over the locally complete
-cutover, then deliver the final PR through exact-head Blacksmith Linux GNU
-x64/ARM64 certification, feedback closure, and merge. Creating the first tag or
-GitHub Release remains excluded.
+Complete the required code review over the locally complete, clean-checkout-
+validated cutover, then deliver the final PR through exact-head Blacksmith Linux
+GNU x64/ARM64 certification, feedback closure, and merge. Creating the first
+tag or GitHub Release remains excluded; publication design remains a separately
+authorized decision.

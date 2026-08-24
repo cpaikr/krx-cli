@@ -37,12 +37,12 @@ crates/krx-cli  crates/krx-node ---> packages/node
 
 A frontend creates a shared `krx_sdk::Client` and submits a typed request. The
 SDK validates the operation and date, resolves cache policy, and returns an
-offline hit before touching credentials or quota. An online miss resolves the
-credential, joins or owns the per-key flight and lease, reserves one KST-day
-quota unit immediately before each actual HTTP attempt, and strictly decodes a
-bounded response. Eligible historical results are published atomically to the
-versioned cache. Frontends receive project-owned result and error types; they
-never interpret provider wire data themselves.
+offline hit before touching credentials or quota. An online miss joins or owns
+the per-key flight and cross-process lease before resolving the credential,
+reserves one KST-day quota unit immediately before each actual HTTP attempt,
+and strictly decodes a bounded response. Eligible historical results are
+published atomically to the versioned cache. Frontends receive project-owned
+result and error types; they never interpret provider wire data themselves.
 
 ## State and distribution
 
@@ -79,5 +79,5 @@ to control compute cost.
 - `pnpm contract:dry-run`: bounded live-contract plan without network access.
 - `.github/workflows/rust-vertical-slice.yml`: Linux native archive
   certification.
-- `docs/TESTING.md`: validation and release-operator commands.
+- `docs/TESTING.md`: validation and artifact-certification boundaries.
 - `docs/CLI-CONTRACT.md`: stable process behavior and environment contract.

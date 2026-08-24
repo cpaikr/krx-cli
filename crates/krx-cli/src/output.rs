@@ -566,7 +566,7 @@ fn schema_value(description: &OperationDescription) -> Value {
             "provenance": derived.provenance,
             "eligibleEndpoints": derived.eligible_endpoints,
             "defaultForEligibleSingleSecurityRanges": derived.default_for_eligible_single_security_ranges,
-            "optOut": {"cli": derived.cli_opt_out, "mcp": derived.legacy_mcp_opt_out},
+            "optOut": {"cli": derived.cli_opt_out},
             "fields": derived.fields.iter().map(|field| json!({
                 "name": field.name,
                 "type": field.field_type,

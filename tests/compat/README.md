@@ -15,6 +15,11 @@ not a supported persisted state and unknown fields must not survive the strict
 Rust decoder. The one pipeline scenario therefore drops the fixture-only
 `ISU_SRT_CD` alias in favor of canonical `ISU_CD`.
 
+The candidate schema oracle is the frozen legacy schema with only the removed
+MCP opt-out metadata projected away. The remaining CLI adjustment metadata is
+compared exactly. This is the ledgered `mcp-schema-metadata-removed` cutover
+change, not a mutation of the frozen legacy oracle.
+
 The scenario set freezes package launch, the recursive command and option
 inventory, the complete 31-endpoint schema document, argument and credential
 failures, dry-run redaction, cached row output and pipeline behavior, an
@@ -34,3 +39,8 @@ three changes into captured process observations as oracle self-tests; these
 prove the candidate assertions still reject changed exit, schema, and complete
 adjustment results, without claiming that the immutable native executable was
 rewritten in place.
+
+Candidate certification also executes the two frozen cache migration cases
+against that installed archive. A canonical v1 hit must create the exact v2
+entry and remove the matching v1 file; an unknown provider field must fail
+offline with `cache_invalid`, emit no row, and create no v2 entry.

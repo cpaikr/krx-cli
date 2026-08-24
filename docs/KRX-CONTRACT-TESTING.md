@@ -13,7 +13,10 @@ pnpm contract:dry-run -- --date 20260821 --report artifacts/plan.json
 ```
 
 Dry-run performs no network or quota operation. It reports 31 native SDK calls,
-32 expected public specification reads, and the hard 65-read official cap.
+32 expected public specification reads, and the hard 65-read official cap. An
+omitted date selects the prior verified KRX session from the maintained
+calendar; explicit impossible, closed, weekend, uncovered, or not-yet-completed
+dates fail before any official-specification or SDK request.
 
 ## Live evidence
 

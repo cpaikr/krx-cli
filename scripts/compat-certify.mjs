@@ -49,9 +49,7 @@ function run(
         resolveRun({ stderr, stdout });
       } else {
         reject(
-          new Error(
-            `${command} failed with exit ${code}\n${stderr || stdout}`,
-          ),
+          new Error(`${command} failed with exit ${code}\n${stderr || stdout}`),
         );
       }
     });
@@ -153,7 +151,8 @@ try {
   });
 
   process.stdout.write(
-    `Native compatibility judge passed ${baseline.length} frozen installed-product scenarios; ` +
+    `Native compatibility judge passed ${baseline.length} installed-product checks ` +
+      "(14 frozen compatibility scenarios plus 2 native migration cases); " +
       "the no-data exit, schema, and adjustment mutants were rejected by their named scenarios\n",
   );
 } finally {
