@@ -6,8 +6,9 @@
 — active under [the durable goal contract](goals/rust-rewrite.md). The green
 legacy baseline, canonical OpenAPI/contracts, and production shared Rust SDK
 are merged. The native Clap CLI, public Node SDK, and production artifact slice
-is locally complete and awaiting PR delivery; secure migration, parity
-promotion, legacy removal, and atomic cutover follow in the final slice.
+are also merged after exact-head Blacksmith certification and feedback closure.
+Secure migration promotion, installed-product parity, legacy removal, and the
+atomic package/export cutover remain in the final slice.
 
 ## Plans
 

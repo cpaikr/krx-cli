@@ -25,13 +25,13 @@ publication decision.
 - Contract PR #8 and production SDK PR #9 are merged. The shared Rust SDK now
   implements every supported KRX operation plus the frozen domain, credential,
   quota, cache, offline, and local-state policy.
-- The production adapter slice is implemented locally: `crates/krx-cli` is the
+- Production adapter PR #10 is merged: `crates/krx-cli` is the
   native Clap CLI, `crates/krx-node` is the private napi-rs boundary, and
   `packages/node` is the public typed facade. Production archive assembly and
   clean-install certification cover all four supported target definitions;
   continuous Blacksmith certification covers Linux GNU x64/ARM64 under Node 22
-  and 24. Local review and validation are green; hosted PR certification and
-  delivery remain pending.
+  and 24. Exact-head hosted SDK and native-package certification, review
+  remediation, feedback closure, and merge are complete.
 - The released implementation is a TypeScript/Node CLI and MCP server. Its
   source owns 31 KRX endpoints, composites, trading-calendar behavior,
   adjusted prices, caching, quota accounting, credentials, output rendering,
@@ -543,8 +543,7 @@ crates/krx-cli   crates/krx-node
 
 ## Next action
 
-Deliver the implemented native CLI, public Node SDK, and production artifact
-slice through review, exact-head hosted Linux certification, feedback closure,
-and merge. Then deliver the final parity and secure-state migration work with
-the atomic package-export cutover, legacy TypeScript/JavaScript deletion, and
-MCP removal in the remaining PR.
+Deliver the final parity and secure-state migration work with the atomic
+package-export cutover, legacy TypeScript/JavaScript deletion, MCP removal,
+clean-checkout validation, review, feedback closure, and merge in the remaining
+PR.

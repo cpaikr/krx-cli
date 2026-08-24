@@ -45,28 +45,37 @@ Goal contract
 - Green frozen legacy baseline and mutation-tested compatibility judge.
 - Canonical KRX OpenAPI and frozen SDK, CLI, error, and migration contracts.
 - Complete shared Rust SDK for all supported KRX behavior and local policy.
+- Native Clap CLI and public Node SDK over the shared Rust implementation.
 
 ### Current in-scope result
 
-Deliver the locally complete native Clap CLI and public Node SDK over the
-merged shared Rust SDK. This adapter slice keeps the legacy JavaScript CLI and
-MCP runnable until the separate atomic cutover result, while preventing either
-candidate adapter from acquiring a second transport, policy implementation, or
-MCP compatibility surface.
+Prove final installed-product parity and secure-state migration, then perform
+the atomic production cutover. Promote the native package exports and
+executable, preserve the maintainer-only contract and calendar duties, and
+remove the legacy TypeScript protocol/domain implementation, JavaScript CLI,
+MCP surface, and install-time native build path.
 
 ### Next in-scope action
 
-Commit and deliver one reviewable adapter PR containing `crates/krx-cli`, the
-private `crates/krx-node` napi-rs boundary, the typed `packages/node` facade,
-and production packaging. Complete exact-head hosted Linux GNU x64/ARM64
-certification under Node 22 and 24, close review feedback, and merge it. Then
-deliver parity promotion, secure-state migration, package-export cutover,
-legacy TypeScript deletion, and MCP removal in the final atomic-cutover PR.
+Deliver the final atomic-cutover PR: close every legacy-versus-native
+black-box difference, complete executable migration coverage, switch the root
+package and release/contract workflows to the certified native artifacts,
+delete the JavaScript CLI/TypeScript protocol and MCP implementation, reconcile
+architecture and user documentation, pass clean-checkout local and hosted
+gates, address review feedback, and merge the reviewed cutover.
 
 ### Evidence and blockers
 
-- The adapter implementation and review remediation are locally complete, and
-  the final CLI, Node, and artifact rereviews are clean. The native CLI drives
+- Adapter PR [#10](https://github.com/cpaikr/krx-cli/pull/10) merged as
+  `9bd9bb5` with all seven reviewed commits preserved. Its final feedback
+  collection covered exact head `9d28167`, found all 18 threads resolved with
+  no outside-diff findings, and confirmed CodeRabbit successful. Exact-head
+  Rust SDK run
+  [32721404379](https://github.com/cpaikr/krx-cli/actions/runs/32721404379)
+  passed Blacksmith Linux x64/ARM64. Native certification run
+  [32721404374](https://github.com/cpaikr/krx-cli/actions/runs/32721404374)
+  passed both Linux builds, all four Node 22/24 clean-install consumers, and
+  the package-identity aggregator. The native CLI drives
   every supported command through `krx-sdk`, preserves the frozen rendering,
   validation, core diagnostic grammar, and exit behavior, and uses pinned
   `rpassword` 7.4.0 solely for cross-platform
@@ -83,10 +92,6 @@ legacy TypeScript deletion, and MCP removal in the final atomic-cutover PR.
   request timing, and range/calendar decisions require a shared SDK observation
   seam and remain explicitly assigned to the final black-box parity result;
   cutover remains blocked until those differences are fixed or classified.
-  Adapter PR #10's initial exact head passed both Blacksmith Linux builds, all
-  four Node 22/24 consumers, and the identity aggregator. Its 18 review threads
-  are locally remediated or contract-disposed; the new exact head and hosted
-  rerun remain pending.
 - The final local adapter-remediation checkpoint passes workspace formatting,
   locked all-target/all-feature check, strict Clippy, 20 native CLI tests,
   eight native Node-boundary tests, and 150 SDK tests with the one intentional
@@ -514,7 +519,9 @@ legacy TypeScript deletion, and MCP removal in the final atomic-cutover PR.
   no Actions `KRX_API_KEY` secret. Deterministic calendar and dry-run contract
   validation remain separate and do not require that credential; provisioning
   the live secret requires external authority.
-- Current boundary classification: contract authority and the production
-  `crates/krx-sdk` are merged. Native CLI, Node binding/facade, and production
-  packaging are locally implemented and awaiting PR delivery; parity cutover,
-  secure migration, and legacy removal remain the final semantic result.
+- Current boundary classification: contract authority, the production shared
+  Rust SDK, native CLI, Node binding/facade, and production packaging are
+  merged on `codex/rust-rewrite-integration`. Installed-product parity,
+  migration promotion, atomic package/export cutover, legacy TypeScript and
+  JavaScript removal, MCP removal, and final PR delivery remain the final
+  semantic result.
