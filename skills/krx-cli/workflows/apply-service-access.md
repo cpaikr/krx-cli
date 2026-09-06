@@ -81,13 +81,16 @@ to resolve the blocking condition before resuming.
    expand the authorized batch during reconciliation.
 2. Revisit every page of `마이페이지 → API 이용현황` and rebuild the access map.
 3. Reconcile every endpoint in the requested scope into exactly one state:
-   - `existing-approved`: approved before this run and still currently valid.
+   - `existing-approved`: currently valid approval from an application submitted
+     before this run, including one that was initially pending. Record that
+     transition and preserve its displayed term without renewal.
    - `newly-approved`: submitted in this run and now shown as approved.
    - `submitted-pending`: submitted but not yet approved.
    - `failed`: an isolated application attempt was rejected or failed with a
      known result.
    - `unknown`: identity, submission result, status, period, or portal state
-     cannot be verified.
+     cannot be verified, or access is expired. Assign every unprocessed candidate
+     this state with reason `unprocessed`; do not count it in a second state.
 4. For `newly-approved` endpoints, confirm the displayed period matches the
    requested `12M` term or the portal's corresponding 365-day representation.
    Record the portal's literal value rather than assuming equivalence.

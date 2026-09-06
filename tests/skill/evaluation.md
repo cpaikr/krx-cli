@@ -90,6 +90,17 @@ The revised workflow produced these outcomes:
 | Valid 6M approval   | Confirmation missing and submission state unavailable | Stop without retry, classify B as unknown, report partial completion. |
 | Valid 6M approval   | Approved for 6M despite requesting 12M                | Preserve A, report B's term mismatch, withhold complete success.      |
 
+An additional independent review covered approval provenance and stopped batches:
+
+- An application submitted before the run, initially pending and finally
+  approved with a valid 6M term, became `existing-approved`. Alongside a new
+  12M approval, the final counts were one existing and one new approval, with
+  complete success and no resubmission or renewal.
+- With an unknown confirmation for A and an unavailable browser before B could
+  be processed, both endpoints became `unknown`; B carried reason `unprocessed`.
+  The report counted two unknown endpoints, stopped without retry, and withheld
+  complete success until the same shared tab could be restored and reconciled.
+
 The skill validator and existing package tests passed against the candidate.
 These checks and walkthroughs validate the documented decision rules, not portal
 DOM behavior or actual submission execution.
