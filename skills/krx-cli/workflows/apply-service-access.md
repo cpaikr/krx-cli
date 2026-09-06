@@ -41,9 +41,11 @@ not authorization.
    displayed use period for every row.
 3. Map these rows to the discovery snapshot with the same compound-key rules.
 4. Classify matched rows before applying:
-   - `existing-approved`: already approved; preserve it without renewal.
+   - `existing-approved`: already approved and currently valid; record its
+     displayed period and preserve it without renewal, regardless of its term.
    - `submitted-pending`: already submitted but not approved; do not resubmit.
-   - `unknown`: the row or identity cannot be reconciled safely; do not submit.
+   - `unknown`: the row, identity, or current validity cannot be reconciled
+     safely, including expired access; do not submit or renew it in this workflow.
 5. The candidate set is the requested scope intersected with discovered
    endpoints, excluding every existing-approved, submitted-pending, and unknown
    endpoint.
@@ -79,20 +81,25 @@ to resolve the blocking condition before resuming.
    expand the authorized batch during reconciliation.
 2. Revisit every page of `마이페이지 → API 이용현황` and rebuild the access map.
 3. Reconcile every endpoint in the requested scope into exactly one state:
-   - `existing-approved`: approved before this run.
+   - `existing-approved`: approved before this run and still currently valid.
    - `newly-approved`: submitted in this run and now shown as approved.
    - `submitted-pending`: submitted but not yet approved.
    - `failed`: an isolated application attempt was rejected or failed with a
      known result.
    - `unknown`: identity, submission result, status, period, or portal state
      cannot be verified.
-4. For approved endpoints, confirm the displayed period matches the requested
-   `12M` term or the portal's corresponding 365-day representation. Record the
-   portal's literal value rather than assuming equivalence.
+4. For `newly-approved` endpoints, confirm the displayed period matches the
+   requested `12M` term or the portal's corresponding 365-day representation.
+   Record the portal's literal value rather than assuming equivalence.
+   For `existing-approved` endpoints, report their displayed period and confirm
+   access is still valid; a different term does not prevent complete success.
+   If existing access has expired or its validity cannot be verified, classify
+   it as `unknown` and report the next action without renewing it.
 5. Report counts and endpoint identities under all five states. Include any
    unprocessed candidates after a stopped batch.
 
 Report complete success only when every endpoint in the requested discovery
-scope is `existing-approved` or `newly-approved`, every approved target shows
-the requested term, and no endpoint is pending, failed, unknown, or unprocessed.
+scope is `existing-approved` or `newly-approved`, every existing approval remains
+valid, every new approval shows the requested term, and no endpoint is pending,
+failed, unknown, or unprocessed.
 Otherwise report partial completion and the exact next safe action.

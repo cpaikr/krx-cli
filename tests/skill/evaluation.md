@@ -1,8 +1,9 @@
 # krx-cli skill evaluation
 
 This record preserves the behavior and trigger evidence used for the issue #5
-skill migration. Trials ran in fresh isolated agent contexts against the working
-tree candidate on 2026-08-06. No browser, KRX account, credential, or external
+skill migration and subsequent completion-rule correction. Initial trials ran
+in fresh isolated agent contexts against the working tree candidate on
+2026-08-06. No browser, KRX account, credential, or external
 account state was used or changed.
 
 ## Acceptance assertions
@@ -71,6 +72,27 @@ trial classified all eight frozen cases as expected:
   apply for the needed KRX services.
 - Do not activate: KRX account registration, API-key reissue, and an unrelated
   S&P 500 web query.
+
+## Completion-rule regression review — 2026-09-06
+
+An independent agent performed read-only walkthroughs of the original and
+revised workflows against a synthetic, uniquely identified two-page inventory.
+No live browser or account was used. The original rule reproduced the defect:
+a valid existing 6M approval prevented complete success alongside a new 12M
+approval because every approval was required to match the requested term.
+
+The revised workflow produced these outcomes:
+
+| Existing endpoint A | New endpoint B                                        | Result                                                                |
+| ------------------- | ----------------------------------------------------- | --------------------------------------------------------------------- |
+| Valid 6M approval   | Approved for requested 12M                            | Preserve A, submit B once, report complete success.                   |
+| Expired approval    | Approved for requested 12M                            | Classify A as unknown without renewal; report partial completion.     |
+| Valid 6M approval   | Confirmation missing and submission state unavailable | Stop without retry, classify B as unknown, report partial completion. |
+| Valid 6M approval   | Approved for 6M despite requesting 12M                | Preserve A, report B's term mismatch, withhold complete success.      |
+
+The skill validator and existing package tests passed against the candidate.
+These checks and walkthroughs validate the documented decision rules, not portal
+DOM behavior or actual submission execution.
 
 ## Decision and residual risk
 
