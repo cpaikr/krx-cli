@@ -12,3 +12,8 @@ artifacts/
 target/
 
 .env.local
+
+# Generated project skills and reconciliation state
+.sjskills/
+.agents/skills/
+.claude/skills/
