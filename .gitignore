@@ -12,6 +12,7 @@ artifacts/
 target/
 
 .env.local
+.tmp/
 
 # Generated project skills and reconciliation state
 .sjskills/
