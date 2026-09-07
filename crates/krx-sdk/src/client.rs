@@ -1826,9 +1826,17 @@ mod tests {
                     .await
             })
         };
-        while calls.load(Ordering::SeqCst) == 0 {
-            tokio::task::yield_now().await;
-        }
+        tokio::time::timeout(Duration::from_secs(10), async {
+            while calls.load(Ordering::SeqCst) == 0 {
+                assert!(
+                    !producer_task.is_finished(),
+                    "producer exited before reaching the transport"
+                );
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("producer did not reach the transport");
         let waiter_request = request(CachePolicy::Prefer {
             max_age: default_cache_age(),
         });

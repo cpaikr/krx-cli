@@ -50,7 +50,10 @@ Credentials live in the operating-system keychain. Approval, cache, quota, and
 watchlist files use the versioned contracts under `contracts/product/v1` and
 the capability-rooted state implementation in `crates/krx-sdk/src/state.rs`
 and `state_windows.rs`. Legacy plaintext credentials require the explicit
-`krx auth migrate` operation; invalid state fails closed.
+`krx auth migrate` operation; invalid state fails closed. Windows creates state
+with explicit current-user ownership and a protected private ACL. Existing
+foreign-owned or foreign-writable state is rejected without repair; legacy
+plaintext reads additionally reject foreign data-read access.
 
 Release assets are private npm-format tarballs. Each contains no dependencies
 or lifecycle scripts, a native `krx` executable, one private Node binding, the

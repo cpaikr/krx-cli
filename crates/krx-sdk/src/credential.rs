@@ -858,9 +858,13 @@ mod tests {
                 .set(ApiKey::parse("replacement").unwrap())
                 .await
         });
-        tokio::task::spawn_blocking(move || paused.recv().unwrap())
-            .await
-            .unwrap();
+        tokio::task::spawn_blocking(move || {
+            paused
+                .recv_timeout(Duration::from_secs(10))
+                .expect("credential operation did not reach the backend")
+        })
+        .await
+        .unwrap();
 
         let second_manager = manager.clone();
         let mut second =
@@ -907,9 +911,13 @@ mod tests {
                 .set(ApiKey::parse("replacement").unwrap())
                 .await
         });
-        tokio::task::spawn_blocking(move || paused.recv().unwrap())
-            .await
-            .unwrap();
+        tokio::task::spawn_blocking(move || {
+            paused
+                .recv_timeout(Duration::from_secs(10))
+                .expect("credential operation did not reach the backend")
+        })
+        .await
+        .unwrap();
 
         assert!(
             tokio::time::timeout(Duration::from_millis(100), manager.remove())

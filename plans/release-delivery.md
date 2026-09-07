@@ -1,6 +1,6 @@
 # Complete native release delivery
 
-Status: implemented and locally validated; hosted release validation pending
+Status: release preparation active; Windows corrections awaiting native validation
 
 ## Scope and decisions
 
@@ -11,7 +11,8 @@ Status: implemented and locally validated; hosted release validation pending
   and verify downloaded assets before making the draft a published release.
 - Keep routine CI on Linux. Full native coverage belongs to the release workflow;
   manual dispatch provides candidate certification without publication.
-- Creating the first real tag or publishing a release is a separate operation.
+- The first publication is authorized; prepare version 1.8.2 only after hosted
+  candidate validation passes.
 
 ## Evidence and progress
 
@@ -32,6 +33,13 @@ Status: implemented and locally validated; hosted release validation pending
 
 ## Delivery status
 
-No release was published by this implementation task. Hosted execution across all targets and
-the real GitHub publication boundary remain to be validated through
-the workflow. [Releasing](../docs/RELEASING.md) owns the operational procedure.
+Hosted builds pass on both Linux targets and macOS. Windows diagnostics exposed
+new-state ownership inherited from the process default rather than the current
+user. Creation now specifies current-user ownership and a private protected ACL;
+legacy-secret validation rejects shared data reads. Test fixtures create their
+missing parent directories, and producer waits fail promptly on early errors.
+Bounded security review and isolated Windows type/clippy checks passed; full
+Windows runtime and archive certification remain before tagging 1.8.2. No
+version tag or GitHub Release has been created.
+
+[Releasing](../docs/RELEASING.md) owns the operational procedure.

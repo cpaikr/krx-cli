@@ -15,39 +15,41 @@ use cap_std::fs::{Dir, File, MetadataExt, OpenOptions};
 use uuid::{Uuid, Variant};
 use windows_sys::Wdk::Foundation::OBJECT_ATTRIBUTES;
 use windows_sys::Wdk::Storage::FileSystem::{
-    FILE_CREATE, FILE_DIRECTORY_FILE, FILE_LINK_INFORMATION,
+    FILE_CREATE, FILE_DIRECTORY_FILE, FILE_LINK_INFORMATION, FILE_NON_DIRECTORY_FILE,
     FILE_OPEN_REPARSE_POINT as NT_FILE_OPEN_REPARSE_POINT, FILE_SYNCHRONOUS_IO_NONALERT,
     FileLinkInformation, NtCreateFile, NtSetInformationFile,
 };
 use windows_sys::Win32::Foundation::{
-    CloseHandle, ERROR_ACCESS_DENIED, ERROR_INSUFFICIENT_BUFFER, GENERIC_ALL, GENERIC_WRITE,
-    GetLastError, HANDLE, LocalFree, OBJ_CASE_INSENSITIVE, STATUS_OBJECT_NAME_COLLISION,
-    UNICODE_STRING,
+    CloseHandle, ERROR_ACCESS_DENIED, ERROR_INSUFFICIENT_BUFFER, GENERIC_ALL, GENERIC_READ,
+    GENERIC_WRITE, GetLastError, HANDLE, LocalFree, OBJ_CASE_INSENSITIVE,
+    STATUS_OBJECT_NAME_COLLISION, UNICODE_STRING,
 };
 use windows_sys::Win32::Security::Authorization::{
     BuildTrusteeWithSidW, GetEffectiveRightsFromAclW, GetSecurityInfo, SE_FILE_OBJECT, TRUSTEE_W,
 };
 use windows_sys::Win32::Security::{
-    ACCESS_ALLOWED_ACE, ACL_SIZE_INFORMATION, AclSizeInformation, CreateWellKnownSid,
-    DACL_SECURITY_INFORMATION, EqualSid, GetAce, GetAclInformation, GetTokenInformation,
-    IsValidSid, OWNER_SECURITY_INFORMATION, PSID, SECURITY_MAX_SID_SIZE, TOKEN_QUERY, TOKEN_USER,
-    TokenUser, WinAuthenticatedUserSid, WinBuiltinAdministratorsSid, WinLocalSystemSid,
-    WinWorldSid,
+    ACCESS_ALLOWED_ACE, ACL_REVISION, ACL_SIZE_INFORMATION, AclSizeInformation,
+    AddAccessAllowedAce, CreateWellKnownSid, DACL_SECURITY_INFORMATION, EqualSid, GetAce,
+    GetAclInformation, GetTokenInformation, InitializeAcl, InitializeSecurityDescriptor,
+    IsValidSid, OWNER_SECURITY_INFORMATION, PSID, SE_DACL_PROTECTED, SECURITY_DESCRIPTOR,
+    SECURITY_MAX_SID_SIZE, SetSecurityDescriptorControl, SetSecurityDescriptorDacl,
+    SetSecurityDescriptorOwner, TOKEN_QUERY, TOKEN_USER, TokenUser, WinAuthenticatedUserSid,
+    WinBuiltinAdministratorsSid, WinLocalSystemSid, WinWorldSid,
 };
 use windows_sys::Win32::Storage::FileSystem::{
-    BY_HANDLE_FILE_INFORMATION, DELETE, FILE_APPEND_DATA, FILE_ATTRIBUTE_DIRECTORY,
-    FILE_ATTRIBUTE_REPARSE_POINT, FILE_DELETE_CHILD, FILE_DISPOSITION_INFO,
-    FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, FILE_GENERIC_READ,
-    FILE_GENERIC_WRITE, FILE_RENAME_INFO, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
-    FILE_WRITE_ATTRIBUTES, FILE_WRITE_DATA, FILE_WRITE_EA, FileDispositionInfo, FileRenameInfo,
-    FlushFileBuffers, GetFileInformationByHandle, READ_CONTROL, SYNCHRONIZE,
-    SetFileInformationByHandle, WRITE_DAC, WRITE_OWNER,
+    BY_HANDLE_FILE_INFORMATION, DELETE, FILE_ALL_ACCESS, FILE_APPEND_DATA,
+    FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT, FILE_DELETE_CHILD,
+    FILE_DISPOSITION_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
+    FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_READ_DATA, FILE_RENAME_INFO, FILE_SHARE_DELETE,
+    FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_WRITE_ATTRIBUTES, FILE_WRITE_DATA, FILE_WRITE_EA,
+    FileDispositionInfo, FileRenameInfo, FlushFileBuffers, GetFileInformationByHandle,
+    READ_CONTROL, SYNCHRONIZE, SetFileInformationByHandle, WRITE_DAC, WRITE_OWNER,
 };
 use windows_sys::Win32::System::IO::IO_STATUS_BLOCK;
 use windows_sys::Win32::System::SystemServices::{
     ACCESS_ALLOWED_ACE_TYPE, ACCESS_ALLOWED_CALLBACK_ACE_TYPE,
     ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE, ACCESS_ALLOWED_COMPOUND_ACE_TYPE,
-    ACCESS_ALLOWED_OBJECT_ACE_TYPE,
+    ACCESS_ALLOWED_OBJECT_ACE_TYPE, SECURITY_DESCRIPTOR_REVISION,
 };
 use windows_sys::Win32::System::Threading::{
     GetCurrentProcess, OpenProcess, OpenProcessToken, PROCESS_QUERY_LIMITED_INFORMATION,
@@ -1595,20 +1597,76 @@ fn create_child_directory(
     sensitivity: ReadSensitivity,
     error_code: KrxErrorCode,
 ) -> Result<Option<Dir>, KrxError> {
+    let Some(file) = create_state_object(parent, leaf, true, error_code)? else {
+        return Ok(None);
+    };
+    let directory = Dir::from_std_file(file);
+    validate_directory_security(&directory, sensitivity, error_code)?;
+    Ok(Some(directory))
+}
+
+fn create_state_object(
+    parent: &Dir,
+    leaf: &OsStr,
+    directory: bool,
+    error_code: KrxErrorCode,
+) -> Result<Option<std::fs::File>, KrxError> {
     let name = unicode_string(leaf)?;
+    let mut token = null_mut();
+    // SAFETY: token receives an owned process-token handle on success.
+    if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } == 0 {
+        return Err(state_error(
+            error_code,
+            "local state user identity inspection failed",
+        ));
+    }
+    let _token_guard = HandleGuard(token);
+    let mut owner = token_user_sid(token, error_code)?;
+    let mut acl_storage = [0_usize; 64];
+    let dacl = acl_storage.as_mut_ptr().cast();
+    let mut descriptor = SECURITY_DESCRIPTOR::default();
+    let descriptor_ptr = (&raw mut descriptor).cast();
+    // Elevated tokens can default to Administrators as owner. Specify the user
+    // and a protected private ACL at creation, before any bytes are written;
+    // never repair or take ownership of an existing object.
+    // SAFETY: the aligned ACL buffer fits one maximum-size SID. All descriptor
+    // pointers reference live local storage through NtCreateFile below.
+    let secured = unsafe {
+        InitializeAcl(
+            dacl,
+            std::mem::size_of_val(&acl_storage) as u32,
+            ACL_REVISION,
+        ) != 0
+            && AddAccessAllowedAce(
+                dacl,
+                ACL_REVISION,
+                FILE_ALL_ACCESS,
+                owner.as_mut_ptr().cast(),
+            ) != 0
+            && InitializeSecurityDescriptor(descriptor_ptr, SECURITY_DESCRIPTOR_REVISION) != 0
+            && SetSecurityDescriptorOwner(descriptor_ptr, owner.as_mut_ptr().cast(), 0) != 0
+            && SetSecurityDescriptorDacl(descriptor_ptr, 1, dacl, 0) != 0
+            && SetSecurityDescriptorControl(descriptor_ptr, SE_DACL_PROTECTED, SE_DACL_PROTECTED)
+                != 0
+    };
+    if !secured {
+        return Err(state_error(
+            error_code,
+            "local state private ACL creation failed",
+        ));
+    }
     let attributes = OBJECT_ATTRIBUTES {
         Length: size_of::<OBJECT_ATTRIBUTES>() as u32,
         RootDirectory: parent.as_raw_handle().cast(),
         ObjectName: &name.string,
         Attributes: OBJ_CASE_INSENSITIVE,
-        SecurityDescriptor: std::ptr::null(),
+        SecurityDescriptor: &descriptor,
         SecurityQualityOfService: std::ptr::null(),
     };
     let mut status_block = IO_STATUS_BLOCK::default();
     let mut handle = null_mut();
-    // SAFETY: attributes references a live, validated relative name and parent
-    // handle; the output handle and status block are writable. FILE_CREATE plus
-    // FILE_DIRECTORY_FILE cannot follow or create a non-directory object.
+    // SAFETY: attributes retains a validated relative name, parent handle and
+    // security descriptor. FILE_CREATE never opens an existing object.
     let status = unsafe {
         NtCreateFile(
             &mut handle,
@@ -1616,10 +1674,19 @@ fn create_child_directory(
             &attributes,
             &mut status_block,
             std::ptr::null(),
-            FILE_ATTRIBUTE_DIRECTORY,
+            if directory {
+                FILE_ATTRIBUTE_DIRECTORY
+            } else {
+                0
+            },
             SHARE_ALL,
             FILE_CREATE,
-            FILE_DIRECTORY_FILE | NT_FILE_OPEN_REPARSE_POINT | FILE_SYNCHRONOUS_IO_NONALERT,
+            (if directory {
+                FILE_DIRECTORY_FILE
+            } else {
+                FILE_NON_DIRECTORY_FILE
+            }) | NT_FILE_OPEN_REPARSE_POINT
+                | FILE_SYNCHRONOUS_IO_NONALERT,
             std::ptr::null(),
             0,
         )
@@ -1630,14 +1697,13 @@ fn create_child_directory(
     if status < 0 || handle.is_null() {
         return Err(state_error(
             error_code,
-            "local state directory creation failed",
+            "local state object creation failed",
         ));
     }
     // SAFETY: NtCreateFile returned a new owned handle on success.
-    let file = unsafe { std::fs::File::from_raw_handle(handle.cast()) };
-    let directory = Dir::from_std_file(file);
-    validate_directory_security(&directory, sensitivity, error_code)?;
-    Ok(Some(directory))
+    Ok(Some(unsafe {
+        std::fs::File::from_raw_handle(handle.cast())
+    }))
 }
 
 fn open_child_directory(
@@ -1708,7 +1774,7 @@ fn open_directory_file(
 
 fn validate_directory_security(
     directory: &Dir,
-    _sensitivity: ReadSensitivity,
+    sensitivity: ReadSensitivity,
     error_code: KrxErrorCode,
 ) -> Result<(), KrxError> {
     let metadata = directory
@@ -1722,7 +1788,7 @@ fn validate_directory_security(
             "local state component is not a safe directory",
         ));
     }
-    validate_handle_security(directory.as_raw_handle(), error_code)
+    validate_handle_security(directory.as_raw_handle(), sensitivity, error_code)
 }
 
 fn validate_destination(
@@ -1753,32 +1819,28 @@ fn open_secure_file(
     delete_access: bool,
     error_code: KrxErrorCode,
 ) -> Result<Option<File>, KrxError> {
-    let mut options = OpenOptions::new();
-    options
-        .read(!write)
-        .write(write)
-        .create_new(create_new)
-        .share_mode(SHARE_ALL)
-        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
-    if write {
-        options.access_mode(
-            FILE_GENERIC_READ | FILE_GENERIC_WRITE | DELETE | READ_CONTROL | SYNCHRONIZE,
-        );
-    } else if delete_access {
-        options.access_mode(FILE_GENERIC_READ | DELETE | READ_CONTROL | SYNCHRONIZE);
-    }
-    let file = match parent.open_with(leaf, &options) {
-        Ok(file) => file,
-        Err(error) if !create_new && error.kind() == io::ErrorKind::NotFound => return Ok(None),
-        Err(_) => {
-            return Err(state_error(
-                error_code,
-                if create_new {
-                    "local state temporary file creation failed"
-                } else {
-                    "local state file open failed"
-                },
-            ));
+    let file = if create_new {
+        let file = create_state_object(parent, leaf, false, error_code)?
+            .ok_or_else(|| state_error(error_code, "local state temporary file already exists"))?;
+        File::from_std(file)
+    } else {
+        let mut options = OpenOptions::new();
+        options
+            .read(!write)
+            .write(write)
+            .share_mode(SHARE_ALL)
+            .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+        if write {
+            options.access_mode(
+                FILE_GENERIC_READ | FILE_GENERIC_WRITE | DELETE | READ_CONTROL | SYNCHRONIZE,
+            );
+        } else if delete_access {
+            options.access_mode(FILE_GENERIC_READ | DELETE | READ_CONTROL | SYNCHRONIZE);
+        }
+        match parent.open_with(leaf, &options) {
+            Ok(file) => file,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+            Err(_) => return Err(state_error(error_code, "local state file open failed")),
         }
     };
     let metadata = file
@@ -1790,7 +1852,7 @@ fn open_secure_file(
             "local state file is not a safe regular file",
         ));
     }
-    validate_handle_security(file.as_raw_handle(), error_code)?;
+    validate_handle_security(file.as_raw_handle(), ReadSensitivity::NonSecret, error_code)?;
     Ok(Some(file))
 }
 
@@ -1798,13 +1860,16 @@ fn read_file(
     parent: &Dir,
     leaf: &OsStr,
     maximum_bytes: u64,
-    _sensitivity: ReadSensitivity,
+    sensitivity: ReadSensitivity,
     error_code: KrxErrorCode,
     observe_oversized: bool,
 ) -> Result<Option<ObservedFile>, KrxError> {
     let Some(mut file) = open_secure_file(parent, leaf, false, false, false, error_code)? else {
         return Ok(None);
     };
+    if sensitivity == ReadSensitivity::LegacySecret {
+        validate_handle_security(file.as_raw_handle(), sensitivity, error_code)?;
+    }
     let before = file_metadata_identity(&file, error_code)?;
     if before.size > maximum_bytes {
         if observe_oversized {
@@ -2348,7 +2413,11 @@ fn validate_retained_plain_lock(directory: &Dir, error_code: KrxErrorCode) -> Re
     Ok(())
 }
 
-fn validate_handle_security(raw: RawHandle, error_code: KrxErrorCode) -> Result<(), KrxError> {
+fn validate_handle_security(
+    raw: RawHandle,
+    sensitivity: ReadSensitivity,
+    error_code: KrxErrorCode,
+) -> Result<(), KrxError> {
     let handle = raw.cast::<c_void>();
     let mut token = null_mut();
     // SAFETY: GetCurrentProcess returns a pseudo-handle; token receives a new
@@ -2387,21 +2456,28 @@ fn validate_handle_security(raw: RawHandle, error_code: KrxErrorCode) -> Result<
     if unsafe { EqualSid(owner, user_sid.as_mut_ptr().cast()) } == 0 {
         return Err(state_error(error_code, "local state has a foreign owner"));
     }
-    validate_acl_writers(dacl, user_sid.as_mut_ptr().cast(), error_code)?;
+    let forbidden = writable_rights()
+        | if sensitivity == ReadSensitivity::LegacySecret {
+            GENERIC_READ | FILE_READ_DATA
+        } else {
+            0
+        };
+    validate_acl_access(dacl, user_sid.as_mut_ptr().cast(), forbidden, error_code)?;
     for sid_type in [WinWorldSid, WinAuthenticatedUserSid] {
-        if effective_writable_rights(dacl, sid_type, error_code)? {
+        if effective_forbidden_rights(dacl, sid_type, forbidden, error_code)? {
             return Err(state_error(
                 error_code,
-                "local state ACL permits shared writes",
+                "local state ACL permits forbidden shared access",
             ));
         }
     }
     Ok(())
 }
 
-fn validate_acl_writers(
+fn validate_acl_access(
     dacl: *mut windows_sys::Win32::Security::ACL,
     owner: PSID,
+    forbidden: u32,
     error_code: KrxErrorCode,
 ) -> Result<(), KrxError> {
     let mut information = ACL_SIZE_INFORMATION::default();
@@ -2437,7 +2513,7 @@ fn validate_acl_writers(
                 | ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE
                 | ACCESS_ALLOWED_COMPOUND_ACE_TYPE
                 | ACCESS_ALLOWED_OBJECT_ACE_TYPE
-        ) || unsafe { (*allowed).Mask } & writable_rights() == 0
+        ) || unsafe { (*allowed).Mask } & forbidden == 0
         {
             continue;
         }
@@ -2446,7 +2522,7 @@ fn validate_acl_writers(
         if u32::from(ace_type) != ACCESS_ALLOWED_ACE_TYPE {
             return Err(state_error(
                 error_code,
-                "local state ACL permits nonstandard writes",
+                "local state ACL permits nonstandard access",
             ));
         }
         // SAFETY: for ACCESS_ALLOWED_ACE_TYPE SidStart is the first word of a
@@ -2463,7 +2539,7 @@ fn validate_acl_writers(
         if !approved {
             return Err(state_error(
                 error_code,
-                "local state ACL permits a foreign writer",
+                "local state ACL permits forbidden foreign access",
             ));
         }
     }
@@ -2520,9 +2596,10 @@ fn token_user_sid(token: HANDLE, error_code: KrxErrorCode) -> Result<Vec<u8>, Kr
     Ok(owned)
 }
 
-fn effective_writable_rights(
+fn effective_forbidden_rights(
     dacl: *mut windows_sys::Win32::Security::ACL,
     sid_type: i32,
+    forbidden: u32,
     error_code: KrxErrorCode,
 ) -> Result<bool, KrxError> {
     let mut sid = well_known_sid(sid_type, error_code)?;
@@ -2536,7 +2613,7 @@ fn effective_writable_rights(
     if unsafe { GetEffectiveRightsFromAclW(dacl, &trustee, &mut rights) } != 0 {
         return Err(state_error(error_code, "local state ACL inspection failed"));
     }
-    Ok(rights & writable_rights() != 0)
+    Ok(rights & forbidden != 0)
 }
 
 fn well_known_sid(sid_type: i32, error_code: KrxErrorCode) -> Result<Vec<u8>, KrxError> {
@@ -2558,9 +2635,10 @@ fn well_known_sid(sid_type: i32, error_code: KrxErrorCode) -> Result<Vec<u8>, Kr
 }
 
 fn writable_rights() -> u32 {
+    // FILE_GENERIC_WRITE also contains READ_CONTROL and SYNCHRONIZE, which
+    // ordinary readers receive. Only mutation rights identify foreign writers.
     GENERIC_ALL
         | GENERIC_WRITE
-        | FILE_GENERIC_WRITE
         | FILE_WRITE_DATA
         | FILE_APPEND_DATA
         | FILE_WRITE_EA
@@ -2749,8 +2827,157 @@ mod tests {
     const VALID_OWNER: &str = "42-4c691fc0-09c4-4c83-904d-d10b1681ff73";
 
     #[test]
+    fn acl_accepts_foreign_readers_but_rejects_foreign_mutation_rights() {
+        use windows_sys::Win32::Security::{ACL_REVISION, AddAccessAllowedAce, InitializeAcl};
+        use windows_sys::Win32::Storage::FileSystem::FILE_GENERIC_EXECUTE;
+
+        let code = KrxErrorCode::CacheWriteFailed;
+        let mut owner = well_known_sid(WinBuiltinAdministratorsSid, code).unwrap();
+        let mut world = well_known_sid(WinWorldSid, code).unwrap();
+        for (rights, writable) in [
+            (FILE_GENERIC_READ, false),
+            (FILE_GENERIC_EXECUTE, false),
+            (FILE_GENERIC_WRITE, true),
+            (FILE_WRITE_DATA, true),
+            (FILE_APPEND_DATA, true),
+            (FILE_WRITE_EA, true),
+            (FILE_WRITE_ATTRIBUTES, true),
+            (FILE_DELETE_CHILD, true),
+            (DELETE, true),
+            (WRITE_DAC, true),
+            (WRITE_OWNER, true),
+        ] {
+            let mut storage = [0_usize; 64];
+            let dacl = storage.as_mut_ptr().cast();
+            // SAFETY: the aligned buffer has room for the ACL and one maximum
+            // sized SID; the ACL and SID storage remain live through validation.
+            unsafe {
+                assert_ne!(
+                    InitializeAcl(dacl, std::mem::size_of_val(&storage) as u32, ACL_REVISION),
+                    0
+                );
+                assert_ne!(
+                    AddAccessAllowedAce(dacl, ACL_REVISION, rights, world.as_mut_ptr().cast()),
+                    0
+                );
+            }
+            assert_eq!(
+                validate_acl_access(dacl, owner.as_mut_ptr().cast(), writable_rights(), code)
+                    .is_err(),
+                writable,
+                "unexpected ACL writer classification for {rights:#x}"
+            );
+            assert_eq!(
+                effective_forbidden_rights(dacl, WinWorldSid, writable_rights(), code).unwrap(),
+                writable,
+                "unexpected effective writer classification for {rights:#x}"
+            );
+        }
+    }
+
+    #[test]
+    fn legacy_secret_rejects_foreign_readable_files_and_directories() {
+        use windows_sys::Win32::Security::Authorization::SetSecurityInfo;
+        use windows_sys::Win32::Security::PROTECTED_DACL_SECURITY_INFORMATION;
+
+        let code = KrxErrorCode::MigrationFailed;
+        for expose_directory in [false, true] {
+            let parent = std::env::temp_dir().join(format!("krx-state-{}", Uuid::new_v4()));
+            fs::create_dir_all(&parent).unwrap();
+            let root_path = parent.join(".krx-cli");
+            let state = StateRoot::new(root_path.clone()).unwrap();
+            state.atomic_write("config.json", b"secret", code).unwrap();
+            assert_eq!(
+                state
+                    .read("config.json", 64, ReadSensitivity::LegacySecret, code)
+                    .unwrap()
+                    .unwrap()
+                    .bytes(),
+                b"secret"
+            );
+            let exposed = if expose_directory {
+                root_path.clone()
+            } else {
+                root_path.join("config.json")
+            };
+            let handle = AmbientOpenOptions::new()
+                .access_mode(WRITE_DAC | READ_CONTROL)
+                .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT)
+                .open(exposed)
+                .unwrap();
+            let mut token = null_mut();
+            // SAFETY: token receives an owned handle and all ACL/SID buffers
+            // remain live through the security update of this test-owned path.
+            unsafe {
+                assert_ne!(
+                    OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token),
+                    0
+                );
+            }
+            let _guard = HandleGuard(token);
+            let mut owner = token_user_sid(token, code).unwrap();
+            let mut world = well_known_sid(WinWorldSid, code).unwrap();
+            let mut storage = [0_usize; 64];
+            let dacl = storage.as_mut_ptr().cast();
+            unsafe {
+                assert_ne!(
+                    InitializeAcl(dacl, std::mem::size_of_val(&storage) as u32, ACL_REVISION),
+                    0
+                );
+                assert_ne!(
+                    AddAccessAllowedAce(
+                        dacl,
+                        ACL_REVISION,
+                        FILE_ALL_ACCESS,
+                        owner.as_mut_ptr().cast()
+                    ),
+                    0
+                );
+                assert_ne!(
+                    AddAccessAllowedAce(
+                        dacl,
+                        ACL_REVISION,
+                        FILE_GENERIC_READ,
+                        world.as_mut_ptr().cast()
+                    ),
+                    0
+                );
+                assert_eq!(
+                    SetSecurityInfo(
+                        handle.as_raw_handle().cast(),
+                        SE_FILE_OBJECT,
+                        DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+                        null_mut(),
+                        null_mut(),
+                        dacl,
+                        null_mut()
+                    ),
+                    0
+                );
+            }
+            assert_eq!(
+                state
+                    .read("config.json", 64, ReadSensitivity::NonSecret, code)
+                    .unwrap()
+                    .unwrap()
+                    .bytes(),
+                b"secret"
+            );
+            assert!(
+                state
+                    .read("config.json", 64, ReadSensitivity::LegacySecret, code)
+                    .is_err()
+            );
+            assert_eq!(fs::read(root_path.join("config.json")).unwrap(), b"secret");
+            drop(handle);
+            fs::remove_dir_all(parent).unwrap();
+        }
+    }
+
+    #[test]
     fn post_commit_sync_failure_reports_committed_replacement() {
         let parent = std::env::temp_dir().join(format!("krx-state-{}", Uuid::new_v4()));
+        fs::create_dir_all(&parent).unwrap();
         let root_path = parent.join(".krx-cli");
         let state = StateRoot::new(root_path.clone()).unwrap();
         state
@@ -2771,6 +2998,7 @@ mod tests {
     #[test]
     fn pre_commit_failure_reports_uncommitted_and_preserves_destination() {
         let parent = std::env::temp_dir().join(format!("krx-state-{}", Uuid::new_v4()));
+        fs::create_dir_all(&parent).unwrap();
         let root_path = parent.join(".krx-cli");
         let state = StateRoot::new(root_path.clone()).unwrap();
         state
@@ -2791,6 +3019,7 @@ mod tests {
     #[test]
     fn conditional_file_changes_never_touch_a_replacement() {
         let parent = std::env::temp_dir().join(format!("krx-state-{}", Uuid::new_v4()));
+        fs::create_dir_all(&parent).unwrap();
         let root_path = parent.join(".krx-cli");
         let state = StateRoot::new(root_path.clone()).unwrap();
         state

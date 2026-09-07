@@ -304,12 +304,12 @@ function assertWindowsStateProtocolSource(source: string): void {
   );
   const tombstone = source.slice(tombstoneStart, tombstoneEnd);
   const securityStart = source.indexOf("fn validate_handle_security(");
-  const aclStart = source.indexOf("fn validate_acl_writers(", securityStart);
+  const aclStart = source.indexOf("fn validate_acl_access(", securityStart);
   const securityEnd = aclStart;
   const security = source.slice(securityStart, securityEnd);
   const aclEnd = source.indexOf("fn token_user_sid(", aclStart);
   const acl = source.slice(aclStart, aclEnd);
-  const rightsStart = source.indexOf("fn effective_writable_rights(");
+  const rightsStart = source.indexOf("fn effective_forbidden_rights(");
   const rightsEnd = source.indexOf("fn well_known_sid(", rightsStart);
   const rights = source.slice(rightsStart, rightsEnd);
   const writableStart = source.indexOf("fn writable_rights()");
@@ -373,9 +373,7 @@ function assertWindowsStateProtocolSource(source: string): void {
     createStart < 0 ||
     !directoryCreate.includes("NtCreateFile(") ||
     !directoryCreate.includes("RootDirectory: parent.as_raw_handle().cast()") ||
-    !directoryCreate.includes(
-      "FILE_DIRECTORY_FILE | NT_FILE_OPEN_REPARSE_POINT",
-    ) ||
+    !directoryCreate.includes("FILE_DIRECTORY_FILE") ||
     directoryStart < 0 ||
     directoryEnd < 0 ||
     !directoryOpen.includes("parent.open_with(leaf, &options)") ||
@@ -386,7 +384,7 @@ function assertWindowsStateProtocolSource(source: string): void {
     !fileOpen.includes("parent.open_with(leaf, &options)") ||
     !fileOpen.includes("FILE_FLAG_OPEN_REPARSE_POINT") ||
     !fileOpen.includes(
-      "validate_handle_security(file.as_raw_handle(), error_code)",
+      "validate_handle_security(file.as_raw_handle(), ReadSensitivity::NonSecret, error_code)",
     ) ||
     readStart < 0 ||
     readEnd < 0 ||
@@ -449,12 +447,12 @@ function assertWindowsStateProtocolSource(source: string): void {
     !security.includes(
       "if unsafe { EqualSid(owner, user_sid.as_mut_ptr().cast()) } == 0",
     ) ||
-    !security.includes("validate_acl_writers(") ||
+    !security.includes("validate_acl_access(") ||
     !security.includes(
       "for sid_type in [WinWorldSid, WinAuthenticatedUserSid]",
     ) ||
     !security.includes(
-      "effective_writable_rights(dacl, sid_type, error_code)",
+      "effective_forbidden_rights(dacl, sid_type, forbidden, error_code)",
     ) ||
     aclStart < 0 ||
     aclEnd < 0 ||
@@ -464,7 +462,7 @@ function assertWindowsStateProtocolSource(source: string): void {
     !acl.includes("WinBuiltinAdministratorsSid") ||
     !acl.includes("for index in 0..information.AceCount") ||
     !acl.includes(
-      ") || unsafe { (*allowed).Mask } & writable_rights() == 0\n        {\n            continue;\n        }",
+      ") || unsafe { (*allowed).Mask } & forbidden == 0\n        {\n            continue;\n        }",
     ) ||
     !acl.includes("if u32::from(ace_type) != ACCESS_ALLOWED_ACE_TYPE") ||
     !acl.includes("EqualSid(sid, owner) != 0") ||
@@ -473,20 +471,19 @@ function assertWindowsStateProtocolSource(source: string): void {
       "EqualSid(sid, administrators_sid.as_mut_ptr().cast()) != 0",
     ) ||
     !acl.includes(
-      'if !approved {\n            return Err(state_error(\n                error_code,\n                "local state ACL permits a foreign writer",\n            ));\n        }',
+      'if !approved {\n            return Err(state_error(\n                error_code,\n                "local state ACL permits forbidden foreign access",\n            ));\n        }',
     ) ||
-    !acl.includes("local state ACL permits a foreign writer") ||
+    !acl.includes("local state ACL permits forbidden foreign access") ||
     rightsStart < 0 ||
     rightsEnd < 0 ||
     !rights.includes(
       'if unsafe { GetEffectiveRightsFromAclW(dacl, &trustee, &mut rights) } != 0 {\n        return Err(state_error(error_code, "local state ACL inspection failed"));\n    }',
     ) ||
-    !rights.includes("Ok(rights & writable_rights() != 0)") ||
+    !rights.includes("Ok(rights & forbidden != 0)") ||
     writableStart < 0 ||
     writableEnd < 0 ||
     !writable.includes("GENERIC_ALL") ||
     !writable.includes("GENERIC_WRITE") ||
-    !writable.includes("FILE_GENERIC_WRITE") ||
     !writable.includes("FILE_WRITE_DATA") ||
     !writable.includes("FILE_APPEND_DATA") ||
     !writable.includes("FILE_WRITE_EA") ||
@@ -496,7 +493,7 @@ function assertWindowsStateProtocolSource(source: string): void {
     !writable.includes("WRITE_DAC") ||
     !writable.includes("WRITE_OWNER") ||
     !writable.includes(
-      "GENERIC_ALL\n        | GENERIC_WRITE\n        | FILE_GENERIC_WRITE\n        | FILE_WRITE_DATA\n        | FILE_APPEND_DATA\n        | FILE_WRITE_EA\n        | FILE_WRITE_ATTRIBUTES\n        | FILE_DELETE_CHILD\n        | DELETE\n        | WRITE_DAC\n        | WRITE_OWNER",
+      "GENERIC_ALL\n        | GENERIC_WRITE\n        | FILE_WRITE_DATA\n        | FILE_APPEND_DATA\n        | FILE_WRITE_EA\n        | FILE_WRITE_ATTRIBUTES\n        | FILE_DELETE_CHILD\n        | DELETE\n        | WRITE_DAC\n        | WRITE_OWNER",
     ) ||
     renameStart < 0 ||
     renameEnd < 0 ||
@@ -1464,16 +1461,16 @@ describe("production Rust SDK gate", () => {
     expect(() =>
       assertWindowsStateProtocolSource(
         windowsState.replace(
-          "(*allowed).Mask } & writable_rights() == 0",
-          "(*allowed).Mask } & writable_rights() != 0",
+          "(*allowed).Mask } & forbidden == 0",
+          "(*allowed).Mask } & forbidden != 0",
         ),
       ),
     ).toThrow(/Windows quota state/u);
     expect(() =>
       assertWindowsStateProtocolSource(
         windowsState.replace(
-          "(*allowed).Mask } & writable_rights() == 0",
-          "(*allowed).Mask } & writable_rights() == 0 || true",
+          "(*allowed).Mask } & forbidden == 0",
+          "(*allowed).Mask } & forbidden == 0 || true",
         ),
       ),
     ).toThrow(/Windows quota state/u);
@@ -1521,10 +1518,7 @@ describe("production Rust SDK gate", () => {
     ).toThrow(/Windows quota state/u);
     expect(() =>
       assertWindowsStateProtocolSource(
-        windowsState.replace(
-          "Ok(rights & writable_rights() != 0)",
-          "Ok(false)",
-        ),
+        windowsState.replace("Ok(rights & forbidden != 0)", "Ok(false)"),
       ),
     ).toThrow(/Windows quota state/u);
     expect(() =>
@@ -1628,7 +1622,7 @@ describe("production Rust SDK gate", () => {
     expect(() =>
       assertWindowsStateProtocolSource(
         windowsState.replace(
-          "validate_handle_security(file.as_raw_handle(), error_code)?;",
+          "validate_handle_security(file.as_raw_handle(), ReadSensitivity::NonSecret, error_code)?;",
           "let _ = file.as_raw_handle();",
         ),
       ),
