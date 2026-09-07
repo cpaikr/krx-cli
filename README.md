@@ -1,15 +1,23 @@
 # krx-cli
 
-KRX(한국거래소) Open API를 위한 네이티브 CLI와 Node.js SDK입니다. 모든 KRX
-동작과 로컬 정책은 공유 Rust SDK가 담당하며, CLI와 Node SDK는 같은 결과,
-오류, 캐시, 할당량, 자격 증명 정책을 사용합니다.
+A native CLI and Node.js SDK for the KRX (Korea Exchange) Open API. Both use a
+shared Rust SDK for provider requests, credentials, caching, quota enforcement,
+and errors. Query stocks, indices, exchange-traded products, bonds, derivatives,
+commodities, and ESG data from the terminal or an ESM application.
 
-## 설치
+## Installation
 
-배포 경로는 [비공개 GitHub Releases](https://github.com/cpaikr/krx-cli/releases)입니다. 게시된 릴리스는
-저장소 접근 권한으로 운영체제에 맞는 tarball과 `SHA256SUMS`를 내려받아
-체크섬을 확인한 뒤 설치합니다. [다운로드 및 설치 절차](docs/RELEASING.md#install-and-upgrade)를
-따르세요. 설치 과정에서 소스 빌드나 lifecycle script를 실행하지 않습니다.
+Use Node.js **22 or 24** and pnpm. Download the archive for your platform and
+`SHA256SUMS` from [GitHub Releases](https://github.com/cpaikr/krx-cli/releases),
+then verify the checksum using the
+[installation guide](docs/RELEASING.md#install-and-upgrade).
+
+| Platform                    | Archive target    |
+| --------------------------- | ----------------- |
+| macOS ARM64 (Apple silicon) | `darwin-arm64`    |
+| Linux x64 (glibc)           | `linux-x64-gnu`   |
+| Linux ARM64 (glibc)         | `linux-arm64-gnu` |
+| Windows x64                 | `win32-x64-msvc`  |
 
 ```bash
 pnpm add --global --ignore-scripts "./krx-cli-<version>-<target>.tgz"
@@ -17,14 +25,23 @@ krx --version
 krx --help
 ```
 
-`<version>`과 `<target>`을 선택한 릴리스와 대상 이름으로 바꾸세요.
-지원 대상은 macOS ARM64, Linux GNU x64/ARM64, Windows x64입니다. 릴리스는
-모든 대상의 바이너리를 빌드·배포하며, CI 테스트와 Node 22/24 소비자 인증은 Linux에서만 실행합니다.
+Replace `<version>` and `<target>` with the downloaded asset's values. Each
+archive includes the native CLI and Node binding; installation requires no Rust
+toolchain or lifecycle scripts. Install a release archive rather than the
+repository root, which is a maintainer workspace.
 
-## 자격 증명
+The [target manifest](contracts/product/v1/native-targets.json) defines supported
+platforms. Release builds cover every target; automated tests and Node 22/24
+consumer certification run only on Linux GNU x64 and ARM64.
 
-[KRX Open API](https://openapi.krx.co.kr)에서 키를 발급하고 필요한 서비스를
-승인받으세요. 키는 명령행 인자로 받지 않습니다.
+## Credentials
+
+Obtain an API key and approval for the services you need through the
+[KRX Open API portal](https://openapi.krx.co.kr). Supply the key through
+`KRX_API_KEY`, or save it in the operating-system credential store. The CLI does
+not accept keys as command-line arguments.
+
+If `KRX_API_KEY` is already set, persist it and check access with:
 
 ```bash
 printf '%s\n' "$KRX_API_KEY" | krx auth set --stdin
@@ -32,27 +49,42 @@ krx auth status
 krx auth check stock
 ```
 
-명시적 SDK 키, `KRX_API_KEY`, 운영체제 keychain 순으로 해석합니다. 이전
-평문 설정은 `krx auth migrate`로 한 번만 명시적으로 이전합니다.
+Credential precedence is an explicit SDK key, then `KRX_API_KEY`, then the OS
+credential store. A stored key requires a working credential store; an
+environment key can be used without persisting it. Use `krx auth migrate` to
+explicitly migrate a legacy plaintext credential. `auth check` probes service
+access; it does not apply for approval.
 
-## CLI 예시
+## CLI examples
 
 ```bash
 krx stock list --date 20260821 --market kospi --output json
 krx stock list --from 20260801 --to 20260821 --code 005930
-krx stock search 삼성전자
+krx stock search "삼성전자"
 krx market summary --date 20260821
-krx cache inspect --limit 20
+krx cache status
 krx schema --all
 ```
 
-전체 명령과 옵션은 `krx --help` 및 하위 명령의 `--help`가 권위입니다. 출력과
-exit code 계약은 [docs/CLI-CONTRACT.md](docs/CLI-CONTRACT.md)를 참고하세요.
+Dates use `YYYYMMDD`. Stock search matches security names; the example searches
+for Samsung Electronics by its Korean name. Direct row output defaults to a table in a terminal and JSON when redirected; composite
+queries such as `market summary` return JSON with explicit completeness status.
+For scripts, handle empty and partial results using the documented
+[output and exit-code contract](docs/CLI-CONTRACT.md).
+
+Use `krx --help` and each subcommand's `--help` for the current command and option
+inventory. [The CLI usage reference](skills/krx-cli/references/cli-usage.md)
+covers date ranges, adjusted prices, filtering, and cache policies.
 
 ## Node.js SDK
 
-동일한 target tarball을 프로젝트 의존성으로 설치하면 ESM 루트에서 공개 SDK를
-가져올 수 있습니다. 네이티브 binding은 공개 subpath가 아닙니다.
+Install the same platform archive as a project dependency:
+
+```bash
+pnpm add --ignore-scripts "./krx-cli-<version>-<target>.tgz"
+```
+
+Import the public SDK from the package's ESM root, for example in an `.mjs` file:
 
 ```js
 import { KrxClient, KrxError } from "krx-cli";
@@ -65,36 +97,56 @@ try {
   });
   console.log(result.data);
 } catch (error) {
-  if (error instanceof KrxError) console.error(error.kind, error.code);
-  else throw error;
+  if (error instanceof KrxError) {
+    console.error(error.kind, error.code);
+    process.exitCode = 1;
+  } else {
+    throw error;
+  }
 }
 ```
 
-타입 계약은 `contracts/product/v1/node-sdk.d.ts`, Rust 공개 계약은
-`contracts/product/v1/rust-sdk-consumer.rs`에 고정되어 있습니다.
+The client also exposes date ranges, stock search, market summaries, watchlist
+prices, credential management, and cache operations. Results include provenance;
+composite results also report completeness. The native binding is an internal
+implementation detail with no public import subpath.
+
+See the [Node API contract](contracts/product/v1/node-sdk.d.ts) for methods and
+request types, and the [Rust consumer fixture](contracts/product/v1/rust-sdk-consumer.rs)
+for the supported Rust interface. [Product contracts](contracts/product/README.md)
+explain how these surfaces are maintained and validated.
 
 ## Agent skill
 
-저장소의 중첩 skill 전체를 설치합니다.
+Install the complete skill directory, including its references and workflows:
 
 ```bash
 npx skills add cpaikr/krx-cli
-# 또는 저장소 checkout에서
+# Or, from a repository checkout:
+mkdir -p ~/.agents/skills
 cp -R skills/krx-cli ~/.agents/skills/
 ```
 
-이전 단일 파일을 사용했다면 충돌 방지를 위해 `krx-cli.md.legacy`로 이름을
-바꾼 뒤 `skills/krx-cli/` 디렉터리를 설치하세요. 네이티브 tarball에도 같은
-skill 디렉터리가 포함됩니다.
+If you previously installed a standalone `krx-cli.md`, rename that file to
+`krx-cli.md.legacy` before installing the directory to avoid duplicate skill
+instructions. Release archives include the same `skills/krx-cli` directory.
 
-## 유지보수
+## Development
+
+Use the pnpm version pinned in [package.json](package.json), the Rust toolchain
+in [rust-toolchain.toml](rust-toolchain.toml), and cargo-deny for the full gate.
 
 ```bash
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm verify
-pnpm contract:dry-run
 ```
 
-구조와 불변식은 [ARCHITECTURE.md](ARCHITECTURE.md), 검증 경계는
-[docs/TESTING.md](docs/TESTING.md)에 정리되어 있습니다. 버전 준비, 전체 대상
-인증, 게시 및 실패 복구 절차는 [docs/RELEASING.md](docs/RELEASING.md)를 따릅니다.
+Run `pnpm contract:dry-run` for the bounded contract-drift plan without live KRX
+requests. Credentialed drift checks are separate from the repository gate.
+
+- [Architecture](ARCHITECTURE.md): component boundaries and invariants.
+- [Testing](docs/TESTING.md): repository checks and archive certification.
+- [Provider contracts](contracts/krx/README.md): KRX wire authority and regeneration.
+- [Compatibility judge](tests/compat/README.md): installed CLI regression checks.
+- [Releasing](docs/RELEASING.md): version preparation, publication, and recovery.
+- [Roadmap](ROADMAP.md): delivery status and ongoing operational obligations.

@@ -21,11 +21,12 @@ archives, checksums, and Linux-only automated tests and consumer certification.
 [Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK](plans/rust-rewrite.md)
 — completed under [the durable goal contract](goals/rust-rewrite.md). The
 shared Rust SDK, native Clap CLI, public Node SDK, secure local-state behavior,
-certified private native artifacts, and atomic legacy/MCP cutover are merged on
+certified native artifacts, and atomic legacy/MCP cutover are merged on
 `main`. Continuous Blacksmith certification covers Linux GNU x64/ARM64 under
 Node 22/24; macOS ARM64 and Windows x64 remain supported artifact targets but
 are intentionally omitted from continuous CI solely to reduce compute cost.
-The first private GitHub Release is published.
+The first GitHub Release is published. See [Releasing](docs/RELEASING.md) for
+distribution and visibility.
 
 ## Baseline
 

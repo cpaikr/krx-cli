@@ -1,46 +1,81 @@
 # Installed-package compatibility judge
 
-The judge installs a tarball into an isolated prefix and invokes only its
-installed `krx` executable. Every scenario gets a fresh home, working
-directory, dummy credential, saturated quota state, and reviewed cache
-fixtures. A cache-key mistake therefore fails locally instead of reaching KRX.
+The compatibility judge checks the installed CLI against frozen legacy behavior
+and explicitly approved native differences. It installs a target archive into
+an isolated prefix and invokes its installed `krx` executable, without importing
+production CLI internals.
 
-The frozen legacy run used the original compact v1 fixture rows. The native
-profile projects those same reviewed values into the exact canonical OpenAPI
-row shape before writing v1 cache entries, then requires exact output with no
-additional fields. This is the classified
-`strict-canonical-cache-row-migration` security fix: production legacy cache
-rows came from complete provider responses, while partial test-only rows are
-not a supported persisted state and unknown fields must not survive the strict
-Rust decoder. The one pipeline scenario therefore drops the fixture-only
-`ISU_SRT_CD` alias in favor of canonical `ISU_CD`.
+## Run certification
 
-The candidate schema oracle is the frozen legacy schema with only the removed
-MCP opt-out metadata projected away. The remaining CLI adjustment metadata is
-compared exactly. This is the ledgered `mcp-schema-metadata-removed` cutover
-change, not a mutation of the frozen legacy oracle.
+From the repository root, with Node.js 22 or 24, npm, and pnpm available:
 
-The scenario set freezes package launch, the recursive command and option
-inventory, the complete 31-endpoint schema document, argument and credential
-failures, dry-run redaction, cached row output and pipeline behavior, an
-adjusted-price provider oracle, missing-result exit semantics, composite
-completeness, stdout/stderr separation, and cache inspection. The missing-result
-case uses local watchlist state so the candidate remains free to reject legacy
-persisted empty cache entries. Transport-only 401/403/retry behavior remains in
-conformer tests because the legacy and native executables have no safe shared
-transport-injection surface.
+```bash
+pnpm test:compat --candidate-tarball "/path/to/krx-cli-<version>-<target>.tgz"
+```
 
-The merged legacy baseline remains the authoritative black-box mutation proof:
-independent installed copies changed the bundled no-data exit, schema
-description, and adjustment rounding behavior, and the unchanged judge rejected
-only their named scenarios. Final native certification first requires the real
-installed artifact to pass every candidate scenario. It then injects the same
-three changes into captured process observations as oracle self-tests; these
-prove the candidate assertions still reject changed exit, schema, and complete
-adjustment results, without claiming that the immutable native executable was
-rewritten in place.
+Use an archive matching the host platform. The runner installs it with lifecycle
+scripts disabled, runs the candidate scenarios and cache-migration checks, then
+runs assertion self-tests. Any failed check makes certification fail. Installation
+and scenario directories are temporary and removed after the run.
 
-Candidate certification also executes the two frozen cache migration cases
-against that installed archive. A canonical v1 hit must create the exact v2
-entry and remove the matching v1 file; an unknown provider field must fail
-offline with `cache_invalid`, emit no row, and create no v2 entry.
+Each scenario has a fresh home and working directory. Query scenarios use a
+dummy credential, saturated quota state, and reviewed cache fixtures so an
+unexpected cache miss fails locally before reaching KRX. Credential-failure
+scenarios omit the environment key; the OS credential store remains a host
+facility, so use a clean test environment. An unavailable headless credential
+store is accepted only through the classified
+`headless-credential-store-fails-closed` case.
+
+## Evidence and coverage
+
+- [scenarios.json](scenarios.json) defines launch, argument and credential errors,
+  dry-run redaction, cached rows and pipelines, adjusted stock ranges, missing
+  results, composite completeness, stdout/stderr separation, and cache status.
+- [command-inventory.json](command-inventory.json) freezes the recursive legacy
+  command and option inventory.
+- [oracles](oracles) holds the complete legacy schema and adjusted-range output.
+- [fixtures/cache-rows.json](fixtures/cache-rows.json) holds reviewed cache values.
+- [The CLI overlay](../../contracts/product/v1/cli-overlay.json) classifies
+  intentional native differences;
+  [CLI cases](../../contracts/product/v1/cli-cases.json) defines their positive and
+  rejection cases. The installed judge directly executes the cache-migration
+  cases in addition to the frozen scenarios.
+
+The missing-result scenario uses an empty local watchlist so the native CLI can
+reject persisted empty cache entries. Transport-only 401/403/retry behavior is
+covered by [Rust conformer tests](../../crates/krx-sdk/src/conformer.rs); legacy
+and native executables have no shared transport-injection surface for this judge.
+See [Testing](../../docs/TESTING.md) for the wider certification boundary.
+
+## Native projections and migration
+
+The native profile projects compact legacy fixture rows into the full canonical
+OpenAPI row shape before writing v1 cache entries. Expected output is compared
+exactly, including the absence of additional fields. This implements the
+`strict-canonical-cache-row-migration` classification: partial test fixtures are
+not supported production cache state, and unknown provider fields must fail strict
+decoding. The pipeline projection drops the fixture-only `ISU_SRT_CD` alias and
+retains canonical `ISU_CD`.
+
+The candidate schema expectation removes only the legacy MCP opt-out metadata,
+as recorded by `mcp-schema-metadata-removed`. Remaining adjustment metadata is
+compared exactly. These projections leave the frozen legacy oracles unchanged.
+
+Installed cache-migration checks require a canonical v1 hit to create a v2 entry
+with the expected operation, parameters, canonical rows, and a SHA-256-shaped
+schema digest, then remove the matching v1 file. A row with an unknown provider
+field must fail offline with `cache_invalid`, emit no rows, and create no v2
+entry. The judge checks the digest's format, not its equality to the current
+provider contract hash.
+
+## Assertion self-tests
+
+[compat-certify.mjs](../../scripts/compat-certify.mjs) first requires the real
+installed archive to pass. It then changes captured process observations for the
+no-data exit, schema description, and adjustment metadata. Each mutation must
+fail only its named scenario. These checks prove that the assertions detect those
+changes; they do not modify the native executable.
+
+The [completed rewrite plan](../../plans/rust-rewrite.md) records the recoverable
+legacy baseline and its earlier mutation evidence. Keep that historical evidence
+distinct from the current native assertion self-tests.

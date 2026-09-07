@@ -18,7 +18,7 @@ crates/krx-cli  crates/krx-node ---> packages/node
         \_______________________________/
                         |
                         v
-              private target tarball
+                 target tarball
 ```
 
 - Start with `crates/krx-sdk/src/client.rs` to trace a query. It composes strict
@@ -55,8 +55,8 @@ with explicit current-user ownership and a protected private ACL. Existing
 foreign-owned or foreign-writable state is rejected without repair; legacy
 plaintext reads additionally reject foreign data-read access.
 
-Release assets are private npm-format tarballs. Each contains no dependencies
-or lifecycle scripts, a native `krx` executable, one private Node binding, the
+Release assets are npm-format tarballs distributed through GitHub Releases. Each
+contains no dependencies or lifecycle scripts, a native `krx` executable, one private Node binding, the
 public facade and declarations, and `skills/krx-cli`. macOS ARM64, Linux GNU
 x64/ARM64, and Windows x64 remain supported manifest targets. Automated tests and
 Blacksmith consumer certification cover only Linux GNU x64/ARM64 under Node 22
@@ -87,5 +87,5 @@ version drives the Cargo workspace and assembled package identity.
 - `.github/workflows/rust-vertical-slice.yml`: Linux native archive
   certification.
 - `docs/TESTING.md`: validation and artifact-certification boundaries.
-- `docs/RELEASING.md`: version preparation, publication, and recovery.
+- `docs/RELEASING.md`: version preparation, publication, visibility, and recovery.
 - `docs/CLI-CONTRACT.md`: stable process behavior and environment contract.

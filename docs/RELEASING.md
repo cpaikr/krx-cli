@@ -1,10 +1,16 @@
 # Releasing
 
-Releases are private GitHub Releases containing one prebuilt npm-format archive
+Releases are GitHub Releases containing one prebuilt npm-format archive
 for every target in `contracts/product/v1/native-targets.json`, `SHA256SUMS`, and
 `release-manifest.json`. The manifest records the source commit, version, target,
-archive digest, and certified Node majors (empty for macOS and Windows). Installation requires Node and a
-package manager, but no Rust toolchain or install scripts.
+archive digest, and certified Node majors (empty for macOS and Windows).
+Installation requires Node.js 22 or 24 and a package manager, but no Rust toolchain
+or install scripts.
+
+The repository and its published release assets are public. The package
+`private: true` flag prevents npm publication; the target manifest retains the
+`private-github-release-asset` policy label, but the publication script does not
+enforce repository visibility. Neither setting makes GitHub downloads private.
 
 ## Prepare a release
 
@@ -56,7 +62,7 @@ changes before preparing a real release.
 
 ## Install and upgrade
 
-Open the repository's Releases page while authenticated and download the matching
+Open the repository's Releases page and download the matching
 target archive and `SHA256SUMS`. Compare the archive's SHA-256 with its entry in
 that file (`shasum -a 256` on macOS, `sha256sum` on Linux, or
 `Get-FileHash -Algorithm SHA256` on Windows). Then install the downloaded file:

@@ -48,14 +48,20 @@ partitions before summarizing a composite result.
 
 ```bash
 krx cache status
-krx cache inspect --limit 20
 krx cache prune --max-entries 100
 krx cache clear
 krx --offline stock list --date 20260821 --market kospi --output json
 ```
 
-`inspect` and `status` are read-only. `prune` and `clear` mutate cache state and
-require explicit authority. Offline mode never reads credentials or spends
+`status` is read-only. `prune` and `clear` mutate cache state and require
+explicit authority.
+
+Known limitation: `krx cache inspect` currently exits 2 with
+`--limit is not valid for this command`, even when `--limit` is omitted. Its
+local limit option conflicts with global-option validation. Use `cache status`
+for aggregate cache information.
+
+Offline mode never reads credentials or spends
 quota and conflicts with refresh, bypass, dry-run, and explicit retries.
 
 ## Schema and failures

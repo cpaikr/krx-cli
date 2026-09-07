@@ -2,8 +2,10 @@
 
 `contracts/krx/openapi.yaml` is the sole maintained provider-wire authority for
 31 operations. `pnpm contract:validate` lints it, checks reviewed evidence and
-the frozen schema oracle, regenerates/compares projections, compiles public
-Rust and Node consumers, and rejects handwritten wire mirrors.
+the frozen schema oracle, compares generated projections, typechecks the public
+Node consumer, and rejects handwritten wire mirrors. It also checks that the
+production SDK includes the public Rust consumer fixture; `pnpm rust:sdk`
+compiles that fixture through the workspace checks and tests.
 
 ## Plan
 

@@ -2,6 +2,11 @@
 
 Status: complete — v1.8.2 published and downloaded assets verified
 
+Visibility reconciliation (2026-09-07): GitHub reports this repository as public,
+so published release assets are public. The private-release wording below records
+the original scope; it is not an access-control guarantee.
+[Releasing](../docs/RELEASING.md) owns the current distribution boundary.
+
 ## Scope and decisions
 
 - Retain private GitHub Releases and the existing supported target manifest.
