@@ -2827,6 +2827,37 @@ mod tests {
     const VALID_OWNER: &str = "42-4c691fc0-09c4-4c83-904d-d10b1681ff73";
 
     #[test]
+    fn handle_relative_rename_preserves_collision_and_replacement_semantics() {
+        let parent_path = std::env::temp_dir().join(format!("krx-rename-{}", Uuid::new_v4()));
+        fs::create_dir_all(&parent_path).unwrap();
+        let code = KrxErrorCode::CacheWriteFailed;
+        let root = open_absolute_root(
+            &parent_path.join(".krx-cli"),
+            true,
+            true,
+            ReadSensitivity::NonSecret,
+            code,
+        )
+        .unwrap()
+        .unwrap();
+        let mut source = create_secure_file(&root, OsStr::new("source"), code).unwrap();
+        source.write_all(b"new").unwrap();
+        rename_open_handle(&source, &root, OsStr::new("destination"), false).unwrap();
+        drop(source);
+        let mut replacement = create_secure_file(&root, OsStr::new("replacement"), code).unwrap();
+        replacement.write_all(b"replacement").unwrap();
+        assert!(rename_open_handle(&replacement, &root, OsStr::new("destination"), false).is_err());
+        rename_open_handle(&replacement, &root, OsStr::new("destination"), true).unwrap();
+        assert_eq!(
+            fs::read(parent_path.join(".krx-cli/destination")).unwrap(),
+            b"replacement"
+        );
+        drop(replacement);
+        drop(root);
+        fs::remove_dir_all(parent_path).unwrap();
+    }
+
+    #[test]
     fn acl_accepts_foreign_readers_but_rejects_foreign_mutation_rights() {
         use windows_sys::Win32::Security::{ACL_REVISION, AddAccessAllowedAce, InitializeAcl};
         use windows_sys::Win32::Storage::FileSystem::FILE_GENERIC_EXECUTE;
