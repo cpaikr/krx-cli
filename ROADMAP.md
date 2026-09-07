@@ -2,8 +2,7 @@
 
 ## Current
 
-[Complete native release delivery](plans/release-delivery.md) — synchronize release
-identity, certify every supported target, and publish verified private assets.
+_None._
 
 ## Plans
 
@@ -15,6 +14,10 @@ _None._
 
 ## Completed
 
+[Complete native release delivery](plans/release-delivery.md) — published
+[v1.8.2](https://github.com/cpaikr/krx-cli/releases/tag/v1.8.2) with all four native
+archives, checksums, and Linux-only automated tests and consumer certification.
+
 [Rewrite krx-cli around a Rust SDK, native CLI, and Node SDK](plans/rust-rewrite.md)
 — completed under [the durable goal contract](goals/rust-rewrite.md). The
 shared Rust SDK, native Clap CLI, public Node SDK, secure local-state behavior,
@@ -22,8 +25,7 @@ certified private native artifacts, and atomic legacy/MCP cutover are merged on
 `main`. Continuous Blacksmith certification covers Linux GNU x64/ARM64 under
 Node 22/24; macOS ARM64 and Windows x64 remain supported artifact targets but
 are intentionally omitted from continuous CI solely to reduce compute cost.
-Creating the first tag or GitHub Release remains a separate publication
-decision.
+The first private GitHub Release is published.
 
 ## Baseline
 

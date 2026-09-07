@@ -6,8 +6,7 @@ KRX(한국거래소) Open API를 위한 네이티브 CLI와 Node.js SDK입니다
 
 ## 설치
 
-배포 경로는 비공개 GitHub Release 자산입니다. 첫 릴리스 게시와 검증 상태는
-[릴리스 진행 기록](plans/release-delivery.md)을 참고하세요. 게시된 릴리스는
+배포 경로는 [비공개 GitHub Releases](https://github.com/cpaikr/krx-cli/releases)입니다. 게시된 릴리스는
 저장소 접근 권한으로 운영체제에 맞는 tarball과 `SHA256SUMS`를 내려받아
 체크섬을 확인한 뒤 설치합니다. [다운로드 및 설치 절차](docs/RELEASING.md#install-and-upgrade)를
 따르세요. 설치 과정에서 소스 빌드나 lifecycle script를 실행하지 않습니다.

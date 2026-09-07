@@ -1,6 +1,6 @@
 # Complete native release delivery
 
-Status: release preparation active; Linux-only CI and all-platform builds awaiting hosted validation
+Status: complete — v1.8.2 published and downloaded assets verified
 
 ## Scope and decisions
 
@@ -13,14 +13,13 @@ Status: release preparation active; Linux-only CI and all-platform builds awaiti
   manual dispatch provides candidate certification without publication.
 - Automated tests and consumer certification run only on Linux by explicit owner
   request; macOS and Windows retain release build and packaging jobs only.
-- The first publication is authorized; prepare version 1.8.2 only after hosted
-  candidate validation passes.
+- Version 1.8.2 was prepared only after the hosted candidate workflow passed.
 
 ## Evidence and progress
 
 - Reproduced the old release-it patch bump in an isolated copy: package.json moved
   to 1.8.2 while Cargo.toml stayed at 1.8.1 after the verification hook passed.
-- Implemented version synchronization, full release certification, checked release
+- Implemented version synchronization, Linux consumer certification, checked release
   bundles, resumable publication without asset replacement, and operational docs.
 - Full `pnpm verify` passed in the isolated candidate checkout, including Rust
   checks, dependency policy, calendar freshness, and production audit.
@@ -35,13 +34,17 @@ Status: release preparation active; Linux-only CI and all-platform builds awaiti
 
 ## Delivery status
 
-The previous candidate runs exposed Windows ownership, rename, and lock-contention
-failures. Corrections are committed; all 12 focused native Windows state regressions
-passed. The owner subsequently requested removal of Windows/macOS CI while
-retaining their release builds and assets. The workflow now separates Linux Rust
-verification and consumer certification from all-platform build/packaging jobs.
-The bundle still requires all four archives and records certification only for
-Linux. Bounded review and focused release tests passed. Hosted validation remains
-before tagging 1.8.2. No version tag or Release exists.
+[v1.8.2](https://github.com/cpaikr/krx-cli/releases/tag/v1.8.2) is published from
+`d9c300f6b7afd2b782cfef11a82a995f769827cc`.
+[The release workflow](https://github.com/cpaikr/krx-cli/actions/runs/34096532610)
+passed all four native builds, Linux Rust verification, Node 22/24 Linux consumer
+checks, bundle assembly, and publication. Full local `pnpm verify` passed before
+the release commit and tag.
+
+All four published archives, `SHA256SUMS`, and `release-manifest.json` were
+downloaded after publication. Their hashes, source revision, version, exact asset
+inventory, and Linux-only certification coverage matched. macOS and Windows
+entries correctly contain no certified Node majors. The earlier Windows state
+corrections also passed 12 focused native regressions before the CI scope changed.
 
 [Releasing](../docs/RELEASING.md) owns the operational procedure.
