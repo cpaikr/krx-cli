@@ -100,8 +100,9 @@
   "release-it": {
     "$schema": "https://unpkg.com/release-it/schema/release-it.json",
     "hooks": {
-      "after:init": [
-        "test \"$(git rev-parse HEAD)\" = \"$(git rev-parse '@{upstream}')\"",
+      "after:init": "node scripts/release-version.mjs upstream",
+      "after:bump": [
+        "node scripts/release-version.mjs sync",
         "pnpm verify"
       ]
     },
@@ -113,7 +114,7 @@
       "commitMessage": "chore(release): v${version}"
     },
     "github": {
-      "release": true
+      "release": false
     },
     "npm": {
       "publish": false

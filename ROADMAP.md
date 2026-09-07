@@ -2,7 +2,8 @@
 
 ## Current
 
-_None._
+[Complete native release delivery](plans/release-delivery.md) — synchronize release
+identity, certify every supported target, and publish verified private assets.
 
 ## Plans
 

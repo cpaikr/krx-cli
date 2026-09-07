@@ -6,18 +6,21 @@ KRX(한국거래소) Open API를 위한 네이티브 CLI와 Node.js SDK입니다
 
 ## 설치
 
-배포물은 비공개 GitHub Release 자산입니다. 저장소 접근 권한이 있는 사용자는
-운영체제에 맞는 tarball을 내려받아 설치합니다. 설치 과정에서 소스 빌드나
-lifecycle script를 실행하지 않습니다.
+배포 경로는 비공개 GitHub Release 자산입니다. 첫 릴리스 게시와 검증 상태는
+[릴리스 진행 기록](plans/release-delivery.md)을 참고하세요. 게시된 릴리스는
+저장소 접근 권한으로 운영체제에 맞는 tarball과 `SHA256SUMS`를 내려받아
+체크섬을 확인한 뒤 설치합니다. [다운로드 및 설치 절차](docs/RELEASING.md#install-and-upgrade)를
+따르세요. 설치 과정에서 소스 빌드나 lifecycle script를 실행하지 않습니다.
 
 ```bash
-pnpm add --global --ignore-scripts ./krx-cli-1.8.1-linux-x64-gnu.tgz
+pnpm add --global --ignore-scripts "./krx-cli-<version>-<target>.tgz"
 krx --version
 krx --help
 ```
 
-지원 대상은 macOS ARM64, Linux GNU x64/ARM64, Windows x64입니다. 비용 절감을
-위해 지속 CI는 Linux GNU x64/ARM64와 Node 22/24만 인증합니다.
+`<version>`과 `<target>`을 선택한 릴리스와 대상 이름으로 바꾸세요.
+지원 대상은 macOS ARM64, Linux GNU x64/ARM64, Windows x64입니다. 릴리스는
+모든 대상과 Node 22/24를 인증하며, 일상적인 CI는 비용 절감을 위해 Linux로 제한합니다.
 
 ## 자격 증명
 
@@ -94,5 +97,5 @@ pnpm contract:dry-run
 ```
 
 구조와 불변식은 [ARCHITECTURE.md](ARCHITECTURE.md), 검증 경계는
-[docs/TESTING.md](docs/TESTING.md)에 정리되어 있습니다. 첫 tag 또는 GitHub
-Release 생성은 이 저장소 변경의 범위에 포함되지 않습니다.
+[docs/TESTING.md](docs/TESTING.md)에 정리되어 있습니다. 버전 준비, 전체 대상
+인증, 게시 및 실패 복구 절차는 [docs/RELEASING.md](docs/RELEASING.md)를 따릅니다.

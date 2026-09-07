@@ -754,7 +754,7 @@ process.stdout.write(JSON.stringify([{ filename }]));
   it("rejects a native workspace version that drifts from the root package", () => {
     const path = replacedText(
       "Cargo.toml",
-      'version = "1.8.1"',
+      `version = "${JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version}"`,
       'version = "0.0.0"',
     );
     const result = run("--cargo", path);

@@ -57,7 +57,10 @@ or lifecycle scripts, a native `krx` executable, one private Node binding, the
 public facade and declarations, and `skills/krx-cli`. macOS ARM64, Linux GNU
 x64/ARM64, and Windows x64 remain supported manifest targets. Continuous
 Blacksmith certification covers only Linux GNU x64/ARM64 under Node 22 and 24
-to control compute cost.
+to control compute cost. Release certification covers every supported target.
+CI publishes a private Release only after complete certification of the exact
+archives, and verifies downloaded assets before publication. The root package
+version drives the Cargo workspace and assembled package identity.
 
 ## Invariants
 
@@ -80,4 +83,5 @@ to control compute cost.
 - `.github/workflows/rust-vertical-slice.yml`: Linux native archive
   certification.
 - `docs/TESTING.md`: validation and artifact-certification boundaries.
+- `docs/RELEASING.md`: version preparation, publication, and recovery.
 - `docs/CLI-CONTRACT.md`: stable process behavior and environment contract.

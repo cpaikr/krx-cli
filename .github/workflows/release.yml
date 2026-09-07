@@ -1,25 +1,59 @@
-name: Tagged native release certification
-
+# Manual dispatch certifies a candidate without publishing. Only a pushed version tag publishes.
+# Routine CI stays Linux-only; releases verify every supported native target.
+name: Native release
 on:
   push:
     tags:
-      - "v*"
-
+      - v*
+  workflow_dispatch: {}
 permissions:
   contents: read
-
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  certify:
-    name: Certify ${{ matrix.id }}
-    runs-on: ${{ matrix.runner }}
+  verify:
+    name: Verify release source
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.92.0 --profile minimal --component rustfmt,clippy
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: cargo fetch --locked
+      - name: Reconcile release source and version
+        env:
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: node scripts/release-version.mjs check "$RELEASE_TAG"
+      - run: pnpm check && pnpm calendar:check && pnpm audit:prod
+      - name: Enforce Rust advisory, license, ban, and source policy
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25
+        with:
+          command: check
+          command-arguments: advisories bans licenses sources
+  build:
+    name: Build ${{ matrix.id }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        # macOS ARM64 and Windows x64 remain supported manifest targets but are
-        # omitted from CI to reduce compute cost. Their existing certification
-        # evidence remains valid; release operators build them outside Actions.
         include:
+          - id: darwin-arm64
+            runner: macos-15
+            rust-target: aarch64-apple-darwin
+            node-arch: arm64
+            binding: target/aarch64-apple-darwin/release/libkrx_node.dylib
+            executable: target/aarch64-apple-darwin/release/krx
           - id: linux-x64-gnu
             runner: blacksmith-2vcpu-ubuntu-2404
             rust-target: x86_64-unknown-linux-gnu
@@ -32,64 +66,165 @@ jobs:
             node-arch: arm64
             binding: target/aarch64-unknown-linux-gnu/release/libkrx_node.so
             executable: target/aarch64-unknown-linux-gnu/release/krx
-
+          - id: win32-x64-msvc
+            runner: windows-2025
+            rust-target: x86_64-pc-windows-msvc
+            node-arch: x64
+            binding: target/x86_64-pc-windows-msvc/release/krx_node.dll
+            executable: target/x86_64-pc-windows-msvc/release/krx.exe
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 24
           architecture: ${{ matrix.node-arch }}
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-
-      - name: Validate maintainer contracts
-        run: pnpm check
-
       - name: Install pinned Rust toolchain and target
-        run: >-
-          rustup toolchain install 1.92.0
-          --profile minimal
-          --target ${{ matrix.rust-target }}
-
-      - name: Build the native release members
-        run: >-
-          cargo build --locked --release --target ${{ matrix.rust-target }}
-          -p krx-cli -p krx-node
-
-      - name: Assemble the private native archive
-        run: >-
-          node scripts/native-package/assemble.mjs
-          --target ${{ matrix.id }}
-          --binding ${{ matrix.binding }}
-          --executable ${{ matrix.executable }}
-          --out target/native-package/${{ matrix.id }}/package
-
-      - name: Pack the private native archive
-        run: >-
-          node scripts/native-package/pack.mjs
-          --package target/native-package/${{ matrix.id }}/package
-          --target ${{ matrix.id }}
-          --artifacts target/native-package/${{ matrix.id }}/artifacts
-
-      - name: Certify the exact private archive
-        shell: bash
-        run: >-
-          node scripts/native-package/certify.mjs
-          --tarball target/native-package/${{ matrix.id }}/artifacts/*.tgz
-          --target ${{ matrix.id }}
-          --report target/native-package/${{ matrix.id }}/certification.json
-
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        run:
+          rustup toolchain install 1.92.0 --profile minimal --component rustfmt,clippy --target ${{
+          matrix.rust-target }}
+      - name: Check formatting
+        run: cargo fmt --all --check
+      - name: Compile the production workspace
+        run: cargo check --locked --workspace --all-targets --all-features
+      - name: Lint the production workspace
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+      - name: Test the host-native production workspace
+        run: cargo test --locked --workspace --all-features
+      - name: Build the native package members once
+        run: cargo build --locked --release --target ${{ matrix.rust-target }} -p krx-cli -p krx-node
+      - name: Assemble the manifest-certified package
+        run:
+          node scripts/native-package/assemble.mjs --target ${{ matrix.id }} --binding ${{ matrix.binding
+          }} --executable ${{ matrix.executable }} --out target/native-package/${{ matrix.id
+          }}/package
+      - name: Pack the private target archive
+        run:
+          node scripts/native-package/pack.mjs --package target/native-package/${{ matrix.id }}/package
+          --target ${{ matrix.id }} --artifacts target/native-package/${{ matrix.id }}/artifacts
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: krx-native-${{ matrix.id }}
-          path: |
-            target/native-package/${{ matrix.id }}/artifacts/*.tgz
-            target/native-package/${{ matrix.id }}/certification.json
+          name: krx-native-archive-${{ matrix.id }}
+          path: target/native-package/${{ matrix.id }}/artifacts/*.tgz
           if-no-files-found: error
           retention-days: 14
+    needs: verify
+  consume:
+    name: Consume ${{ matrix.target.id }} / Node ${{ matrix.node }}
+    needs: build
+    runs-on: ${{ matrix.target.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node:
+          - 22
+          - 24
+        target:
+          - id: darwin-arm64
+            runner: macos-15
+            node-arch: arm64
+          - id: linux-x64-gnu
+            runner: blacksmith-2vcpu-ubuntu-2404
+            node-arch: x64
+          - id: linux-arm64-gnu
+            runner: blacksmith-2vcpu-ubuntu-2404-arm
+            node-arch: arm64
+          - id: win32-x64-msvc
+            runner: windows-2025
+            node-arch: x64
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: ${{ matrix.node }}
+          architecture: ${{ matrix.target.node-arch }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: krx-native-archive-${{ matrix.target.id }}
+          path: target/native-package/download/${{ matrix.target.id }}
+      - name: Certify the exact packed artifact
+        shell: bash
+        run:
+          node scripts/native-package/certify.mjs --tarball target/native-package/download/${{
+          matrix.target.id }}/*.tgz --target ${{ matrix.target.id }} --report
+          target/native-package/certification/${{ matrix.target.id }}-node${{ matrix.node }}.json
+      - name: Certify frozen installed-product compatibility
+        if: matrix.node == 24
+        shell: bash
+        run:
+          node scripts/compat-certify.mjs --candidate-tarball target/native-package/download/${{
+          matrix.target.id }}/*.tgz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: krx-native-report-${{ matrix.target.id }}-node${{ matrix.node }}
+          path: target/native-package/certification/*.json
+          if-no-files-found: error
+          retention-days: 14
+  certification:
+    name: Assemble certified release
+    needs:
+      - build
+      - consume
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          pattern: krx-native-report-*
+          path: target/native-package/reports
+          merge-multiple: true
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          pattern: krx-native-archive-*
+          path: target/native-package/archives
+          merge-multiple: true
+      - name: Bind every certified archive to the release source
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+        run:
+          node scripts/native-package/release-assets.mjs --artifacts target/native-package/archives
+          --reports target/native-package/reports --out target/native-package/release --revision
+          "$SOURCE_REVISION"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: krx-release
+          path: target/native-package/release/*
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    name: Publish verified private release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: certification
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: krx-release
+          path: target/native-package/release
+      - name: Upload, read back, and publish the complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node scripts/native-package/publish-release.mjs target/native-package/release "$RELEASE_TAG"

@@ -201,10 +201,18 @@ for (const fragment of ["pnpm build", "npm pack", "git+file:", "allow-build"]) {
     `release workflow retains source-build path ${fragment}`,
   );
 }
+const releaseWorkflow = YAML.parse(releaseSource);
+const releaseTargets = JSON.parse(
+  await readFile(
+    resolve(repository, "contracts/product/v1/native-targets.json"),
+    "utf8",
+  ),
+).targets;
 invariant(
-  releaseSource.includes("macOS ARM64 and Windows x64 remain supported") &&
-    releaseSource.includes("omitted from CI to reduce compute cost"),
-  "release workflow must document the approved non-Linux omission",
+  JSON.stringify(
+    releaseWorkflow.jobs?.build?.strategy?.matrix?.include?.map(({ id }) => id),
+  ) === JSON.stringify(releaseTargets.map(({ id }) => id)),
+  "release workflow must build every supported native target",
 );
 
 const contractWorkflow = await readFile(

@@ -78,11 +78,10 @@ function assertBlacksmithWorkflow(source: string): void {
 }
 
 describe("private Git release policy", () => {
-  it("uses Blacksmith Linux runners without macOS or Windows CI jobs", () => {
+  it("keeps routine verification on Blacksmith Linux runners", () => {
     const workflows = [
       ".github/workflows/ci.yml",
       ".github/workflows/contract-drift.yml",
-      ".github/workflows/release.yml",
       ".github/workflows/rust-vertical-slice.yml",
     ].map(readRepositoryFile);
 
@@ -91,7 +90,7 @@ describe("private Git release policy", () => {
     expect(workflows[0]).toContain(
       "macOS and Windows are intentionally omitted to reduce CI compute cost",
     );
-    expect(workflows[3]).toContain(
+    expect(workflows[2]).toContain(
       "continuous CI intentionally omits them to reduce compute cost",
     );
   });
@@ -152,10 +151,14 @@ describe("private Git release policy", () => {
       requireCleanWorkingDir: true,
       requireUpstream: true,
     });
-    expect(release.hooks["after:init"]).toEqual([
-      `test "$(git rev-parse HEAD)" = "$(git rev-parse '@{upstream}')"`,
+    expect(release.hooks["after:init"]).toBe(
+      "node scripts/release-version.mjs upstream",
+    );
+    expect(release.hooks["after:bump"]).toEqual([
+      "node scripts/release-version.mjs sync",
       "pnpm verify",
     ]);
+    expect(release.github.release).toBe(false);
     expect(release.npm.publish).toBe(false);
   });
 
@@ -165,14 +168,42 @@ describe("private Git release policy", () => {
       readRepositoryFile("packages/node/package.json"),
     );
 
-    expect(workflow).toContain("name: Tagged native release certification");
-    expect(workflow).toContain('tags:\n      - "v*"');
+    expect(workflow).toContain("name: Native release");
+    expect(workflow).toContain("tags:\n      - v*");
     expect(workflow).toContain("scripts/native-package/assemble.mjs");
     expect(workflow).toContain("scripts/native-package/pack.mjs");
     expect(workflow).toContain("scripts/native-package/certify.mjs");
-    expect(workflow).toContain(
-      "macOS ARM64 and Windows x64 remain supported manifest targets",
+    const release = YAML.parse(workflow);
+    const targets = JSON.parse(
+      readRepositoryFile("contracts/product/v1/native-targets.json"),
     );
+    expect(
+      release.jobs.build.strategy.matrix.include.map(
+        (target: { id: string }) => target.id,
+      ),
+    ).toEqual(targets.targets.map((target: { id: string }) => target.id));
+    expect(
+      release.jobs.consume.strategy.matrix.target.map(
+        (target: { id: string }) => target.id,
+      ),
+    ).toEqual(targets.targets.map((target: { id: string }) => target.id));
+    expect(release.jobs.consume.strategy.matrix.node).toEqual(
+      targets.distribution.nodeMajors,
+    );
+    expect(release.jobs.build.needs).toBe("verify");
+    expect(release.jobs.consume.needs).toBe("build");
+    expect(release.jobs.certification.needs).toEqual(["build", "consume"]);
+    expect(release.jobs.publish.needs).toBe("certification");
+    expect(release.jobs.publish.if).toBe(
+      "github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')",
+    );
+    expect(release.on).toHaveProperty("workflow_dispatch");
+    expect(release.permissions).toEqual({ contents: "read" });
+    expect(release.jobs.publish.permissions).toEqual({ contents: "write" });
+    for (const name of ["verify", "build", "consume", "certification"]) {
+      expect(release.jobs[name].permissions).toBeUndefined();
+      expect(release.jobs[name].if).toBeUndefined();
+    }
     expect(workflow).not.toContain("pnpm build");
     expect(workflow).not.toContain("git+file:");
     expect(workflow).not.toContain("allow-build");

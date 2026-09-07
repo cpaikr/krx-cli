@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import {
@@ -218,6 +218,13 @@ try {
     tarball,
     status: "passed",
     portableSha256: await portableDigest(packageRoot),
+    archiveSha256: createHash("sha256")
+      .update(await readFile(tarball))
+      .digest("hex"),
+    sourceRevision: execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: repository,
+      encoding: "utf8",
+    }).trim(),
     packageVersion: packageJson.version,
     packageMetadata: {
       name: packageJson.name,

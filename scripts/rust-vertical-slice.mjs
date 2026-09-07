@@ -172,6 +172,7 @@ const requiredWorkflowPaths = [
 equal(
   attributes.split(/\r?\n/u).filter(Boolean),
   [
+    "/LICENSE text eol=lf",
     "/contracts/generated/*.d.ts text eol=lf",
     "/contracts/product/v1/node-sdk.d.ts text eol=lf",
     "/packages/node/dist/*.js text eol=lf",

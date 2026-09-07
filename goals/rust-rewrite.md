@@ -1,6 +1,11 @@
 # Goal: Rust SDK, native CLI, and Node SDK rewrite
 
 Status: complete
+
+This document records the completed rewrite scope and its historical delivery
+policy. Subsequent release-pipeline work is tracked in
+[release-delivery.md](../plans/release-delivery.md); current release procedures
+are in [RELEASING.md](../docs/RELEASING.md).
 Planning scope: ROADMAP.md
 
 ## Original contract
