@@ -1951,7 +1951,7 @@ fn publish_cache_owner(
             "cache lease owner publication disappeared",
         ));
     };
-    if !same_cache_owner_identity(&observed, identity) || observed.bytes != bytes {
+    if !same_cache_owner_identity(&observed, &identity) || observed.bytes != bytes {
         return Err(state_error(
             error_code,
             "cache lease owner publication identity changed",
