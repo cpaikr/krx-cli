@@ -91,6 +91,8 @@ jobs:
       - name: Lint the production workspace
         run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
       - name: Test the host-native production workspace
+        env:
+          RUST_TEST_NOCAPTURE: "1"
         run: cargo test --locked --workspace --all-features
       - name: Build the native package members once
         run: cargo build --locked --release --target ${{ matrix.rust-target }} -p krx-cli -p krx-node
