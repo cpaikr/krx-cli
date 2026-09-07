@@ -1752,7 +1752,10 @@ fn open_directory_file(
     let file = match parent.open_with(leaf, &options) {
         Ok(file) => file,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
-        Err(_) => {
+        Err(error) => {
+            #[cfg(test)]
+            eprintln!("directory open failed: leaf={leaf:?}, error={error:?}");
+            let _ = error;
             return Err(state_error(
                 error_code,
                 "local state directory is missing or unsafe",
@@ -2834,6 +2837,77 @@ mod tests {
     use super::*;
 
     const VALID_OWNER: &str = "42-4c691fc0-09c4-4c83-904d-d10b1681ff73";
+
+    #[test]
+    fn legacy_lock_flushes_an_existing_root_and_releases() {
+        let parent = std::env::temp_dir().join(format!("krx-legacy-lock-{}", Uuid::new_v4()));
+        fs::create_dir_all(&parent).unwrap();
+        let state = StateRoot::new(parent.join(".krx-cli")).unwrap();
+        let code = KrxErrorCode::InternalFailure;
+        state.atomic_write("config.json", b"{}", code).unwrap();
+        for _ in 0..2 {
+            let lock = state
+                .try_acquire_legacy_secret_plain_lock("config.lock", VALID_OWNER.to_owned(), code)
+                .unwrap()
+                .expect("lock acquired");
+            drop(lock);
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn plain_lock_contention_preserves_mutual_exclusion() {
+        let parent = std::env::temp_dir().join(format!("krx-lock-contention-{}", Uuid::new_v4()));
+        fs::create_dir_all(&parent).unwrap();
+        let path = parent.join(".krx-cli");
+        let inside = std::sync::atomic::AtomicUsize::new(0);
+        std::thread::scope(|scope| {
+            let mut workers = Vec::new();
+            for _ in 0..8 {
+                let path = &path;
+                let inside = &inside;
+                workers.push(scope.spawn(move || {
+                    let state = StateRoot::new(path.clone()).unwrap();
+                    for _ in 0..20 {
+                        let deadline = std::time::Instant::now() + Duration::from_secs(20);
+                        loop {
+                            if let Some(lock) = state.try_acquire_plain_lock(
+                                "rate-limit/quota.lock",
+                                format!("{}-{}", std::process::id(), Uuid::new_v4()),
+                                KrxErrorCode::InternalFailure,
+                            )? {
+                                assert_eq!(
+                                    inside.fetch_add(1, std::sync::atomic::Ordering::SeqCst),
+                                    0
+                                );
+                                std::thread::yield_now();
+                                assert_eq!(
+                                    inside.fetch_sub(1, std::sync::atomic::Ordering::SeqCst),
+                                    1
+                                );
+                                drop(lock);
+                                break;
+                            }
+                            assert!(
+                                std::time::Instant::now() < deadline,
+                                "lock contention timed out"
+                            );
+                            std::thread::yield_now();
+                        }
+                    }
+                    Ok::<_, KrxError>(())
+                }));
+            }
+            let results = workers
+                .into_iter()
+                .map(|worker| worker.join())
+                .collect::<Vec<_>>();
+            for result in results {
+                result.unwrap().unwrap();
+            }
+        });
+        fs::remove_dir_all(parent).unwrap();
+    }
 
     #[test]
     fn handle_relative_rename_preserves_collision_and_replacement_semantics() {

@@ -1487,7 +1487,15 @@ mod tests {
             .atomic_write(&key.v2_path, &v2_fixture(), KrxErrorCode::CacheWriteFailed)
             .unwrap();
         let unknown = fixture.root().join("cache/20260102/unknown.json");
-        fs::write(&unknown, b"preserve me").unwrap();
+        fixture
+            .store
+            .state
+            .atomic_write(
+                "cache/20260102/unknown.json",
+                b"preserve me",
+                KrxErrorCode::CacheWriteFailed,
+            )
+            .unwrap();
 
         let inspection = fixture
             .store

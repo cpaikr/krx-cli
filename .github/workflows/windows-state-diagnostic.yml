@@ -1,0 +1,32 @@
+name: Windows state diagnostic
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  state:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - name: Isolate state tests from transport dependencies
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const root = 'target/windows-state-diagnostic';
+          fs.mkdirSync(root + '/src', {recursive:true});
+          const source = fs.readFileSync('crates/krx-sdk/src/state_windows.rs', 'utf8');
+          fs.writeFileSync(root + '/src/state.rs', source);
+          const variants = [...new Set([...source.matchAll(/KrxErrorCode::(\w+)/g)].map(m => m[1]))];
+          fs.writeFileSync(root + '/src/lib.rs', '#![allow(dead_code)]\n#[derive(Clone,Copy,Debug,PartialEq,Eq)] pub enum KrxErrorCode {' + variants.join(',') + '}\n#[derive(Debug,Clone)] pub struct KrxError; impl KrxError { fn new(_:KrxErrorCode,_:impl Into<String>)->Self{Self} }\nmod state;');
+          const manifest = fs.readFileSync('Cargo.toml', 'utf8').split(/\r?\n/);
+          const deps = ['cap-std', 'uuid', 'windows-sys'].map(name => manifest.find(line => line.startsWith(name + ' =')));
+          fs.writeFileSync(root + '/Cargo.toml', '[package]\nname="windows-state-diagnostic"\nversion="0.0.0"\nedition="2024"\n[workspace]\n[dependencies]\n' + deps.join('\n'));
+          JS
+      - name: Run native state regression tests
+        run: cargo test --manifest-path target/windows-state-diagnostic/Cargo.toml -- --nocapture
