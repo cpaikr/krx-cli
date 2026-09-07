@@ -1771,8 +1771,6 @@ fn open_directory_file(
         return Ok(None);
     }
     if status < 0 || handle.is_null() {
-        #[cfg(test)]
-        eprintln!("native directory open failed: leaf={leaf:?}, status={status:#x}");
         return Err(state_error(
             error_code,
             "local state directory is missing or unsafe",

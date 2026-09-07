@@ -45,8 +45,10 @@ collision, replacement, and secret ACL regressions. The temporary diagnostic
 workflow isolated two further full-suite failures: legacy locks flushed read-only
 root handles, and concurrent lock deletion surfaced as Win32 access denial. The
 follow-up requests writable mutation handles without ACL repair and preserves
-native delete-pending status separately from genuine access denial. Native lock
-regressions and full archive certification remain before tagging 1.8.2. No version
-tag or Release exists.
+native delete-pending status separately from genuine access denial. All 12 native state
+regressions now pass, including existing-root legacy locking, deletion-pending
+handles, and concurrent mutual exclusion. The temporary diagnostic workflow has
+been removed. Full runtime and archive certification remain before tagging 1.8.2.
+No version tag or Release exists.
 
 [Releasing](../docs/RELEASING.md) owns the operational procedure.
