@@ -39,9 +39,10 @@ user. Creation now specifies current-user ownership and a private protected ACL;
 legacy-secret validation rejects shared data reads. Test fixtures create their
 missing parent directories, and producer waits fail promptly on early errors.
 Windows then reached atomic publication and exposed Win32 rename error 87. A
-focused native reproduction isolates the state module from transport dependencies;
-rename now uses the native handle-relative API with OS error conversion. Bounded
-reviews and isolated Windows type/clippy checks passed; native runtime and archive
-certification remain before tagging 1.8.2. No version tag or Release exists.
+focused native reproduction isolated the state module from transport dependencies;
+all nine state tests pass with the native handle-relative rename API, including
+collision, replacement, and secret ACL regressions. The temporary diagnostic
+workflow has been removed. Full native runtime and archive certification remain
+before tagging 1.8.2. No version tag or Release exists.
 
 [Releasing](../docs/RELEASING.md) owns the operational procedure.
