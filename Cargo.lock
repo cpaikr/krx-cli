@@ -1436,7 +1436,7 @@ dependencies = [
 
 [[package]]
 name = "krx-cli"
-version = "1.8.1"
+version = "1.8.2"
 dependencies = [
  "clap",
  "icu_collator",
@@ -1452,7 +1452,7 @@ dependencies = [
 
 [[package]]
 name = "krx-node"
-version = "1.8.1"
+version = "1.8.2"
 dependencies = [
  "futures-util",
  "jiff",
@@ -1467,7 +1467,7 @@ dependencies = [
 
 [[package]]
 name = "krx-sdk"
-version = "1.8.1"
+version = "1.8.2"
 dependencies = [
  "cap-std",
  "futures-util",

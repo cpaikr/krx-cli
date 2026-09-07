@@ -1,6 +1,6 @@
 {
   "name": "krx-cli",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "Maintainer workspace for the native KRX CLI, shared Rust SDK, and public Node.js SDK",
   "private": true,
   "type": "module",
