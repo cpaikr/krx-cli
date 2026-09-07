@@ -3,7 +3,7 @@
 Releases are private GitHub Releases containing one prebuilt npm-format archive
 for every target in `contracts/product/v1/native-targets.json`, `SHA256SUMS`, and
 `release-manifest.json`. The manifest records the source commit, version, target,
-archive digest, and certified Node majors. Installation requires Node and a
+archive digest, and certified Node majors (empty for macOS and Windows). Installation requires Node and a
 package manager, but no Rust toolchain or install scripts.
 
 ## Prepare a release
@@ -31,22 +31,26 @@ package and Cargo versions, and checkout agree and that the commit belongs to
 
 ## Certification and publication
 
-The workflow verifies repository contracts and dependency policy, builds and tests
-every supported native target, and clean-installs each exact archive under every
-supported Node major. It also runs the frozen installed-product compatibility gate.
-Linux uses Blacksmith; macOS ARM64 and Windows x64 use native GitHub-hosted runners.
-Routine development certification retains its smaller Linux matrix.
+The workflow verifies repository contracts and dependency policy on Linux, then
+builds and packages every supported native target. Automated Rust tests, Node
+22/24 clean-install certification, and frozen installed-product compatibility run
+only on Linux GNU x64 and ARM64. macOS ARM64 and Windows x64 release jobs build
+and package archives without test or consumer-certification jobs.
 
-Only complete, successful certification can assemble the release bundle. Each
-consumer report must identify the expected source, version, and archive SHA-256;
-portable package contents and native capabilities must agree across targets.
+This project explicitly limits CI to Linux while retaining all-platform release
+builds. All four archives and complete Linux reports are required before assembling
+the release bundle. Each Linux report must identify the expected source, version,
+and archive SHA-256; portable package contents and native capabilities must agree
+across the certified Linux consumers. Every archive receives a checksum; macOS and
+Windows entries have an empty `nodeMajors` list because they have no CI consumer
+evidence.
 
 CI owns publication with a job-scoped write token. It creates a draft, uploads
-missing assets, downloads and compares their bytes with the certified bundle,
+missing assets, downloads and compares their bytes with the assembled bundle,
 then publishes. Published assets are never overwritten by this pipeline.
 Workflow artifacts are temporary intermediates, not the supported download channel.
 
-A manual run of **Native release** on a branch certifies the candidate and produces
+A manual run of **Native release** on a branch builds all targets, certifies Linux consumers, and produces
 the bundle without publishing or creating a tag. Use it to validate workflow
 changes before preparing a real release.
 
@@ -75,7 +79,7 @@ Keep credentials out of download URLs and package metadata.
 - A failed build or consumer blocks publication. Diagnose the failed job. Retry
   infrastructure failures against the unchanged tag; source fixes use a new
   commit and version rather than moving the tag.
-- An interrupted upload leaves a draft. Rerun failed jobs to reuse the certified
+- An interrupted upload leaves a draft. Rerun failed jobs to reuse the assembled
   bundle. Existing assets are accepted only when downloaded bytes match; only
   missing assets are uploaded. If a rebuild differs from an existing draft,
   inspect the discrepancy before discarding that unpublished draft or choosing

@@ -186,12 +186,23 @@ describe("private Git release policy", () => {
       release.jobs.consume.strategy.matrix.target.map(
         (target: { id: string }) => target.id,
       ),
-    ).toEqual(targets.targets.map((target: { id: string }) => target.id));
+    ).toEqual(targets.distribution.continuousCertificationTargets);
     expect(release.jobs.consume.strategy.matrix.node).toEqual(
       targets.distribution.nodeMajors,
     );
     expect(release.jobs.build.needs).toBe("verify");
-    expect(release.jobs.consume.needs).toBe("build");
+    expect(release.jobs.consume.needs).toEqual(["build", "verify-native"]);
+    const { build, ...verificationJobs } = release.jobs;
+    assertBlacksmithWorkflow(YAML.stringify({ jobs: verificationJobs }));
+    expect(build.steps.some((step: { if?: string }) => step.if)).toBe(false);
+    for (const step of build.steps) {
+      expect(step.run ?? "").not.toMatch(/cargo (?:test|check|clippy|fmt)\b/u);
+    }
+    expect(
+      release.jobs["verify-native"].steps
+        .map((step: { run?: string }) => step.run)
+        .join("\n"),
+    ).toContain("cargo test --locked --workspace --all-features");
     expect(release.jobs.certification.needs).toEqual(["build", "consume"]);
     expect(release.jobs.publish.needs).toBe("certification");
     expect(release.jobs.publish.if).toBe(

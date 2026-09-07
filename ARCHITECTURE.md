@@ -58,11 +58,12 @@ plaintext reads additionally reject foreign data-read access.
 Release assets are private npm-format tarballs. Each contains no dependencies
 or lifecycle scripts, a native `krx` executable, one private Node binding, the
 public facade and declarations, and `skills/krx-cli`. macOS ARM64, Linux GNU
-x64/ARM64, and Windows x64 remain supported manifest targets. Continuous
-Blacksmith certification covers only Linux GNU x64/ARM64 under Node 22 and 24
-to control compute cost. Release certification covers every supported target.
-CI publishes a private Release only after complete certification of the exact
-archives, and verifies downloaded assets before publication. The root package
+x64/ARM64, and Windows x64 remain supported manifest targets. Automated tests and
+Blacksmith consumer certification cover only Linux GNU x64/ARM64 under Node 22
+and 24. Release builds still produce all four targets; macOS and Windows have
+no CI test or consumer jobs. Publication requires every archive and complete Linux
+certification, and verifies downloaded assets before publication. The release
+manifest records an empty certified Node-major list for macOS and Windows. The root package
 version drives the Cargo workspace and assembled package identity.
 
 ## Invariants

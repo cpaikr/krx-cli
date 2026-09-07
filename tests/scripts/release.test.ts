@@ -186,7 +186,11 @@ function artifactFixture() {
     const bytes = Buffer.from(`archive bytes for ${target.id}`);
     const name = `krx-cli-1.2.3-${target.id}.tgz`;
     writeFileSync(join(cwd, "artifacts", name), bytes);
-    for (const node of nativeTargets.distribution.nodeMajors) {
+    for (const node of nativeTargets.distribution.continuousCertificationTargets.includes(
+      target.id,
+    )
+      ? nativeTargets.distribution.nodeMajors
+      : []) {
       writeFileSync(
         join(cwd, "reports", `${target.id}-node${node}.json`),
         JSON.stringify({
@@ -219,7 +223,7 @@ function bundle(cwd: string) {
 }
 
 describe("complete certified release bundle", () => {
-  it("binds all four archives to eight consumers, checksums, and source identity", () => {
+  it("includes all four archives with Linux consumer evidence and accurate certification coverage", () => {
     const cwd = artifactFixture();
     const result = bundle(cwd);
     expect(result.status, result.stderr).toBe(0);
@@ -232,10 +236,24 @@ describe("complete certified release bundle", () => {
       manifest.targets.map((target: { target: string }) => target.target),
     ).toEqual(nativeTargets.targets.map((target: { id: string }) => target.id));
     for (const target of manifest.targets) {
+      expect(target.nodeMajors).toEqual(
+        nativeTargets.distribution.continuousCertificationTargets.includes(
+          target.target,
+        )
+          ? [22, 24]
+          : [],
+      );
       expect(readFileSync(join(cwd, "bundle/SHA256SUMS"), "utf8")).toContain(
         `${target.sha256}  ${target.archive}\n`,
       );
     }
+  });
+
+  it("requires non-Linux archives even without consumer reports", () => {
+    const cwd = artifactFixture();
+    rmSync(join(cwd, "artifacts/krx-cli-1.2.3-win32-x64-msvc.tgz"));
+    expect(bundle(cwd).status).not.toBe(0);
+    expect(existsSync(join(cwd, "bundle"))).toBe(false);
   });
 
   it.each([
@@ -247,12 +265,12 @@ describe("complete certified release bundle", () => {
     "divergent portable sources",
   ])("rejects %s before producing a bundle", (failure) => {
     const cwd = artifactFixture();
-    const reportPath = join(cwd, "reports/darwin-arm64-node22.json");
+    const reportPath = join(cwd, "reports/linux-x64-gnu-node22.json");
     const report = JSON.parse(readFileSync(reportPath, "utf8"));
     if (failure === "missing consumer") rmSync(reportPath);
     else if (failure === "changed archive")
       writeFileSync(
-        join(cwd, "artifacts/krx-cli-1.2.3-darwin-arm64.tgz"),
+        join(cwd, "artifacts/krx-cli-1.2.3-linux-x64-gnu.tgz"),
         "changed",
       );
     else {

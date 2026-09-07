@@ -20,7 +20,7 @@ krx --help
 
 `<version>`과 `<target>`을 선택한 릴리스와 대상 이름으로 바꾸세요.
 지원 대상은 macOS ARM64, Linux GNU x64/ARM64, Windows x64입니다. 릴리스는
-모든 대상과 Node 22/24를 인증하며, 일상적인 CI는 비용 절감을 위해 Linux로 제한합니다.
+모든 대상의 바이너리를 빌드·배포하며, CI 테스트와 Node 22/24 소비자 인증은 Linux에서만 실행합니다.
 
 ## 자격 증명
 

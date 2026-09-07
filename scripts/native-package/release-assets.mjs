@@ -28,15 +28,23 @@ const manifest = JSON.parse(
 );
 assert.match(revision, /^[a-f0-9]{40}$/);
 const tag = `v${version}`;
-const expectedReports = manifest.targets
-  .flatMap(({ id }) =>
+const certifiedTargets = manifest.distribution.continuousCertificationTargets;
+assert.ok(Array.isArray(certifiedTargets) && certifiedTargets.length > 0);
+assert.equal(new Set(certifiedTargets).size, certifiedTargets.length);
+assert.ok(
+  certifiedTargets.every((id) =>
+    manifest.targets.some((target) => target.id === id),
+  ),
+);
+const expectedReports = certifiedTargets
+  .flatMap((id) =>
     manifest.distribution.nodeMajors.map((node) => `${id}-node${node}.json`),
   )
   .sort();
 assert.deepEqual(
   (await readdir(reportsRoot)).sort(),
   expectedReports,
-  "release requires reports for every target and supported Node version",
+  "release requires reports for every CI target and supported Node version",
 );
 const reports = await Promise.all(
   expectedReports.map(async (name) =>
@@ -52,7 +60,10 @@ for (const target of manifest.targets) {
   const sha256 = createHash("sha256")
     .update(await readFile(resolve(artifacts, archive)))
     .digest("hex");
-  for (const node of manifest.distribution.nodeMajors) {
+  const nodeMajors = certifiedTargets.includes(target.id)
+    ? manifest.distribution.nodeMajors
+    : [];
+  for (const node of nodeMajors) {
     const report = JSON.parse(
       await readFile(resolve(reportsRoot, `${target.id}-node${node}.json`)),
     );
@@ -82,7 +93,7 @@ for (const target of manifest.targets) {
     target: target.id,
     archive,
     sha256,
-    nodeMajors: manifest.distribution.nodeMajors,
+    nodeMajors,
   });
 }
 assert.deepEqual(
@@ -104,5 +115,5 @@ await writeFile(
   targets.map(({ archive, sha256 }) => `${sha256}  ${archive}\n`).join(""),
 );
 process.stdout.write(
-  `Prepared ${tag}: ${targets.length} certified archives at ${revision}\n`,
+  `Prepared ${tag}: ${targets.length} archives at ${revision}\n`,
 );

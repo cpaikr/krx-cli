@@ -1,16 +1,18 @@
 # Complete native release delivery
 
-Status: release preparation active; Windows corrections awaiting native validation
+Status: release preparation active; Linux-only CI and all-platform builds awaiting hosted validation
 
 ## Scope and decisions
 
 - Retain private GitHub Releases and the existing supported target manifest.
 - Let local release-it prepare synchronized versions, changelog, commit, and tag;
-  let CI alone publish after complete target and Node consumer certification.
+  let CI alone publish after all target builds and Linux Node consumer certification.
 - Bind certification to exact archive bytes and source identity, publish checksums,
   and verify downloaded assets before making the draft a published release.
-- Keep routine CI on Linux. Full native coverage belongs to the release workflow;
+- Keep routine CI on Linux. All target builds belong to the release workflow;
   manual dispatch provides candidate certification without publication.
+- Automated tests and consumer certification run only on Linux by explicit owner
+  request; macOS and Windows retain release build and packaging jobs only.
 - The first publication is authorized; prepare version 1.8.2 only after hosted
   candidate validation passes.
 
@@ -33,22 +35,13 @@ Status: release preparation active; Windows corrections awaiting native validati
 
 ## Delivery status
 
-Hosted builds pass on both Linux targets and macOS. Windows diagnostics exposed
-new-state ownership inherited from the process default rather than the current
-user. Creation now specifies current-user ownership and a private protected ACL;
-legacy-secret validation rejects shared data reads. Test fixtures create their
-missing parent directories, and producer waits fail promptly on early errors.
-Windows then reached atomic publication and exposed Win32 rename error 87. A
-focused native reproduction isolated the state module from transport dependencies;
-all nine state tests pass with the native handle-relative rename API, including
-collision, replacement, and secret ACL regressions. The temporary diagnostic
-workflow isolated two further full-suite failures: legacy locks flushed read-only
-root handles, and concurrent lock deletion surfaced as Win32 access denial. The
-follow-up requests writable mutation handles without ACL repair and preserves
-native delete-pending status separately from genuine access denial. All 12 native state
-regressions now pass, including existing-root legacy locking, deletion-pending
-handles, and concurrent mutual exclusion. The temporary diagnostic workflow has
-been removed. Full runtime and archive certification remain before tagging 1.8.2.
-No version tag or Release exists.
+The previous candidate runs exposed Windows ownership, rename, and lock-contention
+failures. Corrections are committed; all 12 focused native Windows state regressions
+passed. The owner subsequently requested removal of Windows/macOS CI while
+retaining their release builds and assets. The workflow now separates Linux Rust
+verification and consumer certification from all-platform build/packaging jobs.
+The bundle still requires all four archives and records certification only for
+Linux. Bounded review and focused release tests passed. Hosted validation remains
+before tagging 1.8.2. No version tag or Release exists.
 
 [Releasing](../docs/RELEASING.md) owns the operational procedure.

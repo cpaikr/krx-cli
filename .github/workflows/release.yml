@@ -1,5 +1,4 @@
-# Manual dispatch certifies a candidate without publishing. Only a pushed version tag publishes.
-# Routine CI stays Linux-only; releases verify every supported native target.
+# Build and publish all targets; automated tests and consumer certification run only on Linux.
 name: Native release
 on:
   push:
@@ -40,6 +39,33 @@ jobs:
         with:
           command: check
           command-arguments: advisories bans licenses sources
+  verify-native:
+    name: Verify Linux / ${{ matrix.runner }}
+    needs: verify
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - blacksmith-2vcpu-ubuntu-2404
+          - blacksmith-2vcpu-ubuntu-2404-arm
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.92.0 --profile minimal --component rustfmt,clippy
+      - name: Check formatting
+        run: cargo fmt --all --check
+      - name: Compile the production workspace
+        run: cargo check --locked --workspace --all-targets --all-features
+      - name: Lint the production workspace
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+      - name: Test the host-native production workspace
+        env:
+          RUST_TEST_NOCAPTURE: "1"
+        run: cargo test --locked --workspace --all-features
   build:
     name: Build ${{ matrix.id }}
     runs-on: ${{ matrix.runner }}
@@ -81,19 +107,7 @@ jobs:
           node-version: 24
           architecture: ${{ matrix.node-arch }}
       - name: Install pinned Rust toolchain and target
-        run:
-          rustup toolchain install 1.92.0 --profile minimal --component rustfmt,clippy --target ${{
-          matrix.rust-target }}
-      - name: Check formatting
-        run: cargo fmt --all --check
-      - name: Compile the production workspace
-        run: cargo check --locked --workspace --all-targets --all-features
-      - name: Lint the production workspace
-        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
-      - name: Test the host-native production workspace
-        env:
-          RUST_TEST_NOCAPTURE: "1"
-        run: cargo test --locked --workspace --all-features
+        run: rustup toolchain install 1.92.0 --profile minimal --target ${{ matrix.rust-target }}
       - name: Build the native package members once
         run: cargo build --locked --release --target ${{ matrix.rust-target }} -p krx-cli -p krx-node
       - name: Assemble the manifest-certified package
@@ -114,7 +128,9 @@ jobs:
     needs: verify
   consume:
     name: Consume ${{ matrix.target.id }} / Node ${{ matrix.node }}
-    needs: build
+    needs:
+      - build
+      - verify-native
     runs-on: ${{ matrix.target.runner }}
     timeout-minutes: 20
     strategy:
@@ -124,18 +140,12 @@ jobs:
           - 22
           - 24
         target:
-          - id: darwin-arm64
-            runner: macos-15
-            node-arch: arm64
           - id: linux-x64-gnu
             runner: blacksmith-2vcpu-ubuntu-2404
             node-arch: x64
           - id: linux-arm64-gnu
             runner: blacksmith-2vcpu-ubuntu-2404-arm
             node-arch: arm64
-          - id: win32-x64-msvc
-            runner: windows-2025
-            node-arch: x64
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -170,7 +180,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   certification:
-    name: Assemble certified release
+    name: Assemble release with Linux certification
     needs:
       - build
       - consume
@@ -193,7 +203,7 @@ jobs:
           pattern: krx-native-archive-*
           path: target/native-package/archives
           merge-multiple: true
-      - name: Bind every certified archive to the release source
+      - name: Collect all target archives and Linux certification
         env:
           SOURCE_REVISION: ${{ github.sha }}
         run:

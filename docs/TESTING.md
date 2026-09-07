@@ -23,9 +23,10 @@ postconditions against the same archive.
 
 Blacksmith continuous CI covers Linux GNU x64 and ARM64 under Node 22 and 24.
 The release workflow builds macOS ARM64, Linux GNU x64/ARM64, and Windows x64,
-then certifies each unchanged archive under Node 22 and 24 and runs installed-product
-compatibility. Complete reports bind source revision and archive SHA-256 before
-publication. Manual release-workflow dispatch runs the same certification without
+with build and packaging jobs only on macOS and Windows. Rust verification,
+Node 22/24 consumer certification, and installed-product compatibility run only on
+Linux. Linux reports bind source revision and archive SHA-256 before publication;
+all four archives remain required. Manual release-workflow dispatch uses this scope without
 publishing; version-tag pushes publish only after the required jobs pass.
 [Releasing](RELEASING.md) owns publication and recovery procedures.
 
