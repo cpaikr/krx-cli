@@ -24,7 +24,7 @@ jobs:
           fs.writeFileSync(root + '/src/state.rs', source);
           const variants = [...new Set([...source.matchAll(/KrxErrorCode::(\w+)/g)].map(m => m[1]))];
           fs.writeFileSync(root + '/src/lib.rs', '#![allow(dead_code)]\n#[derive(Clone,Copy,Debug,PartialEq,Eq)] pub enum KrxErrorCode {' + variants.join(',') + '}\n#[derive(Debug,Clone)] pub struct KrxError; impl KrxError { fn new(_:KrxErrorCode,_:impl Into<String>)->Self{Self} }\nmod state;');
-          const manifest = fs.readFileSync('Cargo.toml', 'utf8').split('\n');
+          const manifest = fs.readFileSync('Cargo.toml', 'utf8').split(/\r?\n/);
           const deps = ['cap-std', 'uuid', 'windows-sys'].map(name => manifest.find(line => line.startsWith(name + ' =')));
           fs.writeFileSync(root + '/Cargo.toml', '[package]\nname="windows-state-diagnostic"\nversion="0.0.0"\nedition="2024"\n[workspace]\n[dependencies]\n' + deps.join('\n'));
           JS
