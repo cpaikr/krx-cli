@@ -221,6 +221,43 @@ async function seedQuota(home) {
   );
 }
 
+async function secureWindowsFixture(home) {
+  if (process.platform !== "win32") return;
+  // POSIX mode flags do not set Windows ownership. These paths were just
+  // created by this harness; establish the private fixture precondition before
+  // testing the installed product's refusal to repair unsafe existing state.
+  const script = `
+$ErrorActionPreference = 'Stop'
+$sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+$root = Get-Item -LiteralPath $env:KRX_FIXTURE_STATE
+$entries = @($root) + @(Get-ChildItem -LiteralPath $root.FullName -Recurse -Force)
+foreach ($entry in $entries) {
+  if ($entry.PSIsContainer) {
+    $acl = [System.Security.AccessControl.DirectorySecurity]::new()
+    $rule = [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+  } else {
+    $acl = [System.Security.AccessControl.FileSecurity]::new()
+    $rule = [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'Allow')
+  }
+  $acl.SetOwner($sid)
+  $acl.SetAccessRuleProtection($true, $false)
+  $acl.AddAccessRule($rule)
+  Set-Acl -LiteralPath $entry.FullName -AclObject $acl
+}
+`;
+  const result = await run(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    {
+      cwd: repositoryRoot,
+      env: { ...process.env, KRX_FIXTURE_STATE: join(home, ".krx-cli") },
+    },
+  );
+  if (result.code !== 0) {
+    throw new Error(`Windows fixture security setup failed: ${result.stderr}`);
+  }
+}
+
 function processEnvironment(home, withoutApiKey) {
   const allowed = [
     "ComSpec",
@@ -689,6 +726,7 @@ async function runCandidateMigrationCases(installRoot, report) {
         endpoint,
       });
       await seedQuota(home);
+      await secureWindowsFixture(home);
       const command = installedBinCommand(installRoot, "krx", definition.args);
       const result = await run(command.command, command.args, {
         cwd,
@@ -757,6 +795,7 @@ export async function runCompatibilityJudge(
       try {
         await seedCache(home, scenario.cache, profile);
         await seedQuota(home);
+        await secureWindowsFixture(home);
         if (scenario.commandInventory === true) {
           await assessCommandInventory(
             installRoot,

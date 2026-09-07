@@ -594,18 +594,11 @@ mod tests {
         }
 
         fn write_config_bytes(&self, bytes: &[u8]) {
-            fs::create_dir_all(&self.state).unwrap();
-            fs::write(self.state.join(CONFIG_PATH), bytes).unwrap();
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt as _;
-                fs::set_permissions(&self.state, fs::Permissions::from_mode(0o700)).unwrap();
-                fs::set_permissions(
-                    self.state.join(CONFIG_PATH),
-                    fs::Permissions::from_mode(0o600),
-                )
+            fs::create_dir_all(&self.parent).unwrap();
+            StateRoot::new(self.state.clone())
+                .unwrap()
+                .atomic_write(CONFIG_PATH, bytes, KrxErrorCode::MigrationFailed)
                 .unwrap();
-            }
         }
 
         fn config(&self) -> Value {

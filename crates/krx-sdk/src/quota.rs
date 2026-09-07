@@ -312,8 +312,15 @@ mod tests {
     #[tokio::test]
     async fn migrates_and_reserves_legacy_quota_by_exact_credential_identity() {
         let fixture = TestStore::new();
-        fs::create_dir(fixture.parent.join(".krx-cli")).expect("state root");
-        fs::write(fixture.quota_path(), br#"{"date":"20260102","count":9}"#).expect("legacy quota");
+        fixture
+            .store
+            .state
+            .atomic_write(
+                QUOTA_PATH,
+                br#"{"date":"20260102","count":9}"#,
+                KrxErrorCode::QuotaStateInvalid,
+            )
+            .expect("legacy quota");
         let key = ApiKey::parse("fixture-secret").expect("key");
         let date = TradingDate::parse("20260102").expect("date");
         let reservation = fixture
@@ -455,14 +462,21 @@ mod tests {
     #[tokio::test]
     async fn exhausted_and_invalid_quota_bytes_are_preserved_exactly() {
         let fixture = TestStore::new();
-        fs::create_dir(fixture.parent.join(".krx-cli")).expect("state root");
         let key = ApiKey::parse("shared-key").expect("key");
         let date = TradingDate::parse("20260102").expect("date");
         let exhausted = format!(
             "{{\"version\":1,\"credentials\":{{\"{}\":{{\"date\":\"20260102\",\"count\":10000}}}}}}",
             credential_fingerprint(&key)
         );
-        fs::write(fixture.quota_path(), exhausted.as_bytes()).expect("exhausted quota");
+        fixture
+            .store
+            .state
+            .atomic_write(
+                QUOTA_PATH,
+                exhausted.as_bytes(),
+                KrxErrorCode::QuotaStateInvalid,
+            )
+            .expect("exhausted quota");
         let reservation = fixture
             .store
             .reserve(&key, &date, &Cancellation::new())
@@ -491,7 +505,6 @@ mod tests {
     #[tokio::test]
     async fn credential_capacity_is_fail_closed_and_preserves_exact_bytes() {
         let fixture = TestStore::new();
-        fs::create_dir(fixture.parent.join(".krx-cli")).expect("state root");
         let key = ApiKey::parse("new-credential").expect("key");
         let fingerprint = credential_fingerprint(&key);
         let credentials = (0..MAX_CREDENTIALS)
@@ -513,7 +526,11 @@ mod tests {
         })
         .expect("full quota state");
         original.push(b'\n');
-        fs::write(fixture.quota_path(), &original).expect("full state");
+        fixture
+            .store
+            .state
+            .atomic_write(QUOTA_PATH, &original, KrxErrorCode::QuotaStateInvalid)
+            .expect("full state");
 
         let error = fixture
             .store
