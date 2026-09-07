@@ -42,7 +42,11 @@ Windows then reached atomic publication and exposed Win32 rename error 87. A
 focused native reproduction isolated the state module from transport dependencies;
 all nine state tests pass with the native handle-relative rename API, including
 collision, replacement, and secret ACL regressions. The temporary diagnostic
-workflow has been removed. Full native runtime and archive certification remain
-before tagging 1.8.2. No version tag or Release exists.
+workflow isolated two further full-suite failures: legacy locks flushed read-only
+root handles, and concurrent lock deletion surfaced as Win32 access denial. The
+follow-up requests writable mutation handles without ACL repair and preserves
+native delete-pending status separately from genuine access denial. Native lock
+regressions and full archive certification remain before tagging 1.8.2. No version
+tag or Release exists.
 
 [Releasing](../docs/RELEASING.md) owns the operational procedure.

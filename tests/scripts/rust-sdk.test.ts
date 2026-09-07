@@ -376,8 +376,8 @@ function assertWindowsStateProtocolSource(source: string): void {
     !directoryCreate.includes("FILE_DIRECTORY_FILE") ||
     directoryStart < 0 ||
     directoryEnd < 0 ||
-    !directoryOpen.includes("parent.open_with(leaf, &options)") ||
-    !directoryOpen.includes("FILE_FLAG_OPEN_REPARSE_POINT") ||
+    !directoryOpen.includes("NtOpenFile(") ||
+    !directoryOpen.includes("NT_FILE_OPEN_REPARSE_POINT") ||
     !directoryOpen.includes("validate_directory_security(&directory") ||
     fileStart < 0 ||
     fileEnd < 0 ||
@@ -1382,8 +1382,8 @@ describe("production Rust SDK gate", () => {
     expect(() =>
       assertWindowsStateProtocolSource(
         windowsState.replace(
-          ".custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT);",
-          ".custom_flags(FILE_FLAG_BACKUP_SEMANTICS);",
+          "FILE_DIRECTORY_FILE | NT_FILE_OPEN_REPARSE_POINT | FILE_SYNCHRONOUS_IO_NONALERT",
+          "FILE_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT",
         ),
       ),
     ).toThrow(/Windows quota state/u);

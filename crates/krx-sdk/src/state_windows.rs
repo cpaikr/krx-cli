@@ -18,12 +18,13 @@ use windows_sys::Wdk::Storage::FileSystem::{
     FILE_CREATE, FILE_DIRECTORY_FILE, FILE_LINK_INFORMATION, FILE_NON_DIRECTORY_FILE,
     FILE_OPEN_REPARSE_POINT as NT_FILE_OPEN_REPARSE_POINT, FILE_RENAME_INFORMATION,
     FILE_SYNCHRONOUS_IO_NONALERT, FileLinkInformation, FileRenameInformation, NtCreateFile,
-    NtSetInformationFile,
+    NtOpenFile, NtSetInformationFile,
 };
 use windows_sys::Win32::Foundation::{
     CloseHandle, ERROR_ACCESS_DENIED, ERROR_INSUFFICIENT_BUFFER, GENERIC_ALL, GENERIC_READ,
     GENERIC_WRITE, GetLastError, HANDLE, LocalFree, OBJ_CASE_INSENSITIVE, RtlNtStatusToDosError,
-    STATUS_OBJECT_NAME_COLLISION, UNICODE_STRING,
+    STATUS_DELETE_PENDING, STATUS_OBJECT_NAME_COLLISION, STATUS_OBJECT_NAME_NOT_FOUND,
+    STATUS_OBJECT_PATH_NOT_FOUND, UNICODE_STRING,
 };
 use windows_sys::Win32::Security::Authorization::{
     BuildTrusteeWithSidW, GetEffectiveRightsFromAclW, GetSecurityInfo, SE_FILE_OBJECT, TRUSTEE_W,
@@ -823,7 +824,6 @@ impl StateRoot {
         self.try_acquire_plain_lock_with_sensitivity(
             relative,
             owner,
-            true,
             ReadSensitivity::NonSecret,
             error_code,
         )
@@ -838,7 +838,6 @@ impl StateRoot {
         self.try_acquire_plain_lock_with_sensitivity(
             relative,
             owner,
-            false,
             ReadSensitivity::LegacySecret,
             error_code,
         )
@@ -848,13 +847,12 @@ impl StateRoot {
         &self,
         relative: &str,
         owner: String,
-        repair_security: bool,
         sensitivity: ReadSensitivity,
         error_code: KrxErrorCode,
     ) -> Result<Option<PlainDirectoryLock>, KrxError> {
         validate_plain_lock_owner(&owner)?;
         let components = relative_components(relative)?;
-        let root = open_absolute_root(&self.path, true, repair_security, sensitivity, error_code)?
+        let root = open_absolute_root(&self.path, true, true, sensitivity, error_code)?
             .ok_or_else(|| state_error(error_code, "local state root could not be created"))?;
         let (parents, leaf) = components.split_at(components.len() - 1);
         let parent = open_relative_directories(
@@ -939,7 +937,6 @@ impl StateRoot {
             relative,
             stale_after,
             now,
-            true,
             ReadSensitivity::NonSecret,
             error_code,
         )
@@ -956,7 +953,6 @@ impl StateRoot {
             relative,
             stale_after,
             now,
-            false,
             ReadSensitivity::LegacySecret,
             error_code,
         )
@@ -967,13 +963,11 @@ impl StateRoot {
         relative: &str,
         stale_after: Duration,
         now: SystemTime,
-        repair_security: bool,
         sensitivity: ReadSensitivity,
         error_code: KrxErrorCode,
     ) -> Result<bool, KrxError> {
         let components = relative_components(relative)?;
-        let Some(root) =
-            open_absolute_root(&self.path, false, repair_security, sensitivity, error_code)?
+        let Some(root) = open_absolute_root(&self.path, false, true, sensitivity, error_code)?
         else {
             return Ok(false);
         };
@@ -1692,7 +1686,7 @@ fn create_state_object(
             0,
         )
     };
-    if status == STATUS_OBJECT_NAME_COLLISION {
+    if matches!(status, STATUS_OBJECT_NAME_COLLISION | STATUS_DELETE_PENDING) {
         return Ok(None);
     }
     if status < 0 || handle.is_null() {
@@ -1739,29 +1733,53 @@ fn open_directory_file(
     for_write: bool,
     error_code: KrxErrorCode,
 ) -> Result<Option<File>, KrxError> {
-    let mut options = OpenOptions::new();
-    options
-        .read(true)
-        .share_mode(SHARE_ALL)
-        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT);
-    if for_write {
-        options.access_mode(
-            FILE_GENERIC_READ | FILE_GENERIC_WRITE | DELETE | READ_CONTROL | SYNCHRONIZE,
-        );
-    }
-    let file = match parent.open_with(leaf, &options) {
-        Ok(file) => file,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => {
-            #[cfg(test)]
-            eprintln!("directory open failed: leaf={leaf:?}, error={error:?}");
-            let _ = error;
-            return Err(state_error(
-                error_code,
-                "local state directory is missing or unsafe",
-            ));
-        }
+    let name = unicode_string(leaf)?;
+    let attributes = OBJECT_ATTRIBUTES {
+        Length: size_of::<OBJECT_ATTRIBUTES>() as u32,
+        RootDirectory: parent.as_raw_handle().cast(),
+        ObjectName: &name.string,
+        Attributes: OBJ_CASE_INSENSITIVE,
+        SecurityDescriptor: std::ptr::null(),
+        SecurityQualityOfService: std::ptr::null(),
     };
+    let mut handle = null_mut();
+    let mut status_block = IO_STATUS_BLOCK::default();
+    let access = FILE_GENERIC_READ
+        | if for_write {
+            FILE_GENERIC_WRITE | DELETE
+        } else {
+            0
+        };
+    // SAFETY: the validated single-component name and parent handle remain live.
+    // Opening the reparse point itself prevents traversal through a replacement.
+    let status = unsafe {
+        NtOpenFile(
+            &mut handle,
+            access,
+            &attributes,
+            &mut status_block,
+            SHARE_ALL,
+            FILE_DIRECTORY_FILE | NT_FILE_OPEN_REPARSE_POINT | FILE_SYNCHRONOUS_IO_NONALERT,
+        )
+    };
+    // Win32 folds DELETE_PENDING into ACCESS_DENIED. Retain the native status
+    // so a disappearing lock is absence while a real access denial stays fatal.
+    if matches!(
+        status,
+        STATUS_OBJECT_NAME_NOT_FOUND | STATUS_OBJECT_PATH_NOT_FOUND | STATUS_DELETE_PENDING
+    ) {
+        return Ok(None);
+    }
+    if status < 0 || handle.is_null() {
+        #[cfg(test)]
+        eprintln!("native directory open failed: leaf={leaf:?}, status={status:#x}");
+        return Err(state_error(
+            error_code,
+            "local state directory is missing or unsafe",
+        ));
+    }
+    // SAFETY: NtOpenFile returned a new owned file handle.
+    let file = File::from_std(unsafe { std::fs::File::from_raw_handle(handle.cast()) });
     let metadata = file
         .metadata()
         .map_err(|_| state_error(error_code, "local state directory inspection failed"))?;
@@ -2751,7 +2769,7 @@ fn link_open_handle(source: &File, parent: &Dir, destination: &OsStr) -> io::Res
             FileLinkInformation,
         )
     };
-    if status == STATUS_OBJECT_NAME_COLLISION {
+    if matches!(status, STATUS_OBJECT_NAME_COLLISION | STATUS_DELETE_PENDING) {
         Ok(false)
     } else if status < 0 {
         Err(io::Error::other("handle-relative Windows hard-link failed"))
@@ -2837,6 +2855,44 @@ mod tests {
     use super::*;
 
     const VALID_OWNER: &str = "42-4c691fc0-09c4-4c83-904d-d10b1681ff73";
+
+    #[test]
+    fn delete_pending_lock_is_unavailable_until_the_last_handle_closes() {
+        let parent_path = std::env::temp_dir().join(format!("krx-pending-lock-{}", Uuid::new_v4()));
+        fs::create_dir_all(&parent_path).unwrap();
+        let code = KrxErrorCode::InternalFailure;
+        let root = open_absolute_root(
+            &parent_path.join(".krx-cli"),
+            true,
+            true,
+            ReadSensitivity::NonSecret,
+            code,
+        )
+        .unwrap()
+        .unwrap();
+        let leaf = OsStr::new("quota.lock");
+        let directory = create_child_directory(&root, leaf, ReadSensitivity::NonSecret, code)
+            .unwrap()
+            .unwrap();
+        delete_open_handle(directory.as_raw_handle()).unwrap();
+        assert!(
+            open_child_directory(&root, leaf, true, ReadSensitivity::NonSecret, code)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            create_child_directory(&root, leaf, ReadSensitivity::NonSecret, code)
+                .unwrap()
+                .is_none()
+        );
+        drop(directory);
+        let replacement = create_child_directory(&root, leaf, ReadSensitivity::NonSecret, code)
+            .unwrap()
+            .expect("name reusable after deletion");
+        drop(replacement);
+        drop(root);
+        fs::remove_dir_all(parent_path).unwrap();
+    }
 
     #[test]
     fn legacy_lock_flushes_an_existing_root_and_releases() {
