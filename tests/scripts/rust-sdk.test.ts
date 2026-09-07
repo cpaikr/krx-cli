@@ -497,8 +497,8 @@ function assertWindowsStateProtocolSource(source: string): void {
     ) ||
     renameStart < 0 ||
     renameEnd < 0 ||
-    !rename.includes("SetFileInformationByHandle(") ||
-    !rename.includes("FileRenameInfo") ||
+    !rename.includes("NtSetInformationFile(") ||
+    !rename.includes("FileRenameInformation") ||
     linkStart < 0 ||
     linkEnd < 0 ||
     !link.includes("NtSetInformationFile(") ||

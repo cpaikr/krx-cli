@@ -16,12 +16,13 @@ use uuid::{Uuid, Variant};
 use windows_sys::Wdk::Foundation::OBJECT_ATTRIBUTES;
 use windows_sys::Wdk::Storage::FileSystem::{
     FILE_CREATE, FILE_DIRECTORY_FILE, FILE_LINK_INFORMATION, FILE_NON_DIRECTORY_FILE,
-    FILE_OPEN_REPARSE_POINT as NT_FILE_OPEN_REPARSE_POINT, FILE_SYNCHRONOUS_IO_NONALERT,
-    FileLinkInformation, NtCreateFile, NtSetInformationFile,
+    FILE_OPEN_REPARSE_POINT as NT_FILE_OPEN_REPARSE_POINT, FILE_RENAME_INFORMATION,
+    FILE_SYNCHRONOUS_IO_NONALERT, FileLinkInformation, FileRenameInformation, NtCreateFile,
+    NtSetInformationFile,
 };
 use windows_sys::Win32::Foundation::{
     CloseHandle, ERROR_ACCESS_DENIED, ERROR_INSUFFICIENT_BUFFER, GENERIC_ALL, GENERIC_READ,
-    GENERIC_WRITE, GetLastError, HANDLE, LocalFree, OBJ_CASE_INSENSITIVE,
+    GENERIC_WRITE, GetLastError, HANDLE, LocalFree, OBJ_CASE_INSENSITIVE, RtlNtStatusToDosError,
     STATUS_OBJECT_NAME_COLLISION, UNICODE_STRING,
 };
 use windows_sys::Win32::Security::Authorization::{
@@ -40,10 +41,10 @@ use windows_sys::Win32::Storage::FileSystem::{
     BY_HANDLE_FILE_INFORMATION, DELETE, FILE_ALL_ACCESS, FILE_APPEND_DATA,
     FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT, FILE_DELETE_CHILD,
     FILE_DISPOSITION_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
-    FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_READ_DATA, FILE_RENAME_INFO, FILE_SHARE_DELETE,
-    FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_WRITE_ATTRIBUTES, FILE_WRITE_DATA, FILE_WRITE_EA,
-    FileDispositionInfo, FileRenameInfo, FlushFileBuffers, GetFileInformationByHandle,
-    READ_CONTROL, SYNCHRONIZE, SetFileInformationByHandle, WRITE_DAC, WRITE_OWNER,
+    FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_READ_DATA, FILE_SHARE_DELETE, FILE_SHARE_READ,
+    FILE_SHARE_WRITE, FILE_WRITE_ATTRIBUTES, FILE_WRITE_DATA, FILE_WRITE_EA, FileDispositionInfo,
+    FlushFileBuffers, GetFileInformationByHandle, READ_CONTROL, SYNCHRONIZE,
+    SetFileInformationByHandle, WRITE_DAC, WRITE_OWNER,
 };
 use windows_sys::Win32::System::IO::IO_STATUS_BLOCK;
 use windows_sys::Win32::System::SystemServices::{
@@ -2669,16 +2670,19 @@ fn rename_open_handle(
     let name_bytes = wide.len().checked_mul(size_of::<u16>()).ok_or_else(|| {
         io::Error::new(io::ErrorKind::InvalidInput, "Windows file name is too long")
     })?;
-    let information_length = offset_of!(FILE_RENAME_INFO, FileName)
+    let information_length = offset_of!(FILE_RENAME_INFORMATION, FileName)
         .checked_add(name_bytes)
         .ok_or_else(|| {
             io::Error::new(io::ErrorKind::InvalidInput, "Windows file name is too long")
         })?;
     let (mut buffer, information_length) = aligned_information_buffer(information_length)?;
-    let information = buffer.as_mut_ptr().cast::<FILE_RENAME_INFO>();
+    let information = buffer.as_mut_ptr().cast::<FILE_RENAME_INFORMATION>();
+    let mut status_block = IO_STATUS_BLOCK::default();
+    // Use the native relative-name contract, matching hard-link publication.
+    // The Win32 rename wrapper rejects this retained-directory form (error 87).
     // SAFETY: buffer is usize-aligned and large enough for the fixed header and
     // exact UTF-16 name. Both source and parent handles remain live in the call.
-    let succeeded = unsafe {
+    let status = unsafe {
         (*information).Anonymous.ReplaceIfExists = replace;
         (*information).RootDirectory = parent.as_raw_handle().cast();
         (*information).FileNameLength = u32::try_from(name_bytes).map_err(|_| {
@@ -2689,15 +2693,20 @@ fn rename_open_handle(
             (*information).FileName.as_mut_ptr(),
             wide.len(),
         );
-        SetFileInformationByHandle(
+        NtSetInformationFile(
             source.as_raw_handle().cast(),
-            FileRenameInfo,
+            &mut status_block,
             information.cast(),
             information_length,
+            FileRenameInformation,
         )
     };
-    if succeeded == 0 {
-        Err(io::Error::last_os_error())
+    if status < 0 {
+        // SAFETY: conversion accepts the returned NTSTATUS and preserves OS
+        // collision classifications used by lock recovery.
+        Err(io::Error::from_raw_os_error(
+            unsafe { RtlNtStatusToDosError(status) } as i32,
+        ))
     } else {
         Ok(())
     }
