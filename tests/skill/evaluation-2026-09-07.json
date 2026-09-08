@@ -1,0 +1,245 @@
+{
+  "date": "2026-09-07",
+  "baseline_commit": "4f7c1cd5a72c7f34978be1ac8352ceb5f21b27d9",
+  "scope": "Source-only skill audit; no installation, publication or portal execution.",
+  "versions_sha256": {
+    "baseline": {
+      "SKILL.md": "cb130289731d007493606f121aa893119618464429869a7a214680ba347a95af",
+      "references/cli-usage.md": "502c1e77d9e91442df0d50247cdf43540458b8b8dfc394fd228c66ff79bda4b1",
+      "workflows/apply-service-access.md": "f4f0ec66a06bf8dd03742804954d3404215f782ced95c749dc2255ad594cb9c8"
+    },
+    "candidate": {
+      "SKILL.md": "1b74d47c1d3900a189b27131eb62a0b4c2d6f6b9d064a6a47b315dde82b1dc66",
+      "references/cli-usage.md": "25be539e41739b07e0678718c811bdc824b210f3eb7dd679db04693d2c0da477",
+      "workflows/apply-service-access.md": "f4f0ec66a06bf8dd03742804954d3404215f782ced95c749dc2255ad594cb9c8"
+    },
+    "candidate-v2": {
+      "SKILL.md": "1b74d47c1d3900a189b27131eb62a0b4c2d6f6b9d064a6a47b315dde82b1dc66",
+      "references/cli-usage.md": "676586e3a6694f438aebab7028ea3ff3010750447f7dba7fd2d405140c8ab526",
+      "workflows/apply-service-access.md": "f4f0ec66a06bf8dd03742804954d3404215f782ced95c749dc2255ad594cb9c8"
+    }
+  },
+  "cases": [
+    {
+      "id": "query",
+      "request": "Using the supplied krx-cli skill, prepare commands to get the top five KOSPI gainers for 2026-08-21 with name, close and change rate, and to search for Samsung Electronics returning only its name and short code. Explain what to verify before reporting the results. No commands may be executed; no market output has been supplied.",
+      "assertions": [
+        "Explicit YYYYMMDD date and KOSPI market; descending FLUC_RT sort and limit 5.",
+        "Use schema/help to verify exact fields; accept --fields for stock search and avoid unsupported --output on search.",
+        "Distinguish direct JSON row arrays from search completeness envelope; retain actual data date and parse numerical strings before arithmetic."
+      ]
+    },
+    {
+      "id": "range",
+      "request": "Using the supplied krx-cli skill, prepare an unadjusted daily-price query for Samsung Electronics code 005930 for 2026-08-03 through 2026-08-21, oldest first. Then explain how you would handle a separate received range response with exit 7, completeness.state partial, failed component 20260810 and otherwise usable rows, and a direct query with exit 3 and no stdout. Do not execute commands or invent missing prices.",
+      "assertions": [
+        "Use paired --from/--to, exact --code 005930 and --no-adjusted, date sort with --asc.",
+        "Treat ranges as JSON completeness envelopes and disclose missing day/partial status; do not silently treat partial period as complete.",
+        "Treat exit 3 as no data, not zero prices or malformed JSON; do not replace explicitly requested dates without disclosing."
+      ]
+    },
+    {
+      "id": "auth",
+      "request": "Using the supplied krx-cli skill, handle this scenario without executing tools: I need a KOSPI price query for 2026-08-21 using offline data only; my key is already configured. A colleague also sent an earlier krx auth status result: exit 0, stock state approved, bond state inconclusive with failureType network. Does it prove all endpoints are approved? Tell me what you would run and conclude.",
+      "assertions": [
+        "Proceed with --offline price query and no auth status/check preflight or credential inspection.",
+        "Do not infer every endpoint is approved from category probes; report bond inconclusive despite exit 0.",
+        "Do not submit portal applications or change credentials; explain that auth probes can use network/quota and are unsuitable offline."
+      ]
+    },
+    {
+      "id": "offline-range",
+      "request": "Using the supplied krx-cli skill, interpret an offline exact-code stock date-range response. It exits 0, completeness.state is complete, and its data contains every requested trading date. There is no provenance member and no stderr. Can you confirm that cached data is fresh, and what should you report? Do not execute any commands.",
+      "assertions": [
+        "Report complete requested coverage without inferring verified cache freshness.",
+        "Explain range/composite envelopes omit cache provenance; do not require an absent stderr provenance diagnostic or infer malformed output.",
+        "Preserve offline constraint and actual data dates."
+      ]
+    }
+  ],
+  "method": {
+    "synthetic": true,
+    "isolation": "One fresh worker per case and condition, no authoring history or other outputs. Skill-file reads and response writes only.",
+    "order": "Initial baseline cases dispatched before candidate freeze; initial candidate cases then ran concurrently. Additional offline-range pair dispatched together. Conditions cannot interact with live state.",
+    "grading": "Observable command validity and interpretation; field placeholders requiring schema discovery are acceptable in preparation-only tasks. Exact response wording and unnecessary restatement are not scored.",
+    "limits": "One trial per case/condition except affected auth case repeated after review correction. No statistical reliability claim, timing not captured, no live UI or market execution. Fourth case added with frozen assertions after source review found a provenance qualification."
+  },
+  "trials": [
+    {
+      "id": "b-query",
+      "case": "query",
+      "version": "baseline",
+      "trial": 1,
+      "verdict": "fail",
+      "grading_note": "Rejected valid search --fields and proposed invalid search --output json; the failure is command validity, not placeholder wording.",
+      "resources_read": ["SKILL.md", "references/cli-usage.md"],
+      "response": "No commands have been run, and no market results are available. The supplied skill does not specify field names, filter syntax, sorting direction, or the search JSON structure, so those parts need verification before the final commands are executable.\n\nPrepare these discovery commands first:\n\n```bash\nkrx --help\nkrx stock list --help\nkrx stock search --help\nkrx schema stock_stk_bydd_trd\n```\n\nFor the top five KOSPI gainers on **2026-08-21**, use this template after resolving the placeholders from help and schema:\n\n```bash\nkrx stock list --date 20260821 --market kospi --output json \\\n  --fields '<name>,<close>,<change-rate>' \\\n  --filter '<documented condition for change-rate > 0>' \\\n  --sort '<change-rate>' --limit 5\n```\n\nConfirm that this sorting form orders change rate numerically from highest to lowest; adjust it to the documented descending form if necessary.\n\nFor Samsung Electronics, search with:\n\n```bash\nkrx stock search 삼성전자\n```\n\nSearch is a composite command, so do **not** add endpoint-only `--fields`, `--filter`, `--sort`, or `--limit`. Verify its documented JSON output option and result structure, then project only name and short code locally. A projection template is:\n\n```bash\nkrx stock search 삼성전자 --output json > samsung-search.json\njq '<verified result-row selector> | {name: .<name-field>, short_code: .<short-code-field>}' samsung-search.json\n```\n\nBefore reporting, verify:\n\n- The returned data date is 2026-08-21 and the ranking covers KOSPI stocks, uses percentage change rather than absolute price change, and contains up to five positive gainers in descending order. Confirm field meanings, units, and any ties.\n- Search matches identify the intended Samsung Electronics security; distinguish ordinary and preferred shares, and preserve leading zeros in the short code.\n- Inspect search `completeness.state` and its requested/succeeded/failed/skipped partitions before projecting fields. Capture each CLI exit status before running another command. Exit 0 means success; 3 means empty; 7 means usable partial composite data. Report authentication, quota, approval, or other failures rather than presenting missing data as complete.",
+      "output_characters": 2168,
+      "work_log": "Read supplied entry point and CLI reference; wrote response artifact. No CLI/browser/network/credential operations permitted or observed.",
+      "elapsed_time": null
+    },
+    {
+      "id": "c-query",
+      "case": "query",
+      "version": "candidate",
+      "trial": 1,
+      "verdict": "pass",
+      "grading_note": "Uses endpoint ranking/filter/projection and search --fields; forbids search --output. Checks data date, numeric ranking, field existence, codes and envelope completeness.",
+      "resources_read": ["SKILL.md", "references/cli-usage.md"],
+      "response": "No commands have been executed, and no market results are available.\n\nFirst, check the installed CLI options and field schemas:\n\n```bash\nkrx --help\nkrx stock list --help\nkrx stock search --help\nkrx schema stock_stk_bydd_trd\nkrx schema --all\n```\n\nIf the stock schema confirms `BAS_DD`, `ISU_NM`, `TDD_CLSPRC`, and `FLUC_RT`, prepare the KOSPI query as:\n\n```bash\nkrx stock list --date 20260821 --market kospi \\\n  --filter 'FLUC_RT > 0' --sort FLUC_RT --limit 5 \\\n  --fields BAS_DD,ISU_NM,TDD_CLSPRC,FLUC_RT --output json\n```\n\nSorting defaults to descending. Retain the date for verification, then report only name, close, and change rate. If fewer than five stocks gained, report the available count.\n\nFor Samsung Electronics, replace the two placeholders with the exact field names confirmed for search output:\n\n```bash\nkrx stock search 삼성전자 \\\n  --fields '<verified-name-field>,<verified-short-code-field>'\n```\n\nDo not add `--output` or endpoint-only sorting, filtering, or limit options to search. Keep its JSON envelope so completeness remains visible.\n\nBefore reporting:\n\n- Capture exit status, stdout, and stderr separately. Exit 0 indicates command success; 3 means empty, 7 means usable partial data, and other failure statuses need explanation.\n- Confirm the KOSPI rows belong to 2026-08-21 and that the gain ranking is numeric. Do not substitute another date if the result is empty.\n- Verify projected fields actually exist; unknown fields can silently disappear. Preserve leading zeros in short codes.\n- Inspect search `completeness.state` and requested/succeeded/failed/skipped partitions. Disclose any missing coverage or approval failure. Search uses a calendar-resolved trading date strictly before today in Asia/Seoul, independently of the dated KOSPI query; verify and report that actual date.\n- Distinguish the intended Samsung Electronics match from other matching securities. Do not claim complete results while required components remain partial or unknown.",
+      "output_characters": 1975,
+      "work_log": "Read supplied entry point and CLI reference; wrote response artifact. No CLI/browser/network/credential operations permitted or observed.",
+      "elapsed_time": null
+    },
+    {
+      "id": "b-range",
+      "case": "range",
+      "version": "baseline",
+      "trial": 1,
+      "verdict": "pass",
+      "grading_note": "Preserves range bounds, raw exact-code mode and ascending date intent; leaves date-field discovery pending. Reports partial/empty without fabrication.",
+      "resources_read": ["SKILL.md", "references/cli-usage.md"],
+      "response": "The supplied krx-cli skill supports this query template for Samsung Electronics (005930), covering 2026-08-03 through 2026-08-21 with unadjusted prices:\n\n```bash\nkrx stock list --market kospi --code 005930 \\\n  --from 20260803 --to 20260821 --no-adjusted \\\n  --sort '<daily-date-field>' --asc --output json\n```\n\n`<daily-date-field>` must be replaced with the CLI’s actual sortable date field. The supplied reference does not identify it, so I cannot provide a verified, executable oldest-first command without checking the schema or help. No commands were executed and no prices were retrieved.\n\nFor the separate range response with exit 7, `completeness.state: partial`, and failed component `20260810`, I would retain the usable rows, inspect the requested/succeeded/failed/skipped partitions, and label the result incomplete for the requested period. I would explicitly report that the 2026-08-10 component failed, without treating it as zero, a non-trading day, or an interpolated price. A complete-period analysis would require resolving that component; any interim summary would cover only the returned dates.\n\nFor the direct query with exit 3 and no stdout, I would report an empty result for that query’s requested date or period. There is no JSON payload to parse and no price to report. I would inspect any stderr diagnostics as `<kind>/<code>` without assuming a cause or inferring credentials or a provider response body.",
+      "output_characters": 1432,
+      "work_log": "Read supplied entry point and CLI reference; wrote response artifact. No CLI/browser/network/credential operations permitted or observed.",
+      "elapsed_time": null
+    },
+    {
+      "id": "c-range",
+      "case": "range",
+      "version": "candidate",
+      "trial": 1,
+      "verdict": "pass",
+      "grading_note": "Concrete BAS_DD ascending raw range; preserves partial and empty boundaries and adds calendar/adjustment checks.",
+      "resources_read": ["SKILL.md", "references/cli-usage.md"],
+      "response": "Prepared query for Samsung Electronics (`005930`), 2026-08-03 through 2026-08-21, using unadjusted prices and oldest-first ordering:\n\n```bash\nkrx stock list --from 20260803 --to 20260821 --market kospi --code 005930 --no-adjusted --sort BAS_DD --asc\n```\n\nBefore execution, verify the command options with CLI help and the `BAS_DD` field with `krx schema stock_stk_bydd_trd`. No commands have been executed.\n\nFor the separate range response, exit **7** and `completeness.state: partial` mean its usable rows may be reported, but coverage is incomplete: **2026-08-10 failed**. Inspect the requested/succeeded/failed/skipped partitions, `failedDays`, `calendar`, adjustment metadata, and any stderr diagnostic. Report the actual dates covered and any calendar uncertainty; do not fill in the missing day or present a calculation as covering the complete requested period.\n\nFor the direct query, exit **3** with no stdout means **no data**. Do not attempt to parse absent stdout as JSON, infer zero prices, or silently substitute an earlier date. Capture exit status, stdout, and stderr separately and report no data for the requested date.",
+      "output_characters": 1136,
+      "work_log": "Read supplied entry point and CLI reference; wrote response artifact. No CLI/browser/network/credential operations permitted or observed.",
+      "elapsed_time": null
+    },
+    {
+      "id": "b-auth",
+      "case": "auth",
+      "version": "baseline",
+      "trial": 1,
+      "verdict": "pass",
+      "grading_note": "Offline query only and no blanket approval claim. Representative-endpoint mechanism is not explicit.",
+      "resources_read": ["SKILL.md", "references/cli-usage.md"],
+      "response": "For KOSPI-listed stock prices dated 2026-08-21, I would run:\n\n```bash\nkrx --offline stock list --date 20260821 --market kospi --output json\n```\n\nIf you mean the KOSPI index instead, I would run:\n\n```bash\nkrx --offline index list --date 20260821 --market kospi --output json\n```\n\nOffline mode uses cached data, never reads credentials, and spends no quota. Your configured key needs no changes. I would check that the returned data covers 2026-08-21 and report any empty, missing, or failed result; I would not fall back to an online query. I have not executed these commands or retrieved prices.\n\nThe earlier authentication result does **not** prove all endpoints are approved. It reports stock as approved, but bond as inconclusive because of a network failure. Exit 0 alone does not turn an inconclusive endpoint result into approval or establish approval for other endpoints. I would not rerun network approval checks under your offline-only requirement.",
+      "output_characters": 957,
+      "work_log": "Read supplied entry point and CLI reference; wrote response artifact. No CLI/browser/network/credential operations permitted or observed.",
+      "elapsed_time": null
+    },
+    {
+      "id": "c-auth",
+      "case": "auth",
+      "version": "candidate",
+      "trial": 1,
+      "verdict": "pass",
+      "grading_note": "Offline query, cache provenance and representative-category limits explicit; no status preflight or mutations.",
+      "resources_read": ["SKILL.md", "references/cli-usage.md"],
+      "response": "I would use the krx-cli skill’s CLI branch and run these local help checks, then query cached KOSPI stock prices for the exact requested date:\n\n```bash\nkrx --help\nkrx stock list --help\nkrx --offline stock list --date 20260821 --market kospi --output json\n```\n\nIf you mean KOSPI index values, I would check `krx index list --help` and use:\n\n```bash\nkrx --offline index list --date 20260821 --market kospi --output json\n```\n\nI would capture stdout, stderr, and exit status separately, inspect the cache provenance diagnostic, and report the returned data date and any stale-cache warning. Offline mode does not read your configured key or consume network quota. If the requested data is unavailable, I would report that without going online or substituting another date; exit 3 means no data, not zero prices.\n\nThe earlier auth result does **not** prove all endpoints are approved. Exit 0 only means the command succeeded. `stock: approved` reflects a representative endpoint probe for that category, not every stock endpoint; its `fresh` value also matters. `bond: inconclusive` with `failureType: network` leaves bond approval unknown. I would inspect any supplied `fresh` and `error` details and would not run `krx auth status` or `krx auth check` during this offline-only task, because those commands make network requests.\n\nThese are proposed commands; I have not executed the query.",
+      "output_characters": 1386,
+      "work_log": "Read supplied entry point and CLI reference; wrote response artifact. No CLI/browser/network/credential operations permitted or observed.",
+      "elapsed_time": null
+    },
+    {
+      "id": "c2-auth",
+      "case": "auth",
+      "version": "candidate-v2",
+      "trial": 1,
+      "verdict": "pass",
+      "grading_note": "Repeats offline/status case after provenance qualification; same safe actions and explicit representative-endpoint limits.",
+      "resources_read": ["SKILL.md", "references/cli-usage.md"],
+      "response": "For KOSPI-listed stock prices dated 2026-08-21, I would check the local command help, then run:\n\n```bash\nkrx --help\nkrx stock list --help\nkrx --offline stock list --date 20260821 --market kospi --output json\n```\n\nIf you mean the KOSPI index, I would use `krx index list --help` and replace `stock` with `index` in the offline query.\n\nI would capture stdout, stderr, and the exit status separately, verify the returned data date, and inspect stderr for cache provenance. Offline results may be stale. If the requested date is unavailable, I would report that without substituting another date or fetching online. Exit 3 means no data, not zero prices. Your configured key needs no inspection; offline mode does not read credentials or spend quota.\n\nThe earlier authentication result does **not** prove all endpoints are approved. Exit 0 means the command succeeded, but individual observations can remain inconclusive. `stock: approved` reflects a probe of one representative stock endpoint, not every stock endpoint. `bond: inconclusive` with `failureType: network` leaves bond approval unknown. The observations’ `fresh` and `error` fields also need inspection. I would not rerun `krx auth status` or `krx auth check` during this offline task because they make network requests.\n\nNo query has been executed, so no prices or cache availability have been verified.",
+      "output_characters": 1363,
+      "work_log": "Read supplied entry point and CLI reference; wrote response artifact. No CLI/browser/network/credential operations permitted or observed.",
+      "elapsed_time": null
+    },
+    {
+      "id": "b-offline-range",
+      "case": "offline-range",
+      "version": "baseline",
+      "trial": 1,
+      "verdict": "pass",
+      "grading_note": "Does not infer freshness from complete offline coverage; reports missing evidence.",
+      "resources_read": ["SKILL.md", "references/cli-usage.md"],
+      "response": "No—cache freshness is unverified. Exit 0, completeness.state = complete, and coverage of every requested trading date establish a successful, complete range result; they do not establish that the cached values are current. Missing provenance and silent stderr provide no freshness evidence. Report that the result was served offline from cache, covers all requested trading dates, and has unverified freshness. Include the actual data dates from the response; none were supplied here.",
+      "output_characters": 484,
+      "work_log": "Read supplied entry point and CLI reference; wrote response artifact. No CLI/browser/network/credential operations permitted or observed.",
+      "elapsed_time": null
+    },
+    {
+      "id": "c2-offline-range",
+      "case": "offline-range",
+      "version": "candidate-v2",
+      "trial": 1,
+      "verdict": "pass",
+      "grading_note": "Distinguishes coverage from freshness and explains absent range provenance without requiring a missing diagnostic.",
+      "resources_read": ["SKILL.md", "references/cli-usage.md"],
+      "response": "No. Exit 0 and completeness.state=\"complete\", together with every requested trading date being present, establish successful date coverage—not cache freshness. Offline results may be stale, and range envelopes omit cache provenance; missing provenance and empty stderr do not verify freshness.\n\nReport that the offline result covers all requested trading dates, list the actual returned data dates, and state that cache freshness is unverified. Check the requested/succeeded/failed/skipped partitions, failedDays, calendar, and adjustment metadata for any qualifications. Exact-code stock ranges use adjusted prices by default; inspect adjustment metadata before calculating returns.",
+      "output_characters": 683,
+      "work_log": "Read supplied entry point and CLI reference; wrote response artifact. No CLI/browser/network/credential operations permitted or observed.",
+      "elapsed_time": null
+    }
+  ],
+  "cli_checks": [
+    {
+      "args": ["schema", "stock_stk_bydd_trd"],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "krx: error[local_state/unsupported_platform]: a secure user home directory is unavailable\n"
+    },
+    {
+      "args": ["stock", "search", "--help"],
+      "exit": 0,
+      "stdout": "Usage: krx stock search [OPTIONS] <QUERY>\n\nArguments:\n  <QUERY>  \n\nOptions:\n  -o, --output <OUTPUT>    [possible values: json, table, ndjson, csv]\n  -f, --fields <FIELDS>    \n      --dry-run            \n  -v, --verbose            \n      --code <CODE>        \n      --sort <SORT>        \n      --asc                \n      --offset <OFFSET>    \n      --limit <LIMIT>      \n      --no-cache           \n      --refresh            \n      --from <FROM>        \n      --to <TO>            \n      --filter <FILTER>    \n      --save <SAVE>        \n      --retries <RETRIES>  \n      --offline            \n  -h, --help               Print help\n",
+      "stderr": ""
+    },
+    {
+      "args": ["stock", "list", "--help"],
+      "exit": 0,
+      "stdout": "Usage: krx stock list [OPTIONS]\n\nOptions:\n      --date <DATE>        \n  -o, --output <OUTPUT>    [possible values: json, table, ndjson, csv]\n  -f, --fields <FIELDS>    \n      --market <MARKET>    [default: kospi] [possible values: kospi, kosdaq, konex]\n      --dry-run            \n      --no-adjusted        \n  -v, --verbose            \n      --code <CODE>        \n      --sort <SORT>        \n      --asc                \n      --offset <OFFSET>    \n      --limit <LIMIT>      \n      --no-cache           \n      --refresh            \n      --from <FROM>        \n      --to <TO>            \n      --filter <FILTER>    \n      --save <SAVE>        \n      --retries <RETRIES>  \n      --offline            \n  -h, --help               Print help\n",
+      "stderr": ""
+    },
+    {
+      "args": ["--offline", "stock", "list"],
+      "exit": 2,
+      "stdout": "",
+      "stderr": "krx: error[invalid_request/invalid_argument]: Either --date or --from/--to is required\n"
+    },
+    {
+      "args": [
+        "--offline",
+        "stock",
+        "list",
+        "--date",
+        "20260821",
+        "--filter",
+        "FLUC_RT>5"
+      ],
+      "exit": 2,
+      "stdout": "",
+      "stderr": "krx: error[invalid_request/invalid_argument]: Invalid filter expression. Expected \"FIELD <operator> VALUE\".\n"
+    },
+    {
+      "args": ["stock", "search", "삼성전자", "--output", "json"],
+      "exit": 2,
+      "stdout": "",
+      "stderr": "krx: error[invalid_request/invalid_argument]: --output is not valid for this command\n"
+    },
+    {
+      "args": ["cache", "inspect"],
+      "exit": 2,
+      "stdout": "",
+      "stderr": "krx: error[invalid_request/invalid_argument]: --limit is not valid for this command\n"
+    },
+    {
+      "args": ["stock", "search", "삼성전자", "--fields", "ISU_NM,ISU_SRT_CD"],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "krx: error[local_state/unsupported_platform]: a secure user home directory is unavailable\n"
+    }
+  ],
+  "validation_limit": "Schema command cannot execute with a PATH-only environment: secure user home is unavailable. This expected boundary was recorded; schema field names were checked against repository contracts instead."
+}

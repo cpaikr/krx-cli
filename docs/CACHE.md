@@ -31,9 +31,11 @@ krx stock list --market kospi --date 20260310 --refresh
 krx --offline stock list --market kospi --date 20260310
 ```
 
-Use `krx cache status`, `inspect`, `prune`, and `clear` for bounded maintenance.
-These commands recognize only contract-defined cache files and refuse unsafe
-children rather than traversing them.
+Use `krx cache status`, `prune`, and `clear` for bounded maintenance. The current
+`cache inspect` limitation is documented in the
+[CLI usage reference](../skills/krx-cli/references/cli-usage.md#cache-and-offline).
+Cache maintenance recognizes only contract-defined cache files and refuses
+unsafe children rather than traversing them.
 
 ## Concurrency and integrity
 

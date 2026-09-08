@@ -11,8 +11,8 @@ changes.
 
 ## Universal rules
 
-- Never read, expose, log, or persist API keys, passwords, cookies, OTP values,
-  or other credentials.
+- Never inspect, expose, log, or copy credential values. Let the CLI resolve
+  configured credentials internally; leave credential entry to the user.
 - Preserve existing approvals and unrelated account state.
 - Do not claim completion when a required query component or requested endpoint
   remains partial, pending, failed, or unknown.
