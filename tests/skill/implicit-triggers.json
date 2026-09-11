@@ -1,0 +1,136 @@
+{
+  "kind": "synthetic trigger classification cases",
+  "baseline_commit": "94faf7789a7ecfa5ba881320368214e47748e2c0",
+  "candidate_sha256": {
+    "skills/krx-cli/SKILL.md": "85be3a51b7e29e470b06723eac76e4f15e81db48fd0527981a70e14ecd15a3eb",
+    "skills/krx-cli/agents/openai.yaml": "8619a54e8c098122a7f3881394f84ca89b684366e848233a29ad18b6ec363935"
+  },
+  "acceptance": "All labels and routes must match. No application from status-only prompts. One independent classification pass; not host-discovery execution.",
+  "cases": [
+    {
+      "id": "explicit",
+      "prompt": "Use $krx-cli to show KOSPI prices for 20260910.",
+      "activate": true,
+      "route": "cli",
+      "reason": "Explicit in-scope invocation."
+    },
+    {
+      "id": "stock",
+      "prompt": "삼성전자 2026년 9월 10일 종가와 거래량을 알려줘.",
+      "activate": true,
+      "route": "cli",
+      "reason": "Korean stock market data without skill name."
+    },
+    {
+      "id": "status",
+      "prompt": "Which KRX API services am I approved for?",
+      "activate": true,
+      "route": "cli",
+      "reason": "Status only; no application authorization."
+    },
+    {
+      "id": "application",
+      "prompt": "Apply for all unapproved KRX Open API endpoints using my shared authenticated tab.",
+      "activate": true,
+      "route": "application",
+      "reason": "Explicit submission request without skill name."
+    },
+    {
+      "id": "cache",
+      "prompt": "Show the krx cache status and explain the output.",
+      "activate": true,
+      "route": "cli",
+      "reason": "CLI operation without skill invocation."
+    },
+    {
+      "id": "advice",
+      "prompt": "What are the risks of investing in Korean stocks?",
+      "activate": false,
+      "route": null,
+      "reason": "General investing advice, no KRX data request."
+    },
+    {
+      "id": "foreign",
+      "prompt": "Show Apple closing prices on Nasdaq yesterday.",
+      "activate": false,
+      "route": null,
+      "reason": "Non-KRX market data."
+    },
+    {
+      "id": "key",
+      "prompt": "Renew my KRX API key.",
+      "activate": false,
+      "route": null,
+      "reason": "Excluded key lifecycle operation."
+    },
+    {
+      "id": "ambiguous",
+      "prompt": "My KRX stock query says approval is missing. Check what is approved.",
+      "activate": true,
+      "route": "cli",
+      "reason": "Diagnose status only; missing approval is not submission authorization."
+    }
+  ],
+  "observed": [
+    {
+      "id": "explicit",
+      "activate": true,
+      "route": "cli",
+      "reason": "Explicit skill invocation for KOSPI market data."
+    },
+    {
+      "id": "stock",
+      "activate": true,
+      "route": "cli",
+      "reason": "Korean stock closing price and volume requests trigger implicit invocation."
+    },
+    {
+      "id": "status",
+      "activate": true,
+      "route": "cli",
+      "reason": "Service-approval status questions route exclusively to the CLI."
+    },
+    {
+      "id": "application",
+      "activate": true,
+      "route": "application",
+      "reason": "Explicit request to apply for endpoint access using a shared authenticated tab."
+    },
+    {
+      "id": "cache",
+      "activate": true,
+      "route": "cli",
+      "reason": "CLI cache status and output interpretation are included."
+    },
+    {
+      "id": "advice",
+      "activate": false,
+      "route": "none",
+      "reason": "General investing advice is explicitly excluded."
+    },
+    {
+      "id": "foreign",
+      "activate": false,
+      "route": "none",
+      "reason": "Nasdaq prices are non-KRX market data."
+    },
+    {
+      "id": "key",
+      "activate": false,
+      "route": "none",
+      "reason": "API-key renewal is explicitly excluded."
+    },
+    {
+      "id": "ambiguous",
+      "activate": true,
+      "route": "cli",
+      "reason": "The request asks to check approval status; it does not authorize service-access applications."
+    }
+  ],
+  "result": {
+    "matched": 9,
+    "total": 9,
+    "method": "One fresh independent worker classified the batch without expected labels. No per-prompt isolation, repeated trials, or actual host discovery execution.",
+    "limits": "The baseline already lacked an explicit-only restriction; this makes implicit policy explicit. Runtime bodies were unchanged. Native archive installation was not exercised."
+  }
+}

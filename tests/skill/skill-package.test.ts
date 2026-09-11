@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 
 const repositoryRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -47,6 +48,12 @@ describe("krx-cli skill package", () => {
     for (const path of links) {
       expect(existsSync(resolve(skillRoot, path))).toBe(true);
     }
+  });
+
+  it("allows implicit invocation through the packaged Codex policy", () => {
+    const adapter = parse(readSkillFile("agents/openai.yaml"));
+
+    expect(adapter.policy.allow_implicit_invocation).toBe(true);
   });
 
   it("keeps portable runtime guidance independent of named agent clients", () => {

@@ -118,7 +118,13 @@ explain how these surfaces are maintained and validated.
 
 ## Agent skill
 
-Install the complete skill directory, including its references and workflows:
+The consumer skill allows automatic selection for matching KRX data and CLI
+requests, including authentication and service-approval status. Explicit
+`$krx-cli` invocation remains available. Service-access applications still
+require an explicit user request; status questions do not authorize submission.
+
+Install the complete skill directory, including `agents/openai.yaml`, references,
+and workflows:
 
 ```bash
 npx skills add cpaikr/krx-cli

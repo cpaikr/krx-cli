@@ -90,6 +90,7 @@ try {
   );
   for (const skillPath of [
     "skills/krx-cli/SKILL.md",
+    "skills/krx-cli/agents/openai.yaml",
     "skills/krx-cli/references/cli-usage.md",
     "skills/krx-cli/workflows/apply-service-access.md",
   ]) {
