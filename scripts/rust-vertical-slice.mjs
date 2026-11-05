@@ -125,11 +125,11 @@ equal(
 
 const buildTargets = workflow.jobs?.build?.strategy?.matrix?.include;
 const actionRefs = {
-  "actions/checkout": "d23441a48e516b6c34aea4fa41551a30e30af803",
-  "actions/setup-node": "820762786026740c76f36085b0efc47a31fe5020",
-  "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02",
-  "actions/download-artifact": "634f93cb2916e3fdff6788551b99b062d0335ce0",
-  "pnpm/action-setup": "b906affcce14559ad1aafd4ab0e942779e9f58b1",
+  "actions/checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+  "actions/setup-node": "949feb2413d6458794dcd2491c4babbbce0c15c1",
+  "actions/upload-artifact": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+  "actions/download-artifact": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+  "pnpm/action-setup": "ea17c68df8912ef543352723c149a84f56e3d413",
   "EmbarkStudios/cargo-deny-action": "3c6349835b2b7b196a839186cb8b78e02f7b5f25",
 };
 for (const job of Object.values(workflow.jobs ?? {})) {
@@ -391,10 +391,10 @@ invariant(
 );
 
 const requiredVersions = {
-  clap: "4.6.6",
-  napi: "3.12.2",
-  "napi-build": "2.4.1",
-  "napi-derive": "3.6.3",
+  clap: "4.6.7",
+  napi: "3.15.0",
+  "napi-build": "2.6.0",
+  "napi-derive": "3.6.13",
 };
 const locked = new Map(
   [

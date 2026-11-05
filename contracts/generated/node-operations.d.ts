@@ -34,18 +34,10 @@ export type OperationId =
   | "esg_esg_index_info";
 
 export type ApprovalCategory =
-  | "index"
-  | "stock"
-  | "etp"
-  | "bond"
-  | "derivative"
-  | "commodity"
-  | "esg";
+  "index" | "stock" | "etp" | "bond" | "derivative" | "commodity" | "esg";
 
 export type AdjustedDailyStockOperation =
-  | "stock_stk_bydd_trd"
-  | "stock_ksq_bydd_trd"
-  | "stock_knx_bydd_trd";
+  "stock_stk_bydd_trd" | "stock_ksq_bydd_trd" | "stock_knx_bydd_trd";
 
 export interface IndexKrxDdTrdRow {
   readonly BAS_DD: string;
