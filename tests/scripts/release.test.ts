@@ -110,38 +110,50 @@ function prepareReleaseFixture(failVerification = false) {
   return cwd;
 }
 
-describe("release version preparation", () => {
-  it("uses the real release-it bump to synchronize Cargo and its lock before tagging", () => {
-    const cwd = prepareReleaseFixture();
-    const result = run("node_modules/release-it/bin/release-it.js", cwd, [
-      "patch",
-      "--ci",
-    ]);
-    expect(result.status, result.stderr).toBe(0);
-    expect(
-      JSON.parse(readFileSync(join(cwd, "package.json"), "utf8")).version,
-    ).toBe("1.2.4");
-    expect(readFileSync(join(cwd, "Cargo.toml"), "utf8")).toContain(
-      'version = "1.2.4"',
-    );
-    expect(readFileSync(join(cwd, "Cargo.lock"), "utf8")).toContain(
-      'version = "1.2.4"',
-    );
-    expect(git(cwd, "tag", "--list")).toBe("1.2.4");
-    expect(git(cwd, "status", "--short")).toBe("");
-  });
+// These cases spawn the real release-it CLI, its git hooks, and cargo, so
+// their duration tracks process startup on the runner rather than test logic.
+const RELEASE_IT_TIMEOUT_MS = 60_000;
 
-  it("does not commit or tag a bump whose verification fails", () => {
-    const cwd = prepareReleaseFixture(true);
-    const before = git(cwd, "rev-parse", "HEAD");
-    const result = run("node_modules/release-it/bin/release-it.js", cwd, [
-      "patch",
-      "--ci",
-    ]);
-    expect(result.status).not.toBe(0);
-    expect(git(cwd, "rev-parse", "HEAD")).toBe(before);
-    expect(git(cwd, "tag", "--list")).toBe("");
-  });
+describe("release version preparation", () => {
+  it(
+    "uses the real release-it bump to synchronize Cargo and its lock before tagging",
+    () => {
+      const cwd = prepareReleaseFixture();
+      const result = run("node_modules/release-it/bin/release-it.js", cwd, [
+        "patch",
+        "--ci",
+      ]);
+      expect(result.status, result.stderr).toBe(0);
+      expect(
+        JSON.parse(readFileSync(join(cwd, "package.json"), "utf8")).version,
+      ).toBe("1.2.4");
+      expect(readFileSync(join(cwd, "Cargo.toml"), "utf8")).toContain(
+        'version = "1.2.4"',
+      );
+      expect(readFileSync(join(cwd, "Cargo.lock"), "utf8")).toContain(
+        'version = "1.2.4"',
+      );
+      expect(git(cwd, "tag", "--list")).toBe("1.2.4");
+      expect(git(cwd, "status", "--short")).toBe("");
+    },
+    RELEASE_IT_TIMEOUT_MS,
+  );
+
+  it(
+    "does not commit or tag a bump whose verification fails",
+    () => {
+      const cwd = prepareReleaseFixture(true);
+      const before = git(cwd, "rev-parse", "HEAD");
+      const result = run("node_modules/release-it/bin/release-it.js", cwd, [
+        "patch",
+        "--ci",
+      ]);
+      expect(result.status).not.toBe(0);
+      expect(git(cwd, "rev-parse", "HEAD")).toBe(before);
+      expect(git(cwd, "tag", "--list")).toBe("");
+    },
+    RELEASE_IT_TIMEOUT_MS,
+  );
 
   it("rejects a stale Cargo lockfile without repairing it", () => {
     const cwd = cargoFixture();

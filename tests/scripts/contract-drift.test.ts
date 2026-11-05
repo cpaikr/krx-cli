@@ -5,6 +5,7 @@ import YAML from "yaml";
 
 import {
   canonicalOperations,
+  classifyRows,
   compareOfficialRegistry,
   parseCatalog,
   parseOfficialDetail,
@@ -108,5 +109,30 @@ describe("contract drift inputs", () => {
       readFileSync("contracts/krx/openapi.yaml", "utf8"),
     );
     expect(canonicalOperations(openapi)).toHaveLength(31);
+  });
+
+  it("classifies live rows without treating an empty session as drift", () => {
+    const fields = [{ name: "ISU_CD" }, { name: "TDD_CLSPRC" }];
+    expect(
+      classifyRows([{ ISU_CD: "A", TDD_CLSPRC: "1" }], fields).status,
+    ).toBe("passed");
+    expect(classifyRows([], fields)).toEqual({
+      status: "no_rows",
+      response: { added: [], missing: [], changedTypes: [] },
+    });
+    expect(classifyRows([{ ISU_CD: "A" }], fields)).toEqual({
+      status: "schema_drift",
+      response: {
+        added: [],
+        missing: ["TDD_CLSPRC"],
+        changedTypes: ["TDD_CLSPRC"],
+      },
+    });
+    expect(
+      classifyRows([{ ISU_CD: "A", TDD_CLSPRC: 1, NEW: "x" }], fields),
+    ).toEqual({
+      status: "schema_drift",
+      response: { added: ["NEW"], missing: [], changedTypes: ["TDD_CLSPRC"] },
+    });
   });
 });

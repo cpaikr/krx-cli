@@ -44,6 +44,11 @@ Rust SDK. JavaScript retains no provider client. The report stores only bounded
 status, row counts, field differences, and official metadata—never credentials
 or market rows.
 
+A probe that returns zero rows is reported as `no_rows`: an empty session
+(for example, no rights-certificate trades) cannot confirm or refute the
+response schema, so it does not fail the run. Schema drift, request failures,
+official-registry drift, or a run in which no probe returned rows still fail.
+
 Official drift compares service membership, duplicate paths, request/response
 fields, and reviewed modification dates. Evidence is review input; the checker
 never rewrites the canonical contract.
