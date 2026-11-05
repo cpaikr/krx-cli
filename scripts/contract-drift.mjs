@@ -82,20 +82,23 @@ async function main() {
     for (const operation of operations) {
       probes.push(await probeOperation(client, operation, date));
     }
-    const passedProbes = probes.filter(
-      ({ status }) => status === "passed",
-    ).length;
+    const count = (status) =>
+      probes.filter((probe) => probe.status === status).length;
+    const passedProbes = count("passed");
+    const noRowProbes = count("no_rows");
+    const failedProbes = probes.length - passedProbes - noRowProbes;
     report = {
       version: 2,
       mode: "live-native-sdk",
       generatedAt: new Date().toISOString(),
-      passed: !official.hasDrift && passedProbes === probes.length,
+      passed: !official.hasDrift && failedProbes === 0 && passedProbes > 0,
       plan,
       official,
       probes,
       summary: {
         passedProbes,
-        failedProbes: probes.length - passedProbes,
+        noRowProbes,
+        failedProbes,
         nativeSdkCalls: probes.length,
       },
     };
@@ -223,29 +226,12 @@ async function probeOperation(client, operation, probeDate) {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     const rows = result.data;
-    const expected = new Set(operation.responseFields.map(({ name }) => name));
-    const observed = new Set(rows.flatMap((row) => Object.keys(row)));
-    const added = [...observed].filter((name) => !expected.has(name)).sort();
-    const missing = [...expected]
-      .filter((name) => rows.some((row) => !Object.hasOwn(row, name)))
-      .sort();
-    const changedTypes = [...expected]
-      .filter((name) => rows.some((row) => typeof row[name] !== "string"))
-      .sort();
-    const status =
-      rows.length > 0 &&
-      added.length === 0 &&
-      missing.length === 0 &&
-      changedTypes.length === 0
-        ? "passed"
-        : "schema_drift";
     return {
       operationId: operation.operationId,
       path: operation.path,
       date: probeDate,
-      status,
+      ...classifyRows(rows, operation.responseFields),
       rowCount: rows.length,
-      response: { added, missing, changedTypes },
     };
   } catch (error) {
     return {
@@ -257,6 +243,28 @@ async function probeOperation(client, operation, probeDate) {
       error: sanitizeError(error),
     };
   }
+}
+
+// An empty OutBlock_1 is a valid market state (for example, no rights
+// certificates traded that session), so it cannot prove or disprove the
+// response schema. It is reported as `no_rows` instead of drift.
+export function classifyRows(rows, responseFields) {
+  const expected = new Set(responseFields.map(({ name }) => name));
+  const observed = new Set(rows.flatMap((row) => Object.keys(row)));
+  const added = [...observed].filter((name) => !expected.has(name)).sort();
+  const missing = [...expected]
+    .filter((name) => rows.some((row) => !Object.hasOwn(row, name)))
+    .sort();
+  const changedTypes = [...expected]
+    .filter((name) => rows.some((row) => typeof row[name] !== "string"))
+    .sort();
+  let status = "passed";
+  if (added.length > 0 || missing.length > 0 || changedTypes.length > 0) {
+    status = "schema_drift";
+  } else if (rows.length === 0) {
+    status = "no_rows";
+  }
+  return { status, response: { added, missing, changedTypes } };
 }
 
 function sanitizeError(error) {
