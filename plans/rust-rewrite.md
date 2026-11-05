@@ -206,12 +206,12 @@ crates/krx-cli   crates/krx-node
 - Add `ARCHITECTURE.md` only when the candidate implementation makes this
   shape true. Until then this plan is the target-design authority.
 - The candidate toolchain is frozen at Rust 1.92.0. Direct dependency pins are
-  Clap 4.6.6, reqwest 0.13.4, Tokio 1.53.1, tokio-util 0.7.19, napi-rs 3.12.2,
-  napi-derive 3.6.3, napi-build 2.4.1, keyring-rs 4.1.6, serde 1.0.229,
-  serde_json 1.0.151, serde-saphyr 1.1.0, thiserror 2.0.20, url 2.5.8,
-  zeroize 1.9.0, rpassword 7.4.0, futures-util 0.3.34, sha2 0.11.0,
-  uuid 1.25.0, jiff 0.2.35, ICU4X `icu_collator` 2.3.1 and `icu_locale`
-  2.3.1, num-bigint 0.5.1, Unix-only rustix 1.1.4, and Windows-only cap-std 4.0.3 and
+  Clap 4.6.7, reqwest 0.13.5, Tokio 1.54.1, tokio-util 0.7.20, napi-rs 3.15.0,
+  napi-derive 3.6.13, napi-build 2.6.0, keyring-rs 4.2.0, serde 1.0.229,
+  serde_json 1.0.154, serde-saphyr 2.0.0, thiserror 2.0.21, url 2.5.8,
+  zeroize 1.9.1, rpassword 7.5.4, futures-util 0.3.34, sha2 0.11.1,
+  uuid 1.29.0, jiff 0.2.38, ICU4X `icu_collator` 2.3.1 and `icu_locale`
+  2.3.1, num-bigint 0.5.1, Unix-only rustix 1.1.6, and Windows-only cap-std 4.0.3 and
   windows-sys 0.61.2. SHA-256 identity, OS-random UUID-v4 lock identities,
   canonical UTC/KST time handling, unbounded exact adjustment factors, and
   descriptor-relative no-follow state traversal use those maintained crates

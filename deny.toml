@@ -2,7 +2,11 @@
 all-features = true
 
 [advisories]
-ignore = []
+ignore = [
+  { id = "RUSTSEC-2026-0370", reason = "Unmaintained (merged into zbus 6), not a vulnerability. Reached only via keyring -> zbus-secret-service-keyring-store -> secret-service -> zbus 5 on Linux; remove once that chain moves to zbus 6." },
+  { id = "RUSTSEC-2026-0371", reason = "Unmaintained (merged into zbus 6), not a vulnerability. Reached only via keyring -> zbus-secret-service-keyring-store -> secret-service -> zbus 5 on Linux; remove once that chain moves to zbus 6." },
+  { id = "RUSTSEC-2026-0372", reason = "Unmaintained (merged into zbus 6), not a vulnerability. Reached only via keyring -> zbus-secret-service-keyring-store -> secret-service -> zbus 5 on Linux; remove once that chain moves to zbus 6." },
+]
 
 [licenses]
 allow = [

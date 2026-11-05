@@ -26,17 +26,14 @@ export interface KrxErrorCodeByKind {
   readonly cancelled: "request_cancelled";
   readonly timeout: "deadline_exceeded";
   readonly authentication:
-    | "credential_missing"
-    | "credential_or_approval_rejected";
+    "credential_missing" | "credential_or_approval_rejected";
   readonly approval: "service_not_approved";
   readonly rate_limit: "local_quota_exhausted" | "provider_rate_limited";
   readonly offline: "cache_miss" | "cache_invalid";
   readonly network: "request_failed";
   readonly upstream: "http_error" | "provider_unavailable" | "provider_error";
   readonly invalid_response:
-    | "invalid_json"
-    | "invalid_envelope"
-    | "invalid_row";
+    "invalid_json" | "invalid_envelope" | "invalid_row";
   readonly integrity:
     | "adjustment_incomplete"
     | "adjustment_inconsistent"
