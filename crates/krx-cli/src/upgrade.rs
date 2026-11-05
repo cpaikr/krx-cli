@@ -22,7 +22,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
-use crate::release_check::{self, ManifestTarget, Release, Version};
+use crate::release_check::{self, HttpClient, ManifestTarget, Release, Version};
 
 const PACKAGE_NAME: &str = "krx-cli";
 const EXECUTABLE: &str = if cfg!(windows) { "krx.exe" } else { "krx" };
@@ -92,6 +92,7 @@ async fn upgrade(check: bool, progress: &mut Progress) -> Result<Outcome, Upgrad
         .ok_or_else(|| release_invalid(outcome.next_step()))?;
     progress.stage(format_args!("Downloading {}...", entry.archive));
     let archive = download_verified(&client, &release, entry, progress).await?;
+    let archives = installation_archives(&archives, &package);
     let archive_path = persist_archive(&archives, &entry.archive, &archive)?;
     progress.stage(format_args!(
         "Installing krx {} with pnpm...",
@@ -255,7 +256,7 @@ fn display_size(bytes: usize) -> String {
     format!("{}.{} MB", tenths / 10, tenths % 10)
 }
 
-async fn latest_release(client: &reqwest::Client, target: &str) -> Result<Release, UpgradeError> {
+async fn latest_release(client: &HttpClient, target: &str) -> Result<Release, UpgradeError> {
     let body = timed(
         METADATA_TIMEOUT,
         "release manifest",
@@ -284,7 +285,7 @@ async fn timed<T>(
 
 /// Downloads this target's archive and verifies it before installation.
 async fn download_verified(
-    client: &reqwest::Client,
+    client: &HttpClient,
     release: &Release,
     entry: &ManifestTarget,
     progress: &mut Progress,
@@ -457,6 +458,17 @@ fn archive_directory() -> Result<PathBuf, UpgradeError> {
     Ok(directory)
 }
 
+/// The archive directory of one pnpm global installation.
+///
+/// Several pnpm global directories can each hold a krx-cli; keying the
+/// directory by the global project means removing superseded archives never
+/// touches an archive another installation still references.
+fn installation_archives(archives: &Path, package: &GlobalPackage) -> PathBuf {
+    let project = fs::canonicalize(&package.project).unwrap_or_else(|_| package.project.clone());
+    let digest = sha256_hex(project.as_os_str().as_encoded_bytes());
+    archives.join(&digest[..16])
+}
+
 /// Writes the verified archive under its release name, replacing atomically.
 fn persist_archive(directory: &Path, name: &str, bytes: &[u8]) -> Result<PathBuf, UpgradeError> {
     let path = directory.join(name);
@@ -478,7 +490,7 @@ fn persist_archive(directory: &Path, name: &str, bytes: &[u8]) -> Result<PathBuf
     })
 }
 
-/// Removes archives of releases that are no longer installed.
+/// Removes this installation's archives of releases that are no longer installed.
 fn remove_other_archives(directory: &Path, keep: &str) {
     let Ok(entries) = fs::read_dir(directory) else {
         return;
@@ -630,6 +642,8 @@ struct GlobalPackage {
     path: PathBuf,
     /// The `file:` tarball pnpm resolved the package from, when it reports one.
     source: Option<PathBuf>,
+    /// The global project directory, stable across upgrades of one installation.
+    project: PathBuf,
 }
 
 /// Global `krx-cli` dependencies in `pnpm list --global --json` output.
@@ -644,15 +658,16 @@ fn parse_global_list(stdout: &[u8]) -> Option<Vec<GlobalPackage>> {
             .iter()
             .filter_map(|project| {
                 let dependency = project["dependencies"].get(PACKAGE_NAME)?;
+                let project = Path::new(project["path"].as_str()?);
                 let source = dependency["resolved"]
                     .as_str()
                     .and_then(|resolved| resolved.strip_prefix("file:"))
-                    .zip(project["path"].as_str())
-                    .map(|(file, project)| Path::new(project).join(file));
+                    .map(|file| project.join(file));
                 Some(GlobalPackage {
                     version: dependency["version"].as_str()?.to_owned(),
                     path: PathBuf::from(dependency["path"].as_str()?),
                     source,
+                    project: project.to_path_buf(),
                 })
             })
             .collect(),
@@ -678,6 +693,9 @@ impl Pnpm {
             .flat_map(std::env::split_paths)
             .flat_map(|directory| names.iter().map(move |name| directory.join(name)))
             .find(|candidate| candidate.is_file())
+            // pnpm runs from another directory, so a relative PATH entry must
+            // be resolved against the caller's directory first.
+            .and_then(|candidate| std::path::absolute(candidate).ok())
             .map(|program| Self {
                 program,
                 working_directory,
@@ -869,6 +887,7 @@ mod tests {
                 version: "1.8.2".to_owned(),
                 path: PathBuf::from("/g/5/node_modules/krx-cli"),
                 source: Some(Path::new("/g/5").join("../../a.tgz")),
+                project: PathBuf::from("/g/5"),
             }]
         );
         let pnpm12 = br#"[{"path":"C:\\g\\v11","private":true,"dependencies":{
@@ -895,6 +914,27 @@ mod tests {
         assert_eq!(fs::read(&new).unwrap(), b"new");
         assert!(directory.join("unrelated.txt").exists());
         fs::remove_dir_all(&directory).unwrap();
+    }
+
+    #[test]
+    fn each_global_installation_keeps_its_own_archives() {
+        let package = |project: &str| GlobalPackage {
+            version: "1.8.2".to_owned(),
+            path: PathBuf::from(project).join("node_modules/krx-cli"),
+            source: None,
+            project: PathBuf::from(project),
+        };
+        let base = Path::new("/data/releases");
+        let first = installation_archives(base, &package("/pnpm/global/5"));
+        assert_eq!(first.parent(), Some(base));
+        assert_eq!(
+            first,
+            installation_archives(base, &package("/pnpm/global/5"))
+        );
+        assert_ne!(
+            first,
+            installation_archives(base, &package("/pnpm/global/v11"))
+        );
     }
 
     #[test]

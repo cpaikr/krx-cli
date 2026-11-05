@@ -54,7 +54,11 @@ const CACHE_FILE: &str = "release-check-v1.json";
 // traffic negligible even when many processes share one address.
 const REFRESH_INTERVAL_SECONDS: i64 = 24 * 60 * 60;
 const RETRY_COOLDOWN_SECONDS: i64 = 60 * 60;
-const REFRESH_BUDGET: Duration = Duration::from_millis(1_500);
+// An incidental refresh delays a finished command, so it gets a short budget;
+// an explicit check is what the person is waiting for, so a slow, high-latency
+// path through github.com and the asset host still completes.
+const INCIDENTAL_BUDGET: Duration = Duration::from_millis(1_500);
+const EXPLICIT_BUDGET: Duration = Duration::from_secs(10);
 pub const MAX_MANIFEST_BYTES: usize = 64 << 10;
 pub const DISABLE_ENV: &str = "KRX_NO_UPDATE_CHECK";
 
@@ -368,6 +372,7 @@ async fn run_check(settings: &Settings, mode: Mode, now: Timestamp) -> ReleaseCh
             record = attempt;
             refresh(
                 settings,
+                mode,
                 directory.filter(|_| persisted),
                 &mut record,
                 &mut problems,
@@ -381,20 +386,24 @@ async fn run_check(settings: &Settings, mode: Mode, now: Timestamp) -> ReleaseCh
 
 async fn refresh(
     settings: &Settings,
+    mode: Mode,
     directory: Option<&Path>,
     record: &mut CacheRecord,
     problems: &mut Vec<String>,
     now: Timestamp,
 ) {
-    let refreshed =
-        tokio::time::timeout(REFRESH_BUDGET, fetch_evidence(&settings.manifest_url, now))
-            .await
-            .unwrap_or_else(|_| {
-                Err(format!(
-                    "Release refresh exceeded its {} ms budget.",
-                    REFRESH_BUDGET.as_millis()
-                ))
-            });
+    let budget = match mode {
+        Mode::Incidental => INCIDENTAL_BUDGET,
+        Mode::Explicit => EXPLICIT_BUDGET,
+    };
+    let refreshed = tokio::time::timeout(budget, fetch_evidence(&settings.manifest_url, now))
+        .await
+        .unwrap_or_else(|_| {
+            Err(format!(
+                "Release refresh exceeded its {} ms budget.",
+                budget.as_millis()
+            ))
+        });
     match refreshed {
         Ok(evidence) => {
             record.evidence = Some(evidence);
@@ -517,6 +526,10 @@ impl ReleaseCheck {
         })
     }
 }
+
+/// The GitHub release HTTP client. Only this module names the HTTP library, so
+/// the cutover gate can confirm the KRX provider transport stays in the SDK.
+pub type HttpClient = reqwest::Client;
 
 pub fn http_client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
@@ -987,6 +1000,7 @@ mod tests {
         let mut problems = Vec::new();
         refresh(
             &settings,
+            Mode::Incidental,
             Some(&directory),
             &mut attempt,
             &mut problems,

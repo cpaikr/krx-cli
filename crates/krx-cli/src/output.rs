@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::io::{self, IsTerminal, Read};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use icu_collator::{Collator, CollatorBorrowed, options::CollatorOptions};
@@ -18,8 +19,7 @@ use zeroize::Zeroizing;
 
 use crate::args::{
     AuthArgs, AuthCommand, CacheArgs, CacheCommand, Cli, MarketArgs, MarketCommand, OutputFormat,
-    SchemaArgs, Scope, StockArgs, StockCommand, TopCommand, WatchlistArgs, WatchlistCommand,
-    filter_parts,
+    SchemaArgs, StockArgs, StockCommand, TopCommand, WatchlistArgs, WatchlistCommand, filter_parts,
 };
 use crate::{release_check, upgrade};
 
@@ -27,7 +27,7 @@ pub async fn execute(cli: Cli) -> i32 {
     match execute_inner(&cli).await {
         Ok(exit) => {
             if exit == 0
-                && contacts_krx(&cli)
+                && KRX_REQUESTED.load(Ordering::Relaxed)
                 && io::stderr().is_terminal()
                 && let Some(notice) = release_check::incidental_notice().await
             {
@@ -45,18 +45,13 @@ pub async fn execute(cli: Cli) -> i32 {
     }
 }
 
-/// Whether a successful run of this command was a KRX network operation.
+/// Whether this process sent a KRX request, from the SDK's request observations.
 ///
-/// Only those runs refresh release evidence, so local and offline commands
-/// never contact GitHub. The notice is for a person: it is written only to an
-/// interactive stderr, leaving pipes, CI, and agents unchanged.
-fn contacts_krx(cli: &Cli) -> bool {
-    matches!(
-        cli.scope(),
-        Scope::Endpoint | Scope::Search | Scope::Summary | Scope::WatchlistPrices
-    ) && !cli.offline
-        && !cli.dry_run
-}
+/// Only such runs refresh release evidence, so local, cached, offline, and
+/// dry-run commands never contact GitHub. The notice is for a person: it is
+/// written only to an interactive stderr, leaving pipes, CI, and agents
+/// unchanged. One process runs one command, so a process-wide flag suffices.
+static KRX_REQUESTED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug)]
 struct Failure {
@@ -1243,6 +1238,9 @@ fn verbose(cli: &Cli, message: impl std::fmt::Display) {
 
 fn render_sdk_observations(cli: &Cli, observations: &ObservationBuffer) {
     for observation in observations.take() {
+        if matches!(observation.phase, ObservationPhase::Request { .. }) {
+            KRX_REQUESTED.store(true, Ordering::Relaxed);
+        }
         if let ObservationPhase::Quota {
             count,
             limit,

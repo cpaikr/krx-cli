@@ -93,8 +93,9 @@ SHA-256 to match both `release-manifest.json` and `SHA256SUMS` and its
 pnpm records a global archive by path, so the verified archive is kept in the
 user data directory (`%LOCALAPPDATA%\krx-cli\releases`,
 `~/Library/Application Support/krx-cli/releases`, or
-`$XDG_DATA_HOME/krx-cli/releases`, default `~/.local/share`) while that version
-is installed; do not delete it. pnpm runs from that directory. pnpm 10 keeps all
+`$XDG_DATA_HOME/krx-cli/releases`, default `~/.local/share`), in one
+subdirectory per pnpm global installation, while that version is installed; do
+not delete it. pnpm runs from that directory. pnpm 10 keeps all
 global packages in one project and re-reads each recorded archive, so when the
 archive the running version was installed from is gone, the in-place install
 fails; `krx upgrade` then removes the package, installs again, and on failure

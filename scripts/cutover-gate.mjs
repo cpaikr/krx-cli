@@ -153,16 +153,30 @@ for (const [path, source] of activeText) {
   }
 }
 
+// The CLI's release check and upgrade fetch GitHub release assets, not KRX
+// provider data. That one client is allowed, but it must never reach KRX.
+const releaseClient = "crates/krx-cli/src/release_check.rs";
 const transportOwners = [...activeText]
   .filter(
     ([path, source]) =>
-      path.endsWith(".rs") && source.includes("reqwest::Client"),
+      path.endsWith(".rs") &&
+      path !== releaseClient &&
+      source.includes("reqwest::Client"),
   )
   .map(([path]) => path);
 invariant(
   JSON.stringify(transportOwners) ===
     JSON.stringify(["crates/krx-sdk/src/transport.rs"]),
   "the shared Rust SDK transport must be the only provider HTTP conformer",
+);
+const releaseClientSource = activeText.get(releaseClient);
+invariant(
+  releaseClientSource === undefined ||
+    (releaseClientSource.includes(
+      'RELEASE_ORIGIN: &str = "https://github.com"',
+    ) &&
+      !/krx\.co\.kr|krx_sdk/u.test(releaseClientSource)),
+  "the release check client must reach only GitHub releases",
 );
 
 const ci = YAML.parse(await readFile(ciPath, "utf8"));
