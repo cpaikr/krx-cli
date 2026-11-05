@@ -315,6 +315,38 @@
       "polarity": "rejection",
       "args": ["cache", "prune", "--max-entries", "10001"],
       "expect": { "code": 2, "stderrKind": "invalid_request" }
+    },
+    {
+      "id": "version-check-reports-release-evidence",
+      "coversInventory": "add-option:[\"version\"]:check",
+      "polarity": "positive",
+      "args": ["version", "--check"],
+      "expect": { "code": 0, "stdoutJsonSubset": { "current": "{{version}}" } }
+    },
+    {
+      "id": "version-check-rejects-inactive-root-option",
+      "coversInventory": "add-option:[\"version\"]:check",
+      "polarity": "rejection",
+      "args": ["--limit", "1", "version", "--check"],
+      "expect": { "code": 2, "stderrKind": "invalid_request" }
+    },
+    {
+      "id": "upgrade-present",
+      "coversInventory": "add-command:[]:upgrade",
+      "polarity": "positive",
+      "args": ["upgrade", "--help"],
+      "expect": { "code": 0 }
+    },
+    {
+      "id": "upgrade-refuses-unmanaged-installation",
+      "coversInventory": "add-command:[]:upgrade",
+      "polarity": "rejection",
+      "args": ["upgrade"],
+      "expect": {
+        "code": 1,
+        "stderrKind": "upgrade",
+        "stderrCode": "unmanaged_installation"
+      }
     }
   ]
 }

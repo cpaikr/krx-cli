@@ -30,6 +30,9 @@ archive includes the native CLI and Node binding; installation requires no Rust
 toolchain or lifecycle scripts. Install a release archive rather than the
 repository root, which is a maintainer workspace.
 
+Upgrade a global installation later with `krx upgrade` (`krx upgrade --check`
+only reports); see the [upgrade guide](docs/RELEASING.md#install-and-upgrade).
+
 The [target manifest](contracts/product/v1/native-targets.json) defines supported
 platforms. Release builds cover every target; automated tests and Node 22/24
 consumer certification run only on Linux GNU x64 and ARM64.

@@ -18,12 +18,23 @@ use zeroize::Zeroizing;
 
 use crate::args::{
     AuthArgs, AuthCommand, CacheArgs, CacheCommand, Cli, MarketArgs, MarketCommand, OutputFormat,
-    SchemaArgs, StockArgs, StockCommand, TopCommand, WatchlistArgs, WatchlistCommand, filter_parts,
+    SchemaArgs, Scope, StockArgs, StockCommand, TopCommand, WatchlistArgs, WatchlistCommand,
+    filter_parts,
 };
+use crate::{release_check, upgrade};
 
 pub async fn execute(cli: Cli) -> i32 {
     match execute_inner(&cli).await {
-        Ok(exit) => exit,
+        Ok(exit) => {
+            if exit == 0
+                && contacts_krx(&cli)
+                && io::stderr().is_terminal()
+                && let Some(notice) = release_check::incidental_notice().await
+            {
+                eprintln!("{notice}");
+            }
+            exit
+        }
         Err(error) => {
             eprintln!(
                 "krx: error[{}/{}]: {}",
@@ -32,6 +43,19 @@ pub async fn execute(cli: Cli) -> i32 {
             error.exit
         }
     }
+}
+
+/// Whether a successful run of this command was a KRX network operation.
+///
+/// Only those runs refresh release evidence, so local and offline commands
+/// never contact GitHub. The notice is for a person: it is written only to an
+/// interactive stderr, leaving pipes, CI, and agents unchanged.
+fn contacts_krx(cli: &Cli) -> bool {
+    matches!(
+        cli.scope(),
+        Scope::Endpoint | Scope::Search | Scope::Summary | Scope::WatchlistPrices
+    ) && !cli.offline
+        && !cli.dry_run
 }
 
 #[derive(Debug)]
@@ -80,12 +104,27 @@ impl From<KrxError> for Failure {
 }
 
 async fn execute_inner(cli: &Cli) -> Result<i32, Failure> {
-    if matches!(cli.command, TopCommand::Version) {
-        println!(
-            "{}",
-            pretty(&json!({ "current": env!("CARGO_PKG_VERSION") }))?
-        );
-        return Ok(0);
+    match &cli.command {
+        TopCommand::Version(args) => {
+            let mut value = json!({ "current": release_check::CURRENT_VERSION });
+            if args.check {
+                value["releaseCheck"] = serde_json::to_value(release_check::explicit_check().await)
+                    .map_err(|error| Failure::local(error.to_string()))?;
+            }
+            println!("{}", pretty(&value)?);
+            return Ok(0);
+        }
+        TopCommand::Upgrade(args) => {
+            let value = upgrade::run(args.check).await.map_err(|error| Failure {
+                kind: "upgrade",
+                code: error.code,
+                message: error.message(),
+                exit: 1,
+            })?;
+            println!("{}", pretty(&value)?);
+            return Ok(0);
+        }
+        _ => {}
     }
 
     let observations = ObservationBuffer::new();
@@ -196,7 +235,8 @@ async fn execute_inner(cli: &Cli) -> Result<i32, Failure> {
         | TopCommand::Derivative(_)
         | TopCommand::Commodity(_)
         | TopCommand::Esg(_)
-        | TopCommand::Version => unreachable!(),
+        | TopCommand::Version(_)
+        | TopCommand::Upgrade(_) => unreachable!(),
             TopCommand::Stock(_) => unreachable!(),
         }
     }

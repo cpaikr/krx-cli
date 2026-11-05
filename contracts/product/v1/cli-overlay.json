@@ -39,6 +39,19 @@
       "path": [],
       "name": "offline",
       "reason": "explicit-network-free-reads"
+    },
+    {
+      "change": "add-option",
+      "path": ["version"],
+      "name": "check",
+      "reason": "explicit-release-check"
+    },
+    {
+      "change": "add-command",
+      "path": [],
+      "name": "upgrade",
+      "options": ["check", "help"],
+      "reason": "pnpm-global-release-upgrade"
     }
   ],
   "behaviorChanges": [

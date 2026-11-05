@@ -73,9 +73,41 @@ krx --version
 krx --help
 ```
 
-Replace the placeholders with the selected release and target. Use the same
-package-manager installation path for upgrades. For the Node SDK, omit `--global`.
-Keep credentials out of download URLs and package metadata.
+Replace the placeholders with the selected release and target. For the Node SDK,
+omit `--global`. Keep credentials out of download URLs and package metadata.
+
+A pnpm global installation upgrades itself:
+
+```sh
+krx version --check   # compare with the latest stable release
+krx upgrade --check   # also confirm this installation is upgradable
+krx upgrade
+```
+
+`krx upgrade` acts only when `pnpm list --global` lists the running `krx-cli`
+package; project dependencies and other installations are refused unchanged.
+It downloads the target archive from the latest stable release, requires its
+SHA-256 to match both `release-manifest.json` and `SHA256SUMS` and its
+`package.json` to name `krx-cli` at that version, then runs
+`pnpm add --global --ignore-scripts` and confirms the installed `krx --version`.
+pnpm records a global archive by path, so the verified archive is kept in the
+user data directory (`%LOCALAPPDATA%\krx-cli\releases`,
+`~/Library/Application Support/krx-cli/releases`, or
+`$XDG_DATA_HOME/krx-cli/releases`, default `~/.local/share`) while that version
+is installed; do not delete it. pnpm runs from that directory. pnpm 10 keeps all
+global packages in one project and re-reads each recorded archive, so when the
+archive the running version was installed from is gone, the in-place install
+fails; `krx upgrade` then removes the package, installs again, and on failure
+names the `pnpm add` command that finishes it. Stage messages and pnpm output go
+to stderr only in a terminal; stdout carries one JSON result.
+
+Release evidence for `krx version --check` and for the update notice is cached
+for a day in the user cache directory (`%LOCALAPPDATA%\krx-cli\cache`,
+`~/Library/Caches/krx-cli`, or `$XDG_CACHE_HOME/krx-cli`). The notice waits an
+hour after a failed refresh; an explicit check retries immediately. After a
+successful KRX network command, an interactive terminal also shows a one-line
+notice when a newer installable release exists; pipes, CI, and agents never see
+it. Set `KRX_NO_UPDATE_CHECK=1` to disable release checks and the notice.
 
 ## Failed or interrupted releases
 
