@@ -71,7 +71,22 @@ pub enum TopCommand {
     Cache(CacheArgs),
     Market(MarketArgs),
     Watchlist(WatchlistArgs),
-    Version,
+    Version(VersionArgs),
+    Upgrade(UpgradeArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct VersionArgs {
+    /// Compare with the latest stable GitHub release
+    #[arg(long)]
+    pub check: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct UpgradeArgs {
+    /// Report whether a newer release is available without installing it
+    #[arg(long)]
+    pub check: bool,
 }
 
 #[derive(Debug, Args)]

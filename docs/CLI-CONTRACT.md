@@ -7,7 +7,14 @@ under `contracts/product/v1` freeze compatibility.
 
 ## Process behavior
 
-- `krx --version` prints the bare package version and exits 0.
+- `krx --version` prints the bare package version and exits 0. `krx version`
+  prints `{"current": …}`; `--check` adds the cached `releaseCheck` report.
+- `krx upgrade [--check]` prints one JSON result; its failures use the
+  `upgrade` error kind and exit 1. See
+  [install and upgrade](RELEASING.md#install-and-upgrade).
+- Release checks contact only GitHub, never alter a command's exit or stdout,
+  and write a notice only to an interactive stderr after a successful KRX
+  network command.
 - Clap help exits 0. Syntax, validation, and inactive global options fail before
   credentials, local mutation, quota, or network access and exit 2.
 - Direct endpoint success exits 0; a valid empty result exits 3; partial
@@ -39,10 +46,13 @@ current inventory. The frozen recursive inventory is
 | `HOME`                    | Unix home directory used for the fixed `${HOME}/.krx-cli` state root.     |
 | `USERPROFILE`             | Windows home directory used for the fixed `${USERPROFILE}/.krx-cli` root. |
 | `NO_COLOR`                | Disables terminal color where supported.                                  |
+| `KRX_NO_UPDATE_CHECK`     | Any value except empty or `0` disables release checks and notices.        |
 
 The local state root is fixed at `.krx-cli` below the platform home directory;
 `XDG_CONFIG_HOME` and `LOCALAPPDATA` do not relocate it. No environment
-variable enables another server or protocol surface.
+variable enables another server or protocol surface. Release-check evidence
+(disposable cache) and upgrade archives (user data) live outside the state
+root; see [install and upgrade](RELEASING.md#install-and-upgrade).
 
 ## Migration differences
 

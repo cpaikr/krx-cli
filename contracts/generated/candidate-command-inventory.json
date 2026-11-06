@@ -14,7 +14,8 @@
       "cache",
       "market",
       "watchlist",
-      "version"
+      "version",
+      "upgrade"
     ],
     "options": [
       "version",
@@ -159,7 +160,7 @@
   },
   {
     "path": ["version"],
-    "options": ["help"]
+    "options": ["help", "check"]
   },
   {
     "path": ["auth", "migrate"],
@@ -172,5 +173,9 @@
   {
     "path": ["cache", "prune"],
     "options": ["older-than", "max-entries", "help"]
+  },
+  {
+    "path": ["upgrade"],
+    "options": ["check", "help"]
   }
 ]

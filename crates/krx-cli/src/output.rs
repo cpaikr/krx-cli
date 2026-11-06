@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::io::{self, IsTerminal, Read};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use icu_collator::{Collator, CollatorBorrowed, options::CollatorOptions};
@@ -20,10 +21,20 @@ use crate::args::{
     AuthArgs, AuthCommand, CacheArgs, CacheCommand, Cli, MarketArgs, MarketCommand, OutputFormat,
     SchemaArgs, StockArgs, StockCommand, TopCommand, WatchlistArgs, WatchlistCommand, filter_parts,
 };
+use crate::{release_check, upgrade};
 
 pub async fn execute(cli: Cli) -> i32 {
     match execute_inner(&cli).await {
-        Ok(exit) => exit,
+        Ok(exit) => {
+            if exit == 0
+                && KRX_REQUESTED.load(Ordering::Relaxed)
+                && io::stderr().is_terminal()
+                && let Some(notice) = release_check::incidental_notice().await
+            {
+                eprintln!("{notice}");
+            }
+            exit
+        }
         Err(error) => {
             eprintln!(
                 "krx: error[{}/{}]: {}",
@@ -33,6 +44,14 @@ pub async fn execute(cli: Cli) -> i32 {
         }
     }
 }
+
+/// Whether this process sent a KRX request, from the SDK's request observations.
+///
+/// Only such runs refresh release evidence, so local, cached, offline, and
+/// dry-run commands never contact GitHub. The notice is for a person: it is
+/// written only to an interactive stderr, leaving pipes, CI, and agents
+/// unchanged. One process runs one command, so a process-wide flag suffices.
+static KRX_REQUESTED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug)]
 struct Failure {
@@ -80,12 +99,27 @@ impl From<KrxError> for Failure {
 }
 
 async fn execute_inner(cli: &Cli) -> Result<i32, Failure> {
-    if matches!(cli.command, TopCommand::Version) {
-        println!(
-            "{}",
-            pretty(&json!({ "current": env!("CARGO_PKG_VERSION") }))?
-        );
-        return Ok(0);
+    match &cli.command {
+        TopCommand::Version(args) => {
+            let mut value = json!({ "current": release_check::CURRENT_VERSION });
+            if args.check {
+                value["releaseCheck"] = serde_json::to_value(release_check::explicit_check().await)
+                    .map_err(|error| Failure::local(error.to_string()))?;
+            }
+            println!("{}", pretty(&value)?);
+            return Ok(0);
+        }
+        TopCommand::Upgrade(args) => {
+            let value = upgrade::run(args.check).await.map_err(|error| Failure {
+                kind: "upgrade",
+                code: error.code,
+                message: error.message(),
+                exit: 1,
+            })?;
+            println!("{}", pretty(&value)?);
+            return Ok(0);
+        }
+        _ => {}
     }
 
     let observations = ObservationBuffer::new();
@@ -196,7 +230,8 @@ async fn execute_inner(cli: &Cli) -> Result<i32, Failure> {
         | TopCommand::Derivative(_)
         | TopCommand::Commodity(_)
         | TopCommand::Esg(_)
-        | TopCommand::Version => unreachable!(),
+        | TopCommand::Version(_)
+        | TopCommand::Upgrade(_) => unreachable!(),
             TopCommand::Stock(_) => unreachable!(),
         }
     }
@@ -1203,6 +1238,9 @@ fn verbose(cli: &Cli, message: impl std::fmt::Display) {
 
 fn render_sdk_observations(cli: &Cli, observations: &ObservationBuffer) {
     for observation in observations.take() {
+        if matches!(observation.phase, ObservationPhase::Request { .. }) {
+            KRX_REQUESTED.store(true, Ordering::Relaxed);
+        }
         if let ObservationPhase::Quota {
             count,
             limit,

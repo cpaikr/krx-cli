@@ -1,5 +1,7 @@
 mod args;
 mod output;
+mod release_check;
+mod upgrade;
 
 use std::ffi::OsString;
 
