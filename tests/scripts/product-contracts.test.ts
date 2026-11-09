@@ -8,9 +8,10 @@ import { describe, expect, it } from "vitest";
 import YAML from "yaml";
 
 const root = process.cwd();
-// A case that runs the generator twice (write, then validate) takes about four
-// seconds alone, so the default limit fails it under full-suite load.
-const DOUBLE_GENERATOR_RUN_TIMEOUT_MS = 30_000;
+// Every case spawns the contract generator (about two seconds alone, four for
+// write-then-validate), so under `pnpm verify` load the default five-second
+// limit fails cases at random. Its duration tracks process startup, not logic.
+const GENERATOR_TIMEOUT_MS = 30_000;
 
 function run(...args: string[]) {
   return spawnSync(
@@ -106,58 +107,54 @@ function expectRejected(args: readonly string[], pattern: RegExp) {
   expect(result.stderr).toMatch(pattern);
 }
 
-describe("product contract gate", () => {
+describe("product contract gate", { timeout: GENERATOR_TIMEOUT_MS }, () => {
   it("accepts every canonical public and persisted-state contract", () => {
     const result = run();
     expect(result.status, result.stderr).toBe(0);
   });
 
-  it(
-    "writes and validates every JSON projection at extensionless paths",
-    { timeout: DOUBLE_GENERATOR_RUN_TIMEOUT_MS },
-    () => {
-      const directory = mkdtempSync(join(tmpdir(), "krx-product-projections-"));
-      const jsonProjections = [
-        ["--product-artifact", "product"],
-        ["--candidate-inventory", "inventory"],
-        ["--cli-option-matrix", "option-matrix"],
-        ["--cache-v1-schema", "cache-v1"],
-        ["--cache-v2-schema", "cache-v2"],
-      ] as const;
-      const supportProjections = [
-        ["--node-operations", "node-operations"],
-        ["--node-errors", "node-errors"],
-        ["--rust-operations", "rust-operations"],
-      ] as const;
-      const args = [...jsonProjections, ...supportProjections].flatMap(
-        ([option, name]) => [option, join(directory, name)],
-      );
-      const fixtures = mutatedFixtureManifest(
-        "extensionless-projections",
-        (document) => {
-          for (const schemaCase of document.schemaCases) {
-            if (schemaCase.schema?.endsWith("cache-v1.schema.json")) {
-              schemaCase.schema = join(directory, "cache-v1");
-            } else if (schemaCase.schema?.endsWith("cache-v2.schema.json")) {
-              schemaCase.schema = join(directory, "cache-v2");
-            }
+  it("writes and validates every JSON projection at extensionless paths", () => {
+    const directory = mkdtempSync(join(tmpdir(), "krx-product-projections-"));
+    const jsonProjections = [
+      ["--product-artifact", "product"],
+      ["--candidate-inventory", "inventory"],
+      ["--cli-option-matrix", "option-matrix"],
+      ["--cache-v1-schema", "cache-v1"],
+      ["--cache-v2-schema", "cache-v2"],
+    ] as const;
+    const supportProjections = [
+      ["--node-operations", "node-operations"],
+      ["--node-errors", "node-errors"],
+      ["--rust-operations", "rust-operations"],
+    ] as const;
+    const args = [...jsonProjections, ...supportProjections].flatMap(
+      ([option, name]) => [option, join(directory, name)],
+    );
+    const fixtures = mutatedFixtureManifest(
+      "extensionless-projections",
+      (document) => {
+        for (const schemaCase of document.schemaCases) {
+          if (schemaCase.schema?.endsWith("cache-v1.schema.json")) {
+            schemaCase.schema = join(directory, "cache-v1");
+          } else if (schemaCase.schema?.endsWith("cache-v2.schema.json")) {
+            schemaCase.schema = join(directory, "cache-v2");
           }
-        },
-      );
-      args.push("--fixtures", fixtures);
+        }
+      },
+    );
+    args.push("--fixtures", fixtures);
 
-      const writeResult = run(...args, "--write");
-      expect(writeResult.status, writeResult.stderr).toBe(0);
-      for (const [, name] of jsonProjections) {
-        expect(() =>
-          JSON.parse(readFileSync(join(directory, name), "utf8")),
-        ).not.toThrow();
-      }
+    const writeResult = run(...args, "--write");
+    expect(writeResult.status, writeResult.stderr).toBe(0);
+    for (const [, name] of jsonProjections) {
+      expect(() =>
+        JSON.parse(readFileSync(join(directory, name), "utf8")),
+      ).not.toThrow();
+    }
 
-      const validateResult = run(...args);
-      expect(validateResult.status, validateResult.stderr).toBe(0);
-    },
-  );
+    const validateResult = run(...args);
+    expect(validateResult.status, validateResult.stderr).toBe(0);
+  });
 
   it("rejects a second maintained operation inventory", () => {
     const profile = mutatedYaml(
