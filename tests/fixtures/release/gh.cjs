@@ -1,5 +1,5 @@
-#!/usr/bin/env node
 // Local GitHub CLI boundary for release publication tests. No network is used.
+// tests/fixtures/redirect-command.mjs routes publish-release.mjs `gh` calls here.
 const fs = require("node:fs");
 const path = require("node:path");
 const args = process.argv.slice(2);
