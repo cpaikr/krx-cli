@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.0](https://github.com/cpaikr/krx-cli/compare/v1.8.2...v1.9.0) (2026-11-09)
+
+### Features
+
+* **cli:** 릴리스 확인과 pnpm 전역 설치용 krx upgrade 추가 ([66420c8](https://github.com/cpaikr/krx-cli/commit/66420c854ba2bca3c078a9c7bf1d9930ca44cf5d))
+* **skill:** explicitly enable implicit KRX invocation ([db9b925](https://github.com/cpaikr/krx-cli/commit/db9b925a2ffd594c2611d96eb78379dcd4143e28))
+
+### Bug Fixes
+
+* **cli:** 리뷰 반영 — 릴리스 HTTP 경계, 알림 조건, 아카이브 범위 정리 ([cba86d2](https://github.com/cpaikr/krx-cli/commit/cba86d254e5d72e621a85fb5d23456beb3ebf350))
+* **contract:** 행이 없는 세션을 스키마 드리프트로 판정하지 않음 ([8c9f550](https://github.com/cpaikr/krx-cli/commit/8c9f5504a315a4c550a0fc2a45d8cc335bfa7505))
+
 ## 1.8.2 (2026-09-07)
 
 ### Features

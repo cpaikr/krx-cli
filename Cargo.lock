@@ -1477,7 +1477,7 @@ dependencies = [
 
 [[package]]
 name = "krx-cli"
-version = "1.8.2"
+version = "1.9.0"
 dependencies = [
  "clap",
  "flate2",
@@ -1497,7 +1497,7 @@ dependencies = [
 
 [[package]]
 name = "krx-node"
-version = "1.8.2"
+version = "1.9.0"
 dependencies = [
  "futures-util",
  "jiff",
@@ -1512,7 +1512,7 @@ dependencies = [
 
 [[package]]
 name = "krx-sdk"
-version = "1.8.2"
+version = "1.9.0"
 dependencies = [
  "cap-std",
  "futures-util",
