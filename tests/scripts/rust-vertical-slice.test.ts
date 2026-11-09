@@ -13,10 +13,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, delimiter, join } from "node:path";
+import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { describe, expect, it } from "vitest";
+
+import { resolveNpmCommand } from "../../scripts/native-package/npm-command.mjs";
 
 const root = process.cwd();
 
@@ -98,6 +100,65 @@ function replacedText(source: string, search: string, replacement: string) {
   writeFileSync(target, input.replace(search, replacement));
   return target;
 }
+
+// certify.mjs checks runtime compatibility before the package layout, so a host
+// only validates the layout of its own target family.
+const hostLayoutTarget: {
+  id: string;
+  nodePlatform: string;
+  nodeBinding: string;
+  executable: string;
+} = JSON.parse(
+  readFileSync(join(root, "contracts/product/v1/native-targets.json"), "utf8"),
+).targets.find(
+  ({ id }: { id: string }) =>
+    id === (process.platform === "win32" ? "win32-x64-msvc" : "linux-x64-gnu"),
+);
+
+function nativeLayoutFixture() {
+  const fixture = mkdtempSync(join(tmpdir(), "krx-native-layout-"));
+  const target = hostLayoutTarget;
+  mkdirSync(join(fixture, "native"));
+  mkdirSync(join(fixture, "bin"));
+  writeFileSync(join(fixture, target.nodeBinding), "binding");
+  writeFileSync(join(fixture, target.executable), "binary");
+  chmodSync(join(fixture, target.executable), 0o755);
+  const moduleUrl = pathToFileURL(
+    join(root, "scripts/native-package/package-layout.mjs"),
+  ).href;
+  const packageJson = {
+    exports: { ".": {}, "./package.json": "./package.json" },
+    bin: { krx: `./${target.executable}` },
+  };
+  const invoke = () =>
+    runModule(`
+      import { assertPackageLayout } from ${JSON.stringify(moduleUrl)};
+      await assertPackageLayout(
+        ${JSON.stringify(fixture)},
+        ${JSON.stringify(target)},
+        ${JSON.stringify(packageJson)},
+      );
+    `);
+  return { fixture, target, invoke };
+}
+
+// Creating a file symbolic link on Windows requires Developer Mode or
+// administrator rights. Directory cases use junctions, which need neither, but a
+// file link has no unprivileged equivalent that lstat also reports as a link.
+const fileSymlinksSupported = (() => {
+  const directory = mkdtempSync(join(tmpdir(), "krx-symlink-probe-"));
+  try {
+    writeFileSync(join(directory, "target"), "");
+    symlinkSync(join(directory, "target"), join(directory, "link"), "file");
+    return true;
+  } catch (error) {
+    if (process.platform === "win32" && (error as any)?.code === "EPERM")
+      return false;
+    throw error;
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+})();
 
 describe("production native package gate", () => {
   it("accepts the production adapters, package, and hosted matrix", () => {
@@ -353,7 +414,9 @@ describe("production native package gate", () => {
     mkdirSync(externalPackage, { recursive: true });
     const sentinel = join(externalPackage, "sentinel.txt");
     writeFileSync(sentinel, "preserve\n");
-    symlinkSync(outside, join(outputRoot, "link"), "dir");
+    // A junction is the directory link Windows creates without privileges; the
+    // type is ignored elsewhere, where this is an ordinary symbolic link.
+    symlinkSync(outside, join(outputRoot, "link"), "junction");
     writeFileSync(
       join(manifestDirectory, "native-targets.json"),
       `${JSON.stringify({
@@ -402,7 +465,12 @@ describe("production native package gate", () => {
     mkdirSync(externalPackage, { recursive: true });
     const sentinel = join(externalPackage, "sentinel.txt");
     writeFileSync(sentinel, "preserve\n");
-    symlinkSync(outsideRoot, join(targetDirectory, "native-package"), "dir");
+    // Junction on Windows, ordinary symbolic link elsewhere.
+    symlinkSync(
+      outsideRoot,
+      join(targetDirectory, "native-package"),
+      "junction",
+    );
     writeFileSync(
       join(manifestDirectory, "native-targets.json"),
       `${JSON.stringify({
@@ -498,10 +566,10 @@ describe("production native package gate", () => {
       const manifestDirectory = join(repository, "contracts/product/v1");
       const packageRoot = join(repository, "package");
       const artifacts = join(repository, "artifacts");
-      const fakeBin = join(repository, "fake-bin");
+      const fakeCommands = join(repository, "fake-commands");
       mkdirSync(manifestDirectory, { recursive: true });
       mkdirSync(packageRoot, { recursive: true });
-      mkdirSync(fakeBin, { recursive: true });
+      mkdirSync(fakeCommands, { recursive: true });
       writeFileSync(
         join(packageRoot, "package.json"),
         `${JSON.stringify({ name: "krx-cli", version: "1.8.1" })}\n`,
@@ -520,11 +588,10 @@ describe("production native package gate", () => {
       );
       const escaped = join(repository, `escape-${escape}.tgz`);
       writeFileSync(escaped, "preserve\n");
-      const fakeNpm = join(fakeBin, "npm");
+      const fakeNpm = join(fakeCommands, "npm.cjs");
       writeFileSync(
         fakeNpm,
-        `#!/usr/bin/env node
-const { writeFileSync } = require("node:fs");
+        `const { writeFileSync } = require("node:fs");
 const { join } = require("node:path");
 const destination = process.argv[process.argv.indexOf("--pack-destination") + 1];
 const filename = process.env.KRX_TEST_PACK_FILENAME;
@@ -532,11 +599,12 @@ if (!filename.startsWith("..")) writeFileSync(join(destination, filename), "arch
 process.stdout.write(JSON.stringify([{ filename }]));
 `,
       );
-      chmodSync(fakeNpm, 0o755);
 
       const result = spawnSync(
         process.execPath,
         [
+          "--import",
+          pathToFileURL(join(root, "tests/fixtures/redirect-command.mjs")).href,
           join(repository, "scripts/native-package/pack.mjs"),
           "--package",
           packageRoot,
@@ -552,7 +620,11 @@ process.stdout.write(JSON.stringify([{ filename }]));
             ...process.env,
             KRX_TEST_PACK_FILENAME:
               escape === "source" ? "../escape-source.tgz" : "packed.tgz",
-            PATH: `${fakeBin}${delimiter}${process.env.PATH ?? ""}`,
+            // Redirect exactly the npm invocation pack.mjs resolves on this host.
+            KRX_TEST_COMMAND_REDIRECT: JSON.stringify({
+              ...resolveNpmCommand(),
+              script: fakeNpm,
+            }),
           },
         },
       );
@@ -566,74 +638,63 @@ process.stdout.write(JSON.stringify([{ filename }]));
     }
   });
 
-  it("rejects missing, mismatched, and non-executable native package layouts", () => {
-    const fixture = mkdtempSync(join(tmpdir(), "krx-native-layout-"));
-    mkdirSync(join(fixture, "native"));
-    mkdirSync(join(fixture, "bin"));
-    writeFileSync(join(fixture, "native/krx.linux-x64-gnu.node"), "binding");
-    writeFileSync(join(fixture, "bin/krx"), "binary");
-    chmodSync(join(fixture, "bin/krx"), 0o755);
-    const moduleUrl = pathToFileURL(
-      join(root, "scripts/native-package/package-layout.mjs"),
-    ).href;
-    const target = {
-      id: "linux-x64-gnu",
-      nodePlatform: "linux",
-      nodeBinding: "native/krx.linux-x64-gnu.node",
-      executable: "bin/krx",
-    };
-    const packageJson = {
-      exports: { ".": {}, "./package.json": "./package.json" },
-      bin: { krx: "./bin/krx" },
-    };
-    const invoke = () =>
-      runModule(`
-        import { assertPackageLayout } from ${JSON.stringify(moduleUrl)};
-        await assertPackageLayout(
-          ${JSON.stringify(fixture)},
-          ${JSON.stringify(target)},
-          ${JSON.stringify(packageJson)},
-        );
-      `);
+  it("rejects missing and mismatched native package layouts", () => {
+    const { fixture, target, invoke } = nativeLayoutFixture();
     expect(invoke().status).toBe(0);
 
-    rmSync(join(fixture, "native/krx.linux-x64-gnu.node"));
+    const binding = join(fixture, target.nodeBinding);
+    const executable = join(fixture, target.executable);
+    rmSync(binding);
     expect(invoke().stderr).toMatch(/matching native binding is missing/u);
-    writeFileSync(join(fixture, "native/krx.linux-x64-gnu.node"), "binding");
-    writeFileSync(join(fixture, "native/krx.linux-arm64-gnu.node"), "extra");
+    writeFileSync(binding, "binding");
+    writeFileSync(join(fixture, "native/krx.extra.node"), "extra");
     expect(invoke().stderr).toMatch(/exactly one matching native binding/u);
-    rmSync(join(fixture, "native/krx.linux-arm64-gnu.node"));
+    rmSync(join(fixture, "native/krx.extra.node"));
 
-    rmSync(join(fixture, "bin/krx"));
+    rmSync(executable);
     expect(invoke().stderr).toMatch(/matching native executable is missing/u);
-    writeFileSync(join(fixture, "bin/krx"), "binary");
-    chmodSync(join(fixture, "bin/krx"), 0o755);
+    writeFileSync(executable, "binary");
+    chmodSync(executable, 0o755);
     writeFileSync(join(fixture, "bin/krx-other"), "extra");
     expect(invoke().stderr).toMatch(/exactly one matching native executable/u);
-    rmSync(join(fixture, "bin/krx-other"));
-
-    chmodSync(join(fixture, "bin/krx"), 0o644);
-    expect(invoke().stderr).toMatch(/execute permission/u);
-
-    const binding = join(fixture, "native/krx.linux-x64-gnu.node");
-    const bindingTarget = join(fixture, "binding-target");
-    writeFileSync(bindingTarget, "binding");
-    rmSync(binding);
-    symlinkSync(bindingTarget, binding);
-    expect(invoke().stderr).toMatch(/native binding must be a regular file/u);
-
-    rmSync(binding);
-    writeFileSync(binding, "binding");
-    const executable = join(fixture, "bin/krx");
-    const executableTarget = join(fixture, "executable-target");
-    writeFileSync(executableTarget, "binary");
-    chmodSync(executableTarget, 0o755);
-    rmSync(executable);
-    symlinkSync(executableTarget, executable);
-    expect(invoke().stderr).toMatch(
-      /native executable must be a regular file/u,
-    );
   });
+
+  // Windows file systems cannot represent Unix execute permission, and the gate
+  // never applies that check to a win32 target, the only layout a Windows host
+  // certifies.
+  it.skipIf(process.platform === "win32")(
+    "rejects a native executable without Unix execute permission",
+    () => {
+      const { fixture, target, invoke } = nativeLayoutFixture();
+      chmodSync(join(fixture, target.executable), 0o644);
+      expect(invoke().stderr).toMatch(/execute permission/u);
+    },
+  );
+
+  it.skipIf(!fileSymlinksSupported)(
+    "rejects symlinked native binding and executable files",
+    () => {
+      const { fixture, target, invoke } = nativeLayoutFixture();
+      const binding = join(fixture, target.nodeBinding);
+      const bindingTarget = join(fixture, "binding-target");
+      writeFileSync(bindingTarget, "binding");
+      rmSync(binding);
+      symlinkSync(bindingTarget, binding, "file");
+      expect(invoke().stderr).toMatch(/native binding must be a regular file/u);
+
+      rmSync(binding);
+      writeFileSync(binding, "binding");
+      const executable = join(fixture, target.executable);
+      const executableTarget = join(fixture, "executable-target");
+      writeFileSync(executableTarget, "binary");
+      chmodSync(executableTarget, 0o755);
+      rmSync(executable);
+      symlinkSync(executableTarget, executable, "file");
+      expect(invoke().stderr).toMatch(
+        /native executable must be a regular file/u,
+      );
+    },
+  );
 
   it("rejects wrong OS, CPU, libc, and target combinations", () => {
     const moduleUrl = pathToFileURL(

@@ -1,7 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
-  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -12,7 +11,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 const root = process.cwd();
@@ -302,13 +302,7 @@ function publicationFixture() {
   const cwd = artifactFixture();
   const result = bundle(cwd);
   expect(result.status, result.stderr).toBe(0);
-  mkdirSync(join(cwd, "bin"));
   mkdirSync(join(cwd, "assets"));
-  copyFileSync(
-    join(root, "tests/fixtures/release/gh.cjs"),
-    join(cwd, "bin/gh"),
-  );
-  chmodSync(join(cwd, "bin/gh"), 0o755);
   writeFileSync(
     join(cwd, "state.json"),
     JSON.stringify({ revision, release: null, calls: [] }),
@@ -316,16 +310,30 @@ function publicationFixture() {
   return cwd;
 }
 function publish(cwd: string, extra: Record<string, string> = {}) {
-  return run(
-    "scripts/native-package/publish-release.mjs",
-    cwd,
-    ["bundle", "v1.2.3"],
+  // Every `gh` call goes to the local fake, so a real GitHub CLI is never reached.
+  return spawnSync(
+    process.execPath,
+    [
+      "--import",
+      pathToFileURL(join(root, "tests/fixtures/redirect-command.mjs")).href,
+      join(root, "scripts/native-package/publish-release.mjs"),
+      "bundle",
+      "v1.2.3",
+    ],
     {
-      ...process.env,
-      PATH: `${join(cwd, "bin")}${delimiter}${process.env.PATH}`,
-      GITHUB_REPOSITORY: "fixture/release",
-      FAKE_GH_ROOT: cwd,
-      ...extra,
+      cwd,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        KRX_TEST_COMMAND_REDIRECT: JSON.stringify({
+          command: "gh",
+          argumentPrefix: [],
+          script: join(root, "tests/fixtures/release/gh.cjs"),
+        }),
+        GITHUB_REPOSITORY: "fixture/release",
+        FAKE_GH_ROOT: cwd,
+        ...extra,
+      },
     },
   );
 }
