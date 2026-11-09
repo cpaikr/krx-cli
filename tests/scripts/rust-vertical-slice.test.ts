@@ -103,20 +103,17 @@ function replacedText(source: string, search: string, replacement: string) {
 
 // certify.mjs checks runtime compatibility before the package layout, so a host
 // only validates the layout of its own target family.
-const hostLayoutTarget =
-  process.platform === "win32"
-    ? {
-        id: "win32-x64-msvc",
-        nodePlatform: "win32",
-        nodeBinding: "native/krx.win32-x64-msvc.node",
-        executable: "bin/krx.exe",
-      }
-    : {
-        id: "linux-x64-gnu",
-        nodePlatform: "linux",
-        nodeBinding: "native/krx.linux-x64-gnu.node",
-        executable: "bin/krx",
-      };
+const hostLayoutTarget: {
+  id: string;
+  nodePlatform: string;
+  nodeBinding: string;
+  executable: string;
+} = JSON.parse(
+  readFileSync(join(root, "contracts/product/v1/native-targets.json"), "utf8"),
+).targets.find(
+  ({ id }: { id: string }) =>
+    id === (process.platform === "win32" ? "win32-x64-msvc" : "linux-x64-gnu"),
+);
 
 function nativeLayoutFixture() {
   const fixture = mkdtempSync(join(tmpdir(), "krx-native-layout-"));
@@ -569,10 +566,10 @@ describe("production native package gate", () => {
       const manifestDirectory = join(repository, "contracts/product/v1");
       const packageRoot = join(repository, "package");
       const artifacts = join(repository, "artifacts");
-      const fakeBin = join(repository, "fake-bin");
+      const fakeCommands = join(repository, "fake-commands");
       mkdirSync(manifestDirectory, { recursive: true });
       mkdirSync(packageRoot, { recursive: true });
-      mkdirSync(fakeBin, { recursive: true });
+      mkdirSync(fakeCommands, { recursive: true });
       writeFileSync(
         join(packageRoot, "package.json"),
         `${JSON.stringify({ name: "krx-cli", version: "1.8.1" })}\n`,
@@ -591,7 +588,7 @@ describe("production native package gate", () => {
       );
       const escaped = join(repository, `escape-${escape}.tgz`);
       writeFileSync(escaped, "preserve\n");
-      const fakeNpm = join(fakeBin, "npm.cjs");
+      const fakeNpm = join(fakeCommands, "npm.cjs");
       writeFileSync(
         fakeNpm,
         `const { writeFileSync } = require("node:fs");
