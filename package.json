@@ -103,7 +103,7 @@
       "after:init": "node scripts/release-version.mjs upstream",
       "after:bump": [
         "node scripts/release-version.mjs sync",
-        "pnpm verify"
+        "node scripts/release-version.mjs check"
       ]
     },
     "git": {
