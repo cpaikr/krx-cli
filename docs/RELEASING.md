@@ -14,8 +14,9 @@ enforce repository visibility. Neither setting makes GitHub downloads private.
 
 ## Prepare a release
 
-Use a clean `main` checkout tracking `origin/main`. Install the pinned Rust
-toolchain, Node, pnpm, and cargo-deny required by `pnpm verify`. Fetch dependencies:
+Use a clean `main` checkout tracking `origin/main` on any supported OS. Install
+Node, pnpm, and the pinned Rust toolchain (Cargo rewrites the workspace version
+and lockfile). Fetch dependencies:
 
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
@@ -25,9 +26,12 @@ pnpm release
 
 Choose the intended version when prompted. `release-it` first fetches `origin/main`
 and requires the checkout to match it. After bumping `package.json` and the
-changelog, it synchronizes the Cargo workspace and Cargo.lock through Cargo,
-then runs `pnpm verify`. Only a successful gate permits the release commit, tag,
-and push. The Node package's `0.0.0` version is an assembly template; assembly
+changelog, it synchronizes the Cargo workspace and Cargo.lock through Cargo and
+checks that every version agrees before the release commit, tag, and push. It
+does not rerun `pnpm verify`: pull-request CI already gated the merged source, and
+the tag's release workflow runs the full gate again before anything is
+published. This keeps preparation to seconds and avoids long local runs that a
+sleep or reboot can interrupt. The Node package's `0.0.0` version is an assembly template; assembly
 replaces it with the root version.
 
 Local preparation never creates a GitHub Release or publishes to npm. The pushed
@@ -115,7 +119,8 @@ it. Set `KRX_NO_UPDATE_CHECK=1` to disable release checks and the notice.
 - A preparation failure leaves local edits for inspection and creates no release
   commit or tag. Fix the failure and verify the intended version and changelog
   before retrying; do not blindly bump the version again.
-- A failed build or consumer blocks publication. Diagnose the failed job. Retry
+- A failed verification, build, or consumer blocks publication. Diagnose the
+  failed job. Retry
   infrastructure failures against the unchanged tag; source fixes use a new
   commit and version rather than moving the tag.
 - An interrupted upload leaves a draft. Rerun failed jobs to reuse the assembled

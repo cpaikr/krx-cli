@@ -156,7 +156,7 @@ describe("private Git release policy", () => {
     );
     expect(release.hooks["after:bump"]).toEqual([
       "node scripts/release-version.mjs sync",
-      "pnpm verify",
+      "node scripts/release-version.mjs check",
     ]);
     expect(release.github.release).toBe(false);
     expect(release.npm.publish).toBe(false);
@@ -203,6 +203,16 @@ describe("private Git release policy", () => {
         .map((step: { run?: string }) => step.run)
         .join("\n"),
     ).toContain("cargo test --locked --workspace --all-features");
+    // Local release preparation only reconciles versions, so this workflow is
+    // the sole full gate before publication.
+    const gate = release.jobs.verify.steps.filter(
+      (step: { run?: string }) =>
+        step.run === "pnpm check && pnpm calendar:check && pnpm audit:prod",
+    );
+    expect(gate).toHaveLength(1);
+    expect(gate[0]).not.toHaveProperty("if");
+    expect(gate[0]).not.toHaveProperty("continue-on-error");
+    expect(release.jobs.verify).not.toHaveProperty("continue-on-error");
     expect(release.jobs.certification.needs).toEqual(["build", "consume"]);
     expect(release.jobs.publish.needs).toBe("certification");
     expect(release.jobs.publish.if).toBe(
